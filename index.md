@@ -6,9 +6,7 @@ Two electromagnetic coils in a biconic cusp configuration trap hundreds of thous
 
 
 
-<iframe src="https://docs.google.com/presentation/d/e/2PACX-1vQrbOS_zqrsK5Z98PEe6myINXGx_QKXQlFEhPwHcGI-kWWHqSLj3koYRG0ro9zsfy2MhAFFB8mRYwuQ/embed?start=false&loop=false&delayms=60000" frameborder="0" width="1440" height="839" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
-
-
+<iframe src="https://docs.google.com/presentation/d/e/2PACX-1vQrbOS_zqrsK5Z98PEe6myINXGx_QKXQlFEhPwHcGI-kWWHqSLj3koYRG0ro9zsfy2MhAFFB8mRYwuQ/embed?start=false&loop=false&delayms=60000" frameborder="0" width="960" height="569" allowfullscreen="true" mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>
 
 
  {% include disqus.html %}
