@@ -1,3 +1,8 @@
+<img src="images/sciencefair.jpg">
+
+
+
+
 ### Optimizing the magnetic confinement of electrons for nuclear fusion
 
 Nuclear fusion is suggested to be a big step in the future renewable energy generation and spaceflight propulsion. However, high costs and construction obstacles prohibit many research labs from developing experimental devices. The focus of this paper is to computationally optimize the design parameters for a magnetic trap to potentially be used in low-cost inertial electrostatic confinement (IEC) nuclear fusion devices.
