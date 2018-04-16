@@ -16,7 +16,8 @@ Z = np.sin(R)
 
 #data = [go.Surface(z=df.values.tolist(), colorscale='Viridis')]
 
-data = [go.Surface(Z.tolist(), colorscale='Viridis')]
+#data = [go.Surface(Z.tolist(), colorscale='Viridis')]
+data = [go.Surface(x = X, y=Y, z=Z, colorscale='Viridis')]
 
 layout = go.Layout(
     width=800,
