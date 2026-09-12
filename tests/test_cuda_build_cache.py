@@ -18,7 +18,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import cuda_build_cache as cbc
 
@@ -130,7 +130,7 @@ class CacheRootTests(unittest.TestCase):
             self.assertEqual(cbc.cache_root(), Path.home() / ".cache" / "cusp_build")
 
 
-_REPO = str(Path(__file__).resolve().parent.parent)
+_REPO = str(Path(__file__).resolve().parent.parent / "src")
 _CHILD = textwrap.dedent(
     """
     import os, sys, types, pathlib, fcntl

@@ -94,6 +94,74 @@ def plot_trajectories(summary, data, path, n_show=40):
     plt.close(fig)
 
 
+def plot_trajectories_3d(summary, data, path, n_show=128):
+    traj = data["traj"][:n_show]
+    initial = traj[:, 0, :3]
+    valid_initial = np.isfinite(initial).all(axis=1)
+    a = summary["ring_radius_m"] * 100
+    d = summary["ring_half_sep_m"] * 100
+    source_z = initial[valid_initial, 2].mean() * 100 if valid_initial.any() else 0
+    beam = summary.get("inject_mode") == "gun" or abs(source_z) > d
+    flip = -1 if beam and source_z > 0 else 1
+    rotation = np.array([1, flip, flip])
+    positions = traj[:, :, :3] * rotation * 100
+    colors = {0: "#79e8aa", 1: "#53c7ff", 2: "#ffd166", 3: "#f47783"}
+    labels = {0: "surviving at end", 1: "lost −z", 2: "lost +z", 3: "lost radially"}
+    background = "#101a2b"
+    foreground = "#dce5f4"
+    fig = plt.figure(figsize=(10, 10), facecolor=background)
+    ax = fig.add_subplot(111, projection="3d", facecolor=background)
+    ax.set_proj_type("ortho")
+    ax.view_init(elev=np.degrees(np.arctan(1 / np.sqrt(2))), azim=-45)
+    ax.set_box_aspect((1, 1, 1))
+    theta = np.linspace(0, 2 * np.pi, 361)
+    for zc, color, label in ((-d, "#53c7ff", "−z coil"), (d, "#ffd166", "+z coil")):
+        ax.plot(a * np.cos(theta), flip * a * np.sin(theta),
+                np.full(theta.shape, flip * zc), color=color, lw=2.4, label=label)
+    shown = set()
+    for points, code in zip(positions, data["esc_where"][:len(traj)]):
+        code = int(code)
+        ax.plot(points[:, 0], points[:, 1], points[:, 2], color=colors[code],
+                lw=0.65, alpha=0.6, label=labels[code] if code not in shown else None)
+        shown.add(code)
+    if valid_initial.any():
+        starts = positions[valid_initial, 0]
+        ax.scatter(starts[:, 0], starts[:, 1], starts[:, 2], color="white",
+                   s=8, alpha=0.8, label="launch positions", depthshade=False)
+        source = starts.mean(axis=0)
+        velocity = traj[valid_initial, 0, 3:].mean(axis=0) * rotation
+        speed = np.linalg.norm(velocity)
+        if beam and np.isfinite(speed) and speed > 0:
+            arrow = velocity / speed * a * 0.4
+            ax.quiver(*source, *arrow, color="white", linewidth=2, arrow_length_ratio=0.25)
+            ax.text(*source, "  gun" if summary.get("inject_mode") == "gun" else "  source",
+                    color="white", fontsize=10)
+    finite = positions[np.isfinite(positions).all(axis=2)]
+    extent = max(a, d, float(np.abs(finite).max()) if finite.size else 0) * 1.08
+    ax.set(xlim=(-extent, extent), ylim=(-extent, extent), zlim=(-extent, extent),
+           xlabel="x [cm]", ylabel=f"{'−' if flip < 0 else ''}y [cm]",
+           zlabel=f"{'−' if flip < 0 else ''}z [cm]")
+    for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
+        axis.set_pane_color((0.08, 0.13, 0.21, 1))
+        axis.label.set_color(foreground)
+    ax.tick_params(colors=foreground, labelsize=8)
+    ax.grid(False)
+    ax.legend(loc="upper left", fontsize=8, facecolor=background, edgecolor="#35435a",
+              labelcolor=foreground)
+    fig.suptitle("Isometric trajectory overlay", color="white", fontsize=19, y=0.97)
+    ax.set_title(f"{summary['tag']}\n{len(traj)} sampled electrons · colors show final exit status",
+                 color=foreground, fontsize=10, pad=14)
+    sample_dt = float(data["traj_dt"])
+    fig.text(0.5, 0.035,
+             f"Saved every {sample_dt * 1e9:g} ns · buffer spans {(traj.shape[1] - 1) * sample_dt * 1e6:g} µs"
+             "\nOrthographic projection · equal spatial scales · sampled paths, not field lines"
+             + ("\nView rotated 180° about x to put the gun below the coils" if flip < 0 else ""),
+             ha="center", color=foreground, fontsize=9)
+    fig.subplots_adjust(left=0.03, right=0.96, bottom=0.08, top=0.88)
+    fig.savefig(path, dpi=150, facecolor=background)
+    plt.close(fig)
+
+
 def plot_report(members, path):
     n = len(members)
     fig, axes = plt.subplots(n, 3, figsize=(18, 4.2 * n), squeeze=False)
@@ -158,6 +226,7 @@ def main():
     assert members, f"no summary.json under {args.out}"
     for s, d in members:
         plot_trajectories(s, d, os.path.join(args.out, f"traj_{s['tag']}.png"))
+        plot_trajectories_3d(s, d, os.path.join(args.out, f"traj3d_{s['tag']}.png"))
     plot_report(members, os.path.join(args.out, "report.png"))
     print("| member | confined | lost -z | lost +z | lost ring | median t_esc | E drift | Gpart-steps/s | kernel |")
     print("|---|---|---|---|---|---|---|---|---|")

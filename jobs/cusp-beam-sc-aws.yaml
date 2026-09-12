@@ -14,12 +14,12 @@ spec:
     nvidia-smi -L;
     export CUSP_BUILD_DIR=/public/jonathan/cusp/build_cache TORCH_CUDA_ARCH_LIST=10.0;
     OUT=/public/jonathan/cusp/runs/$(date +%Y%m%d-%H%M%S);
-    python3 /public/jonathan/cusp/cusp_sim.py --out $OUT
+    python3 /public/jonathan/cusp/src/cusp_sim.py --out $OUT
     --members 1000,0.0005,0,5,0 1000,0.0005,0,5,-3e-9 1000,0.0005,0,5,-3.6e-9 1000,0.0005,0,5,3.6e-9 1000,0.001,0,5,0 1000,0.001,0,5,-3e-9 1000,0.001,0,5,-3.6e-9 1000,0.001,0,5,3.6e-9 1000,0.003,0,5,0 1000,0.003,0,5,-3.6e-9 300,0.001,0,5,0 300,0.001,0,5,-1.05e-9 300,0.001,0,5,1e-9 100,0.001,0,5,0 100,0.001,0,5,-3.5e-10 100,0.001,0,5,3.5e-10
     --ring-radius 0.10 --ring-half-sep 0.05 --current 23000 --space-charge-radius 0.05 --inject-offset 0.03 --inject-sigma 2e-4
     --wall-fraction 0.98 --axial-margin 0.06 --integrator boris --adaptive 1 --steps-per-gyro-inv 0.025
     --particles 100000 --sim-time 20e-6 --block-steps 20000 --traj-samples 6000 --traj-dt 2e-11 --hist-every 400 "$@"
-    && python3 /public/jonathan/cusp/cusp_viz.py --out $OUT
+    && python3 /public/jonathan/cusp/src/cusp_viz.py --out $OUT
     && du -sh $OUT && echo CUSP_DEMO_DONE $OUT' --
     --actor-num-nodes 1
     --actor-num-gpus-per-node 8

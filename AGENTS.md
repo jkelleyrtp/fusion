@@ -65,23 +65,23 @@ can always reclaim capacity.
 ## Checks
 
 There is no established repo-wide lint/type/test policy for the simulation
-scripts (`cusp_sim.py`, `cusp_viz.py` are standalone; do not broaden linting or
+scripts (`src/cusp_sim.py`, `src/cusp_viz.py` are standalone; do not broaden linting or
 refactor legacy code). The `cuda_build_cache` module does have a narrow policy —
 run before committing changes to it:
 
 ```bash
 python3 -m unittest discover -s tests -v
-ruff check cuda_build_cache.py tests/test_cuda_build_cache.py
-mypy --follow-imports=silent cuda_build_cache.py
+ruff check src/cuda_build_cache.py tests/test_cuda_build_cache.py
+mypy --follow-imports=silent src/cuda_build_cache.py
 ```
 
 ## Layout
 
 | path | what |
 |---|---|
-| `cusp_sim.py` | simulator: exact loop field (elliptic integrals), fused CUDA Boris/RK4 kernel (torch `load_inline`), torch fallback |
-| `cuda_build_cache.py` | persistent, fingerprint-keyed build cache for the fused kernel |
-| `cusp_viz.py` | `report.png` + `traj_<member>.png` + summary table from a run directory |
+| `src/cusp_sim.py` | simulator: exact loop field (elliptic integrals), fused CUDA Boris/RK4 kernel (torch `load_inline`), torch fallback |
+| `src/cuda_build_cache.py` | persistent, fingerprint-keyed build cache for the fused kernel |
+| `src/cusp_viz.py` | `report.png` + `traj_<member>.png` + summary table from a run directory |
 | `jobs/*.yaml` | broker-submittable single-node RayJobs |
 | `results/` | reports and summaries pulled back from runs |
 | `docs/reassessment.md` | corrected interpretation and staged simulation plan |

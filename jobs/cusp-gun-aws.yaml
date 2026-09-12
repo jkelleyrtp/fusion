@@ -1,9 +1,8 @@
-# Potential-well sweep: electrons born isotropically in a 3 cm ball at the null, inside a 5 cm sphere of
-# positive charge (attractive well, centre potential 270 V per 1e-9 C) vs 0 and negative (repelling: keeps electrons off the null). 16 members, 2 rounds of 8 B200.
+# Submit through the broker only, one node, --priority 1.
 apiVersion: ray.io/v1
 kind: RayJob
 metadata:
-  name: jonathan-cusp-well
+  name: jonathan-cusp-gun
   namespace: default
   annotations:
     slime.ai/owner: jonathan.kelley
@@ -12,14 +11,25 @@ spec:
     bash -c 'set -euo pipefail;
     nvidia-smi -L;
     export CUSP_BUILD_DIR=/public/jonathan/cusp/build_cache TORCH_CUDA_ARCH_LIST=10.0;
-    OUT=/public/jonathan/cusp/runs/$(date +%Y%m%d-%H%M%S);
-    python3 /public/jonathan/cusp/cusp_sim.py --out $OUT
-    --members 100,0.03,0,180,0 100,0.03,0,180,3e-10 100,0.03,0,180,1e-9 100,0.03,0,180,3e-9 100,0.03,0,180,-3e-10 100,0.03,0,180,-1e-9 1000,0.03,0,180,0 1000,0.03,0,180,3e-9 1000,0.03,0,180,1e-8 1000,0.03,0,180,-3e-9 30,0.03,0,180,0 30,0.03,0,180,3e-10 30,0.03,0,180,1e-9 300,0.03,0,180,0 300,0.03,0,180,1e-9 300,0.03,0,180,-1e-9
-    --ring-radius 0.10 --ring-half-sep 0.05 --current 23000 --space-charge-radius 0.05 --inject-mode inside --inject-offset 0.03 --inject-sigma 1e-3
-    --wall-fraction 0.98 --axial-margin 0.06 --integrator boris --adaptive 1 --steps-per-gyro-inv 0.025
-    --particles 200000 --sim-time 100e-6 --block-steps 20000 --traj-samples 6000 --traj-dt 1e-8 --tracked 60 --hist-every 400 "$@"
-    && python3 /public/jonathan/cusp/cusp_viz.py --out $OUT
-    && du -sh $OUT && echo CUSP_DEMO_DONE $OUT' --
+    OUT=/public/jonathan/cusp/runs/gun-$(date +%Y%m%d-%H%M%S);
+    python3 /public/jonathan/cusp/src/cusp_sim.py --out "$OUT"
+    --ring-radius 0.05 --ring-half-sep 0.025 --current 5000
+    --inject-mode gun --inject-offset 0.03 --axial-margin 0.04
+    --gun-direction 0 -0.007142857 1 --inject-sigma 0.00005
+    --space-charge-radius 0.015 --particles 200000 --sim-time 2e-5
+    --steps-per-gyro-inv 0.025 --block-steps 2000
+    --tracked 64 --traj-samples 3000 --traj-dt 5e-10
+    --members
+    1.4,0.0004,0,0.5,0 1.4,0.0004,0,0.5,-1.80866385e-12
+    1.4,0.002,0,0.5,0 1.4,0.002,0,0.5,-1.80840904e-12
+    5,0.0004,0,0.5,0 5,0.0004,0,0.5,-6.45951375e-12
+    5,0.002,0,0.5,0 5,0.002,0,0.5,-6.45860373e-12
+    30,0.0004,0,0.5,0 30,0.0004,0,0.5,-3.87570825e-11
+    30,0.002,0,0.5,0 30,0.002,0,0.5,-3.87516224e-11
+    100,0.0004,0,0.5,0 100,0.0004,0,0.5,-1.29190275e-10
+    100,0.002,0,0.5,0 100,0.002,0,0.5,-1.29172075e-10;
+    touch "$OUT/DONE";
+    echo CUSP_GUN_DONE "$OUT"' --
     --actor-num-nodes 1
     --actor-num-gpus-per-node 8
     --rollout-num-gpus 0

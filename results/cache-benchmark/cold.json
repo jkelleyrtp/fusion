@@ -1,0 +1,157 @@
+{
+  "fresh_process_batch_wall_seconds": 83.73421378713101,
+  "workers": [
+    {
+      "rank": 0,
+      "extension_setup_seconds": 75.61623161891475,
+      "cuda_smoke_passed": true,
+      "extension_name": "cusp_push_50e06a3a2b025b94124be649",
+      "library": "/public/jonathan/cusp/build_cache/cusp_push_50e06a3a2b025b94124be649/cusp_push_50e06a3a2b025b94124be649.so",
+      "library_sha256": "b2cd338f81d2a553bb4703c078345fbad5b60c05d3a81a56138286433117ec6c",
+      "library_mtime_ns": 1789219226000000000,
+      "device": "NVIDIA B200",
+      "capability": [
+        10,
+        0
+      ],
+      "python": "3.12.3",
+      "torch": "2.11.0+cu129",
+      "cuda": "12.9",
+      "cache_root": "/public/jonathan/cusp/build_cache",
+      "architecture_request": "10.0"
+    },
+    {
+      "rank": 1,
+      "extension_setup_seconds": 76.06046765996143,
+      "cuda_smoke_passed": true,
+      "extension_name": "cusp_push_50e06a3a2b025b94124be649",
+      "library": "/public/jonathan/cusp/build_cache/cusp_push_50e06a3a2b025b94124be649/cusp_push_50e06a3a2b025b94124be649.so",
+      "library_sha256": "b2cd338f81d2a553bb4703c078345fbad5b60c05d3a81a56138286433117ec6c",
+      "library_mtime_ns": 1789219226000000000,
+      "device": "NVIDIA B200",
+      "capability": [
+        10,
+        0
+      ],
+      "python": "3.12.3",
+      "torch": "2.11.0+cu129",
+      "cuda": "12.9",
+      "cache_root": "/public/jonathan/cusp/build_cache",
+      "architecture_request": "10.0"
+    },
+    {
+      "rank": 2,
+      "extension_setup_seconds": 75.65507683716714,
+      "cuda_smoke_passed": true,
+      "extension_name": "cusp_push_50e06a3a2b025b94124be649",
+      "library": "/public/jonathan/cusp/build_cache/cusp_push_50e06a3a2b025b94124be649/cusp_push_50e06a3a2b025b94124be649.so",
+      "library_sha256": "b2cd338f81d2a553bb4703c078345fbad5b60c05d3a81a56138286433117ec6c",
+      "library_mtime_ns": 1789219226000000000,
+      "device": "NVIDIA B200",
+      "capability": [
+        10,
+        0
+      ],
+      "python": "3.12.3",
+      "torch": "2.11.0+cu129",
+      "cuda": "12.9",
+      "cache_root": "/public/jonathan/cusp/build_cache",
+      "architecture_request": "10.0"
+    },
+    {
+      "rank": 3,
+      "extension_setup_seconds": 75.63399213086814,
+      "cuda_smoke_passed": true,
+      "extension_name": "cusp_push_50e06a3a2b025b94124be649",
+      "library": "/public/jonathan/cusp/build_cache/cusp_push_50e06a3a2b025b94124be649/cusp_push_50e06a3a2b025b94124be649.so",
+      "library_sha256": "b2cd338f81d2a553bb4703c078345fbad5b60c05d3a81a56138286433117ec6c",
+      "library_mtime_ns": 1789219226000000000,
+      "device": "NVIDIA B200",
+      "capability": [
+        10,
+        0
+      ],
+      "python": "3.12.3",
+      "torch": "2.11.0+cu129",
+      "cuda": "12.9",
+      "cache_root": "/public/jonathan/cusp/build_cache",
+      "architecture_request": "10.0"
+    },
+    {
+      "rank": 4,
+      "extension_setup_seconds": 75.70384321082383,
+      "cuda_smoke_passed": true,
+      "extension_name": "cusp_push_50e06a3a2b025b94124be649",
+      "library": "/public/jonathan/cusp/build_cache/cusp_push_50e06a3a2b025b94124be649/cusp_push_50e06a3a2b025b94124be649.so",
+      "library_sha256": "b2cd338f81d2a553bb4703c078345fbad5b60c05d3a81a56138286433117ec6c",
+      "library_mtime_ns": 1789219226000000000,
+      "device": "NVIDIA B200",
+      "capability": [
+        10,
+        0
+      ],
+      "python": "3.12.3",
+      "torch": "2.11.0+cu129",
+      "cuda": "12.9",
+      "cache_root": "/public/jonathan/cusp/build_cache",
+      "architecture_request": "10.0"
+    },
+    {
+      "rank": 5,
+      "extension_setup_seconds": 75.59781227493659,
+      "cuda_smoke_passed": true,
+      "extension_name": "cusp_push_50e06a3a2b025b94124be649",
+      "library": "/public/jonathan/cusp/build_cache/cusp_push_50e06a3a2b025b94124be649/cusp_push_50e06a3a2b025b94124be649.so",
+      "library_sha256": "b2cd338f81d2a553bb4703c078345fbad5b60c05d3a81a56138286433117ec6c",
+      "library_mtime_ns": 1789219226000000000,
+      "device": "NVIDIA B200",
+      "capability": [
+        10,
+        0
+      ],
+      "python": "3.12.3",
+      "torch": "2.11.0+cu129",
+      "cuda": "12.9",
+      "cache_root": "/public/jonathan/cusp/build_cache",
+      "architecture_request": "10.0"
+    },
+    {
+      "rank": 6,
+      "extension_setup_seconds": 75.85858953604475,
+      "cuda_smoke_passed": true,
+      "extension_name": "cusp_push_50e06a3a2b025b94124be649",
+      "library": "/public/jonathan/cusp/build_cache/cusp_push_50e06a3a2b025b94124be649/cusp_push_50e06a3a2b025b94124be649.so",
+      "library_sha256": "b2cd338f81d2a553bb4703c078345fbad5b60c05d3a81a56138286433117ec6c",
+      "library_mtime_ns": 1789219226000000000,
+      "device": "NVIDIA B200",
+      "capability": [
+        10,
+        0
+      ],
+      "python": "3.12.3",
+      "torch": "2.11.0+cu129",
+      "cuda": "12.9",
+      "cache_root": "/public/jonathan/cusp/build_cache",
+      "architecture_request": "10.0"
+    },
+    {
+      "rank": 7,
+      "extension_setup_seconds": 75.61946581304073,
+      "cuda_smoke_passed": true,
+      "extension_name": "cusp_push_50e06a3a2b025b94124be649",
+      "library": "/public/jonathan/cusp/build_cache/cusp_push_50e06a3a2b025b94124be649/cusp_push_50e06a3a2b025b94124be649.so",
+      "library_sha256": "b2cd338f81d2a553bb4703c078345fbad5b60c05d3a81a56138286433117ec6c",
+      "library_mtime_ns": 1789219226000000000,
+      "device": "NVIDIA B200",
+      "capability": [
+        10,
+        0
+      ],
+      "python": "3.12.3",
+      "torch": "2.11.0+cu129",
+      "cuda": "12.9",
+      "cache_root": "/public/jonathan/cusp/build_cache",
+      "architecture_request": "10.0"
+    }
+  ]
+}

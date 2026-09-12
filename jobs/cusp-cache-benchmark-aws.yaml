@@ -12,8 +12,8 @@ spec:
     nvidia-smi -L;
     export CUSP_BUILD_DIR=/public/jonathan/cusp/build_cache TORCH_CUDA_ARCH_LIST=10.0 CUSP_BUILD_VERBOSE=1;
     OUT=/public/jonathan/cusp/build-bench/$(date +%Y%m%d-%H%M%S);
-    python3 /public/jonathan/cusp/benchmark_build_cache.py --out "$OUT/first" --workers 8;
-    python3 /public/jonathan/cusp/benchmark_build_cache.py --out "$OUT/second" --workers 8;
+    python3 /public/jonathan/cusp/src/benchmark_build_cache.py --out "$OUT/first" --workers 8;
+    python3 /public/jonathan/cusp/src/benchmark_build_cache.py --out "$OUT/second" --workers 8;
     touch "$OUT/DONE";
     echo CUSP_CACHE_BENCH_DONE "$OUT"' --
     --actor-num-nodes 1

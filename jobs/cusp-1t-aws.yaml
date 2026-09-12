@@ -15,10 +15,10 @@ spec:
     nvidia-smi -L;
     export CUSP_BUILD_DIR=/public/jonathan/cusp/build_cache TORCH_CUDA_ARCH_LIST=10.0;
     OUT=/public/jonathan/cusp/runs/$(date +%Y%m%d-%H%M%S);
-    python3 /public/jonathan/cusp/cusp_sim.py --out $OUT
+    python3 /public/jonathan/cusp/src/cusp_sim.py --out $OUT
     --energies 10 30 100 300 1000 3000 10000 30000
     --ring-radius 0.25 --ring-half-sep 0.20 --current 4e5 --axial-margin 0.15 --inject-offset 0.10 --inject-sigma 5e-3 --particles 100000 --steps 30000000 --block-steps 20000 --traj-samples 6000 --hist-every 200 "$@"
-    && python3 /public/jonathan/cusp/cusp_viz.py --out $OUT
+    && python3 /public/jonathan/cusp/src/cusp_viz.py --out $OUT
     && du -sh $OUT && echo CUSP_DEMO_DONE $OUT' --
     --actor-num-nodes 1
     --actor-num-gpus-per-node 8

@@ -830,7 +830,7 @@ def parse_args(argv=None):
     p.add_argument("--inject-mode", choices=["cusp", "inside", "gun"], default="cusp", help="cusp: beam through the -z point cusp; inside: born in a ball of radius inject_r at the center; gun: external point source launched as a packet at t=0")
     p.add_argument("--gun-position", type=float, nargs=3, default=None, metavar=("X", "Y", "Z"), help="gun mode: source position in m; default (0, member inject_r, -(d+inject_offset)) — member inject_r must be 0 when given")
     p.add_argument("--gun-direction", type=float, nargs=3, default=[0.0, 0.0, 1.0], metavar=("DX", "DY", "DZ"), help="gun mode: aim vector, normalized; pitch band is around this direction")
-    p.add_argument("--inject-r", type=float, nargs="+", default=[0.0], help="injection ring radii (cusp) / birth ball radii (inside) to sweep, m; gun: source radial offset, ignored when --gun-position is set")
+    p.add_argument("--inject-r", type=float, nargs="+", default=[0.0], help="injection ring radii (cusp) / birth ball radii (inside) to sweep, m; gun: source radial offset, must be 0 when --gun-position is set")
     p.add_argument("--pitch-lo-deg", type=float, nargs="+", default=[0.0], help="pitch band lower edges to sweep (paired with --pitch-hi-deg)")
     p.add_argument("--pitch-hi-deg", type=float, nargs="+", default=[20.0])
     p.add_argument("--members", nargs="+", default=None, help="explicit sweep members 'E_eV,inject_r_m,pitch_lo,pitch_hi[,space_charge_C]' (overrides the product)")
