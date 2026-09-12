@@ -1,0 +1,73 @@
+# Submit through the broker only, one node, --priority 1.
+apiVersion: ray.io/v1
+kind: RayJob
+metadata:
+  name: jonathan-cusp-space-charge-pilot
+  namespace: default
+  annotations:
+    slime.ai/owner: jonathan.kelley
+spec:
+  entrypoint: >-
+    bash -c 'set -euo pipefail; nvidia-smi -L; export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1; export CUSP_SOURCE_REVISION=$(cat /public/jonathan/cusp/src/REVISION); python3 /public/jonathan/cusp/src/run_space_charge_pilot.py --out /public/jonathan/cusp/runs/space-charge-pilot-$(date +%Y%m%d-%H%M%S)' --
+    --actor-num-nodes 1
+    --actor-num-gpus-per-node 8
+    --rollout-num-gpus 0
+  shutdownAfterJobFinishes: true
+  ttlSecondsAfterFinished: 600
+  submissionMode: K8sJobMode
+  submitterConfig:
+    backoffLimit: 2
+  submitterPodTemplate:
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      imagePullSecrets:
+        - name: gcr-creds
+      containers:
+        - name: ray-job-submitter
+          image: us-docker.pkg.dev/cognition-research/cognition-training/slime:08110256_ubuntu_2e3428df
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests: { cpu: 500m, memory: 200Mi }
+            limits: { cpu: "1", memory: 1Gi }
+  rayClusterSpec:
+    headGroupSpec:
+      rayStartParams: {}
+      template:
+        spec:
+          serviceAccountName: slime-training-sa
+          nodeSelector:
+            kubernetes.io/arch: amd64
+            workload_type: training
+          tolerations:
+            - key: nvidia.com/gpu
+              operator: Exists
+              effect: NoSchedule
+          imagePullSecrets:
+            - name: gcr-creds
+          containers:
+            - name: ray-head
+              image: us-docker.pkg.dev/cognition-research/cognition-training/slime:08110256_ubuntu_2e3428df
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: PYTHONFAULTHANDLER
+                  value: "1"
+              ports:
+                - containerPort: 6379
+                  name: gcs-server
+                - containerPort: 8265
+                  name: dashboard
+                - containerPort: 10001
+                  name: client
+              resources:
+                requests: { cpu: "32", memory: 200Gi, nvidia.com/gpu: "8" }
+                limits: { cpu: "32", memory: 200Gi, nvidia.com/gpu: "8" }
+              volumeMounts:
+                - { name: shm, mountPath: /dev/shm }
+                - { name: public, mountPath: /public, subPath: devcontainer-shared }
+          volumes:
+            - name: shm
+              emptyDir: { medium: Memory, sizeLimit: 16Gi }
+            - name: public
+              persistentVolumeClaim: { claimName: fsx-lustre }

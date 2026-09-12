@@ -177,4 +177,20 @@ escape and are invalid as executed-throughput measurements. Run 7 measures actua
 ## Still to do
 
 - Loss-cone diagnostic: pitch angle at each null crossing (min |B| per particle is recorded now).
-- A real φ(r,z) solve (biased grids at the cusps) and eventually self-consistent space charge (PIC).
+- Transient self-consistent PIC, explicit electrode geometry, and ion loading.
+
+## Space-charge reference
+
+`src/steady_space_charge.py` adds a stationary trajectory–Poisson iteration with
+current-weighted charge deposition, a grounded 3D box, thermal external injection,
+and electric-field feedback. It uses FP64 Torch on CPU or GPU. See
+[the numerical model and validation](docs/space-charge-rev0.md) before interpreting
+its outputs: stationary iteration does not establish transient stability.
+
+```bash
+OMP_NUM_THREADS=1 python3 src/steady_space_charge.py \
+  --out results/space-charge-reference --particles 256 --nodes 17 --iterations 3
+python3 -m unittest discover -s tests -p test_electrostatic.py -v
+ruff check src/electrostatic.py src/steady_space_charge.py
+mypy --follow-imports=silent src/electrostatic.py src/steady_space_charge.py
+```
