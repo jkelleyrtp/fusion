@@ -11,7 +11,7 @@ from diagnose_pic_cuda import difference
 from pic_cuda import CUDAKernels
 from run_transient_pic import create_simulation, inject_packet, parser, validate
 from transient_pic import PIC
-from validate_pic_gpu import LIMITS, compare_states
+from validate_pic_gpu import LIMITS, compare_states, state
 
 
 def repeated_operators(simulation: PIC, h: float) -> dict[str, object]:
@@ -50,10 +50,13 @@ def main() -> None:
     arguments = argparse.ArgumentParser(description=__doc__)
     arguments.add_argument("--out", type=Path, required=True)
     arguments.add_argument("--device", default="cuda:0")
+    arguments.add_argument("--deterministic-reference", action="store_true")
     options = arguments.parse_args()
     device = torch.device(options.device)
     if device.type != "cuda" or not torch.cuda.is_available():
         raise ValueError("Reproducibility diagnosis requires a broker-allocated CUDA GPU")
+    if options.deterministic_reference:
+        torch.use_deterministic_algorithms(True, warn_only=False)
     options.out.mkdir(parents=True, exist_ok=False)
     args = parser().parse_args([
         "--out", str(options.out), "--device", str(device),
@@ -63,6 +66,7 @@ def main() -> None:
     ])
     steps = validate(args)
     reference, configuration = create_simulation(args)
+    configuration["diagnostic_deterministic_reference"] = options.deterministic_reference
     repeated = PIC(
         reference.mesh, reference.magnetic_field, reference.core_radius,
         args.max_live_particles, args.track,
@@ -79,6 +83,9 @@ def main() -> None:
         "absolute_tolerances": LIMITS,
         "steps": steps,
         "dt_s": args.dt,
+        "deterministic_reference": options.deterministic_reference,
+        "torch_deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
+        "cuda_deposit": "custom atomic kernel; unaffected by Torch deterministic selection",
     }
     comparisons: list[dict[str, object]] = []
     report["comparisons"] = comparisons
@@ -97,6 +104,19 @@ def main() -> None:
                 comparison["error"] = str(error)
             else:
                 comparison["strict_comparison_passed"] = True
+            if options.deterministic_reference:
+                expected, observed = state(reference), state(repeated)
+                try:
+                    for key in expected:
+                        torch.testing.assert_close(
+                            observed[key], expected[key], rtol=0, atol=0, equal_nan=True,
+                            msg=f"{name}/{key}: deterministic reference state",
+                        )
+                except AssertionError as error:
+                    comparison["exact_state_passed"] = False
+                    comparison["exact_error"] = str(error)
+                else:
+                    comparison["exact_state_passed"] = True
             comparisons.append(comparison)
             (options.out / "reproducibility.json").write_text(
                 json.dumps(report, indent=2, allow_nan=False) + "\n",
