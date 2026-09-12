@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+import time
 from pathlib import Path
 
 import numpy as np
@@ -203,16 +204,18 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
     (args.out / "configuration.json").write_text(
         json.dumps(configuration, indent=2, allow_nan=False) + "\n",
     )
-    history = []
+    history: list[dict[str, float | int | list[int] | str]] = []
 
     def publish(step: int, h: float) -> None:
         record = save_snapshot(simulation, snapshots, step, h)
+        record["wall_s"] = time.perf_counter() - start
         history.append(record)
         temporary = args.out / "history.tmp"
         temporary.write_text(json.dumps(history, indent=2, allow_nan=False) + "\n")
         temporary.replace(args.out / "history.json")
         print(json.dumps(record, allow_nan=False), flush=True)
 
+    start = time.perf_counter()
     publish(0, 0)
     for step in range(steps):
         h = args.duration - step * args.dt if step + 1 == steps else args.dt

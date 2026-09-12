@@ -13,35 +13,48 @@ from run_transient_pic import parser as pic_parser
 from run_transient_pic import validate as validate_config
 
 
+def case_specs(
+    study: str, kernels: str,
+) -> list[tuple[str, float, float, int, int, int, int, int, str]]:
+    cases = {
+        "startup": (
+            ("pic_vacuum", 0, 4e-12, 8, 1, 625, 33, 1234, kernels),
+            ("pic_1mA", 1e-3, 4e-12, 8, 1, 625, 33, 1234, kernels),
+            ("pic_1A", 1, 4e-12, 8, 1, 625, 33, 1234, kernels),
+            ("pic_1A_dt", 1, 2e-12, 8, 2, 1250, 33, 1234, kernels),
+        ),
+        "refinement": (
+            ("pic_1A", 1, 4e-12, 8, 1, 625, 33, 1234, kernels),
+            ("pic_1A_dt", 1, 2e-12, 8, 2, 1250, 33, 1234, kernels),
+            ("pic_1A_mesh", 1, 4e-12, 8, 1, 625, 65, 1234, kernels),
+            ("pic_1A_particles", 1, 4e-12, 16, 1, 625, 33, 1234, kernels),
+        ),
+        "acceptance": tuple(
+            (f"pic_1A_s{seed}_{backend}", 1, 4e-12, 8, 1, 625, 33, seed, backend)
+            for seed in (1234, 2345, 3456, 4567)
+            for backend in ("reference", "cuda")
+        ),
+    }[study]
+    return list(cases)
+
+
 def commands(
     out: Path, revision: str, study: str = "startup", kernels: str = "reference",
 ) -> list[list[str]]:
-    cases = {
-        "startup": (
-            ("pic_vacuum", 0, 4e-12, 8, 1, 625, 33),
-            ("pic_1mA", 1e-3, 4e-12, 8, 1, 625, 33),
-            ("pic_1A", 1, 4e-12, 8, 1, 625, 33),
-            ("pic_1A_dt", 1, 2e-12, 8, 2, 1250, 33),
-        ),
-        "refinement": (
-            ("pic_1A", 1, 4e-12, 8, 1, 625, 33),
-            ("pic_1A_dt", 1, 2e-12, 8, 2, 1250, 33),
-            ("pic_1A_mesh", 1, 4e-12, 8, 1, 625, 65),
-            ("pic_1A_particles", 1, 4e-12, 16, 1, 625, 33),
-        ),
-    }[study]
     result = []
-    for device, (name, current, dt, packet, interval, stride, nodes) in enumerate(cases):
+    for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
+        case_specs(study, kernels),
+    ):
         result.append([
             sys.executable, str(Path(__file__).with_name("run_transient_pic.py")),
             "--out", str(out / name), "--device", f"cuda:{device}",
-            "--kernels", kernels, "--source-revision", revision,
+            "--kernels", backend, "--source-revision", revision,
             "--nodes", str(nodes), "--current-a", str(current),
             "--dt", str(dt), "--duration", "3e-8", "--inject-per-step", str(packet),
             "--inject-every", str(interval),
             "--coil-current", "30000", "--radius", "0.5", "--energy-ev", "5000",
             "--temperature-ev", "0.2", "--source-sigma", "5e-5",
-            "--divergence-deg", "10", "--aim-deg", "30", "--seed", "1234",
+            "--divergence-deg", "10", "--aim-deg", "30", "--seed", str(seed),
             "--save-every", str(stride), "--track", "64",
             "--max-steps", "20000", "--max-live-particles", "150000", "--max-snapshots", "16",
         ])
@@ -52,7 +65,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--case-timeout", type=float, default=900)
-    parser.add_argument("--study", choices=("startup", "refinement"), default="startup")
+    parser.add_argument("--study", choices=("startup", "refinement", "acceptance"), default="startup")
     parser.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
     args = parser.parse_args()
     if not math.isfinite(args.case_timeout) or args.case_timeout <= 0:
@@ -74,8 +87,19 @@ def main() -> None:
             "65-cubed mesh and twice the particles per packet. All use 30 ns and "
             "identical physical source geometry/current/cadence. Particle refinement "
             "changes Monte Carlo samples; one realization does not establish convergence."
+        ) if args.study == "refinement" else (
+            "Physics-level CUDA acceptance: four independent seeds, each run with "
+            "FP64 reference and CUDA operators (1 A, 5 keV, 30 kA-turn, 33-cubed, "
+            "30 ns). Paired differences are judged against reference seed-to-seed "
+            "spread; not bitwise parity, not physical convergence."
         ),
         "study": args.study, "kernels": args.kernels,
+        "cases": [
+            {"name": name, "kernels": backend, "seed": seed, "device": f"cuda:{device}"}
+            for device, (name, _, _, _, _, _, _, seed, backend) in enumerate(
+                case_specs(args.study, args.kernels),
+            )
+        ],
     }
     (args.out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     with (args.out / "preflight.log").open("w") as log:
@@ -100,8 +124,8 @@ def main() -> None:
                 log.write("\nTIMEOUT: partial history preserved\n")
                 return 124
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        codes = list(executor.map(run, range(4)))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(argv)) as executor:
+        codes = list(executor.map(run, range(len(argv))))
     (args.out / "exit_codes.json").write_text(json.dumps(codes) + "\n")
     message = (
         "All transient cases completed; inspect accounting and convergence before interpretation.\n"
