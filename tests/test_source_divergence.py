@@ -17,17 +17,27 @@ DEVICE = torch.device("cpu")
 
 
 class SourceDivergenceTests(unittest.TestCase):
-    def call(self, temperature: float, divergence: float = 0.0, count: int = 32, sigma: float = 5e-5):
-        return thermal_source(ORIGIN, AIM, 5000.0, temperature, sigma, count, DEVICE, 44, divergence)
+    def call(
+        self,
+        temperature: float,
+        divergence: float = 0.0,
+        count: int = 32,
+        sigma: float = 5e-5,
+    ):
+        return thermal_source(
+            ORIGIN, AIM, 5000.0, temperature, sigma, count, DEVICE, 44, divergence
+        )
 
     def test_omitted_and_explicit_zero_are_bitwise_identical(self):
         for temperature in (0.0, 0.2):
-            implicit = self.call(temperature)
+            implicit = thermal_source(
+                ORIGIN, AIM, 5000.0, temperature, 5e-5, 32, DEVICE, 44
+            )
             explicit = self.call(temperature, 0.0)
             for actual, expected in zip(implicit, explicit, strict=True):
                 torch.testing.assert_close(actual, expected, rtol=0, atol=0)
             torch.manual_seed(44)
-            self.call(temperature)
+            thermal_source(ORIGIN, AIM, 5000.0, temperature, 5e-5, 32, DEVICE, 44)
             implicit_draws = torch.rand(10, dtype=torch.float64)
             torch.manual_seed(44)
             self.call(temperature, 0.0)
@@ -68,7 +78,10 @@ class SourceDivergenceTests(unittest.TestCase):
         tolerance = 5 * (1 - bound) / math.sqrt(12 * count)
         self.assertLess(abs(float(cosine.mean()) - expected_mean), tolerance)
         transverse = unit_velocity - cosine[:, None] * direction
-        self.assertLess(float(transverse.mean(dim=0).norm()), 5 * math.sin(math.radians(20)) / math.sqrt(count))
+        self.assertLess(
+            float(transverse.mean(dim=0).norm()),
+            5 * math.sin(math.radians(20)) / math.sqrt(count),
+        )
 
     def test_invalid_sigma_and_divergence_rejected(self):
         for sigma in (-1.0, math.nan, math.inf):
@@ -80,7 +93,12 @@ class SourceDivergenceTests(unittest.TestCase):
 
     def test_parser_default_and_value(self):
         self.assertEqual(parser().parse_args(["--out", "out"]).divergence_deg, 0)
-        self.assertEqual(parser().parse_args(["--out", "out", "--divergence-deg", "10"]).divergence_deg, 10)
+        self.assertEqual(
+            parser()
+            .parse_args(["--out", "out", "--divergence-deg", "10"])
+            .divergence_deg,
+            10,
+        )
 
 
 if __name__ == "__main__":

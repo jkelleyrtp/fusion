@@ -3,6 +3,7 @@
 import argparse
 import concurrent.futures
 import json
+import math
 import os
 import subprocess
 import sys
@@ -15,9 +16,14 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--track", type=int, default=64)
     parser.add_argument("--trajectory-frames", type=int, default=1025)
-    parser.add_argument("--case-timeout", type=float, default=1800)
+    parser.add_argument("--case-timeout", type=float, default=None)
     parser.add_argument("--profile", choices=["reference", "high-voltage", "filament"], default="reference")
     args = parser.parse_args()
+    case_timeout = args.case_timeout if args.case_timeout is not None else (
+        1200 if args.profile == "filament" else 1800
+    )
+    if not math.isfinite(case_timeout) or case_timeout <= 0:
+        parser.error("--case-timeout must be finite and positive")
     revision = os.environ["CUSP_SOURCE_REVISION"]
     cases = [
         ("vacuum", 0, 33, 1024, 1e-10, 2e-7, 0.003, 0),
@@ -34,7 +40,6 @@ def main() -> None:
     iterations = 12
     max_steps = 50000
     purpose = "small-geometry numerical reference; not a reactor well prediction"
-    case_timeout = args.case_timeout if args.case_timeout is not None else 1800
     if args.profile == "high-voltage":
         cases = [
             ("30kAt_vacuum", 0, 33, 1024, 1e-10, 1e-7, 0.03, 0),
@@ -62,7 +67,6 @@ def main() -> None:
         radius, energy = 0.5, 5000
         iterations = 8
         max_steps = 250000
-        case_timeout = 1200
         purpose = (
             "5 keV compact-source comparison: broad 3 cm / 0 degree versus assumed "
             "50 um / 10 degree post-extraction source, each vacuum and 1 A; "

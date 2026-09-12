@@ -8,7 +8,8 @@ from unittest.mock import patch
 
 
 SPEC = importlib.util.spec_from_file_location(
-    "run_space_charge_pilot", Path(__file__).resolve().parents[1] / "src" / "run_space_charge_pilot.py"
+    "run_space_charge_pilot",
+    Path(__file__).resolve().parents[1] / "src" / "run_space_charge_pilot.py",
 )
 assert SPEC and SPEC.loader
 runner = importlib.util.module_from_spec(SPEC)
@@ -20,20 +21,28 @@ class FilamentRunnerTests(unittest.TestCase):
         revision = "a" * 40
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "run"
-            with patch.dict(os.environ, {"CUSP_SOURCE_REVISION": revision}), patch(
-                "sys.argv",
-                [
-                    "run_space_charge_pilot.py",
-                    "--out",
-                    str(output),
-                    "--profile",
-                    "filament",
-                    "--track",
-                    "64",
-                    "--trajectory-frames",
-                    "1025",
-                ],
-            ), patch.object(runner.subprocess, "run", return_value=type("Result", (), {"returncode": 0})()) as run:
+            with (
+                patch.dict(os.environ, {"CUSP_SOURCE_REVISION": revision}),
+                patch(
+                    "sys.argv",
+                    [
+                        "run_space_charge_pilot.py",
+                        "--out",
+                        str(output),
+                        "--profile",
+                        "filament",
+                        "--track",
+                        "64",
+                        "--trajectory-frames",
+                        "1025",
+                    ],
+                ),
+                patch.object(
+                    runner.subprocess,
+                    "run",
+                    return_value=type("Result", (), {"returncode": 0})(),
+                ) as run,
+            ):
                 runner.main()
 
             manifest = json.loads((output / "manifest.json").read_text())
@@ -46,16 +55,26 @@ class FilamentRunnerTests(unittest.TestCase):
                 ("compact_1A", "5e-05", "10"),
             ]
             self.assertEqual(run.call_count, 4)
+            self.assertEqual(
+                [call.kwargs["timeout"] for call in run.call_args_list], [1200] * 4
+            )
             for command, (name, sigma, divergence), device in zip(
                 manifest["commands"], expected, range(4), strict=True
             ):
                 self.assertEqual(Path(command[command.index("--out") + 1]).name, name)
-                self.assertEqual(command[command.index("--device") + 1], f"cuda:{device}")
+                self.assertEqual(
+                    command[command.index("--device") + 1], f"cuda:{device}"
+                )
                 self.assertEqual(command[command.index("--energy-ev") + 1], "5000")
                 self.assertEqual(command[command.index("--temperature-ev") + 1], "0.2")
                 self.assertEqual(command[command.index("--source-sigma") + 1], sigma)
-                self.assertEqual(command[command.index("--divergence-deg") + 1], divergence)
-                self.assertEqual(command[command.index("--current-a") + 1], "0" if "vacuum" in name else "1")
+                self.assertEqual(
+                    command[command.index("--divergence-deg") + 1], divergence
+                )
+                self.assertEqual(
+                    command[command.index("--current-a") + 1],
+                    "0" if "vacuum" in name else "1",
+                )
                 self.assertEqual(command[command.index("--coil-current") + 1], "30000")
                 self.assertEqual(command[command.index("--nodes") + 1], "33")
                 self.assertEqual(command[command.index("--particles") + 1], "1024")
@@ -67,16 +86,57 @@ class FilamentRunnerTests(unittest.TestCase):
                 self.assertEqual(command[command.index("--time-refinement") + 1], "1")
             self.assertTrue((output / "DONE").exists())
 
+    def test_explicit_case_timeout_is_forwarded(self):
+        revision = "c" * 40
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "run"
+            with (
+                patch.dict(os.environ, {"CUSP_SOURCE_REVISION": revision}),
+                patch(
+                    "sys.argv",
+                    [
+                        "run_space_charge_pilot.py",
+                        "--out",
+                        str(output),
+                        "--profile",
+                        "filament",
+                        "--case-timeout",
+                        "17",
+                    ],
+                ),
+                patch.object(
+                    runner.subprocess,
+                    "run",
+                    return_value=type("Result", (), {"returncode": 0})(),
+                ) as run,
+            ):
+                runner.main()
+            self.assertEqual(run.call_count, 4)
+            self.assertEqual(
+                {call.kwargs["timeout"] for call in run.call_args_list}, {17}
+            )
+
     def test_legacy_profile_commands_emit_zero_divergence(self):
         revision = "b" * 40
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "run"
-            with patch.dict(os.environ, {"CUSP_SOURCE_REVISION": revision}), patch(
-                "sys.argv", ["run_space_charge_pilot.py", "--out", str(output)]
-            ), patch.object(runner.subprocess, "run", return_value=type("Result", (), {"returncode": 0})()):
+            with (
+                patch.dict(os.environ, {"CUSP_SOURCE_REVISION": revision}),
+                patch("sys.argv", ["run_space_charge_pilot.py", "--out", str(output)]),
+                patch.object(
+                    runner.subprocess,
+                    "run",
+                    return_value=type("Result", (), {"returncode": 0})(),
+                ),
+            ):
                 runner.main()
             commands = json.loads((output / "manifest.json").read_text())["commands"]
-            self.assertTrue(all(command[command.index("--divergence-deg") + 1] == "0" for command in commands))
+            self.assertTrue(
+                all(
+                    command[command.index("--divergence-deg") + 1] == "0"
+                    for command in commands
+                )
+            )
 
 
 if __name__ == "__main__":
