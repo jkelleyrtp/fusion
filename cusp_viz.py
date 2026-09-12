@@ -98,10 +98,9 @@ def plot_report(members, path):
     n = len(members)
     fig, axes = plt.subplots(n, 3, figsize=(18, 4.2 * n), squeeze=False)
     for row, (s, d) in enumerate(members):
-        dt = s["dt_s"]
         # survival
         ax = axes[row, 0]
-        t_us = d["survival_steps"] * dt * 1e6
+        t_us = d["survival_t"] * 1e6 if "survival_t" in d else d["survival_steps"] * s["dt_s"] * 1e6
         ax.plot(t_us, d["survival"] / s["particles"], lw=2)
         ax.set_yscale("log")
         ax.set_ylim(max(1e-4, 0.5 / s["particles"]), 1.1)
@@ -141,6 +140,8 @@ def plot_report(members, path):
         f"Biconic cusp electron trap - {members[0][0]['particles']:,} electrons per energy, "
         f"rings R={members[0][0]['ring_radius_m'] * 100:.0f} cm at z=+-{members[0][0]['ring_half_sep_m'] * 100:.0f} cm, "
         f"{members[0][0]['current_A']:.0f} A-turns, B_axis_max={members[0][0]['B_axis_max_T']:.3f} T, "
+        + (f"space charge {members[0][0]['space_charge_C']:.1e} C ({members[0][0]['centre_potential_V']:.0f} V), " if members[0][0].get('space_charge_C') else "")
+        + f"{members[0][0].get('integrator', 'rk4')}, "
         f"{members[0][0]['device_name']} x{n}",
         fontsize=13,
     )

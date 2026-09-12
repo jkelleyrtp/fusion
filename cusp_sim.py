@@ -34,6 +34,7 @@ E_CHARGE = 1.602176634e-19
 M_E = 9.1093837015e-31
 MU0 = 4e-7 * math.pi
 QM = -E_CHARGE / M_E  # electron charge-to-mass ratio, C/kg
+K_COULOMB = 8.9875517923e9
 
 
 # --------------------------------------------------------------------------- field
@@ -127,6 +128,7 @@ CUDA_SRC = r"""
 struct Grid {
     const double* br; const double* bz;
     int nr, nz; double r0, dr, z0, dz;
+    double sc_kq, sc_r;  // space-charge sphere at the origin: k*Q [V m] and radius [m]
 };
 
 __device__ __forceinline__ void field_at(const Grid& g, double x, double y, double z,
@@ -146,48 +148,61 @@ __device__ __forceinline__ void field_at(const Grid& g, double x, double y, doub
     Bx = Br * x * inv_r; By = Br * y * inv_r;
 }
 
+// uniformly charged sphere at the origin: E = kQ r / R^3 inside, kQ r^ / r^2 outside
+__device__ __forceinline__ void efield_at(const Grid& g, double x, double y, double z,
+                                          double& ex, double& ey, double& ez) {
+    double rr2 = x * x + y * y + z * z, rr = sqrt(rr2);
+    double e_over_r = rr < g.sc_r ? g.sc_kq / (g.sc_r * g.sc_r * g.sc_r) : g.sc_kq / (rr2 * rr);
+    ex = e_over_r * x; ey = e_over_r * y; ez = e_over_r * z;
+}
+
 __device__ __forceinline__ void accel(const Grid& g, double qm, double x, double y, double z,
                                       double vx, double vy, double vz,
                                       double& ax, double& ay, double& az) {
     double Bx, By, Bz;
     field_at(g, x, y, z, Bx, By, Bz);
-    ax = qm * (vy * Bz - vz * By);
-    ay = qm * (vz * Bx - vx * Bz);
-    az = qm * (vx * By - vy * Bx);
+    double ex, ey, ez;
+    efield_at(g, x, y, z, ex, ey, ez);
+    ax = qm * (vy * Bz - vz * By + ex);
+    ay = qm * (vz * Bx - vx * Bz + ey);
+    az = qm * (vx * By - vy * Bx + ez);
 }
 
-__global__ void push_kernel(double* __restrict__ pos, double* __restrict__ vel,
-                            int* __restrict__ alive, double* __restrict__ esc_time,
-                            int* __restrict__ esc_where,
-                            const double* __restrict__ br, const double* __restrict__ bz,
-                            int nr, int nz, double r0, double dr, double z0, double dz,
-                            double qm, double dt, int step0, int nsteps,
-                            double z_min, double z_max, double r_max,
-                            float* __restrict__ traj, int ntrack, int subsample, int nsub,
-                            int* __restrict__ hist, int hist_every, int hnr, int hnz,
-                            double hz0, double hdz, double hr_max, int n) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= n || !alive[i]) return;
-    Grid g{br, bz, nr, nz, r0, dr, z0, dz};
-    double x = pos[3 * i], y = pos[3 * i + 1], z = pos[3 * i + 2];
-    double vx = vel[3 * i], vy = vel[3 * i + 1], vz = vel[3 * i + 2];
-    double h = dt, h2 = 0.5 * dt, h6 = dt / 6.0;
-    int where = 0;
-    for (int s = 0; s < nsteps; ++s) {
-        int step = step0 + s;
-        if (i < ntrack && step % subsample == 0) {
-            int k = step / subsample;
-            if (k < nsub) {
-                float* t = traj + ((size_t)i * nsub + k) * 6;
-                t[0] = x; t[1] = y; t[2] = z; t[3] = vx; t[4] = vy; t[5] = vz;
-            }
-        }
-        if (step % hist_every == 0) {
-            double r = sqrt(x * x + y * y);
-            int ir = (int)(r / hr_max * hnr), iz = (int)((z - hz0) / hdz);
-            if (ir >= 0 && ir < hnr && iz >= 0 && iz < hnz) atomicAdd(hist + iz * hnr + ir, 1);
-        }
-        // classic RK4 on (x, v)
+__device__ __forceinline__ double local_dt(const Grid& g, double qm, double x, double y, double z,
+                                           double dt_max, double dt_frac) {
+    // adaptive: a fixed fraction of the local gyroperiod, capped at dt_max (dt_frac <= 0 -> fixed dt_max)
+    if (dt_frac <= 0) return dt_max;
+    double Bx, By, Bz;
+    field_at(g, x, y, z, Bx, By, Bz);
+    double B = sqrt(Bx * Bx + By * By + Bz * Bz);
+    double dt = dt_frac * 6.283185307179586 / (fabs(qm) * fmax(B, 1e-30));
+    return fmin(dt, dt_max);
+}
+
+// One step of either integrator. Boris: leapfrog with E half-kicks and exact rotation about B
+// (energy- and mu-conserving; v is stored at the same time as x, i.e. v is synchronised each step).
+__device__ __forceinline__ void step_particle(const Grid& g, double qm, int boris, double h,
+                                              double& x, double& y, double& z,
+                                              double& vx, double& vy, double& vz) {
+    if (boris) {
+        double Bx, By, Bz, ex, ey, ez;
+        field_at(g, x, y, z, Bx, By, Bz);
+        efield_at(g, x, y, z, ex, ey, ez);
+        double hq = 0.5 * h * qm;
+        // half electric kick
+        vx += hq * ex; vy += hq * ey; vz += hq * ez;
+        // rotation
+        double tx = hq * Bx, ty = hq * By, tz = hq * Bz;
+        double t2 = tx * tx + ty * ty + tz * tz;
+        double sx = 2 * tx / (1 + t2), sy = 2 * ty / (1 + t2), sz = 2 * tz / (1 + t2);
+        double ux = vx + (vy * tz - vz * ty), uy = vy + (vz * tx - vx * tz), uz = vz + (vx * ty - vy * tx);
+        vx += uy * sz - uz * sy; vy += uz * sx - ux * sz; vz += ux * sy - uy * sx;
+        vx += hq * ex; vy += hq * ey; vz += hq * ez;
+        // drift with the full-step velocity (synchronised leapfrog: x_{n+1} = x_n + h v_{n+1/2}
+        // approximated by the rotated velocity; second order for uniform B).
+        x += h * vx; y += h * vy; z += h * vz;
+    } else {
+        double h2 = 0.5 * h, h6 = h / 6.0;
         double a1x, a1y, a1z, a2x, a2y, a2z, a3x, a3y, a3z, a4x, a4y, a4z;
         accel(g, qm, x, y, z, vx, vy, vz, a1x, a1y, a1z);
         double v2x = vx + h2 * a1x, v2y = vy + h2 * a1y, v2z = vz + h2 * a1z;
@@ -202,43 +217,89 @@ __global__ void push_kernel(double* __restrict__ pos, double* __restrict__ vel,
         vx += h6 * (a1x + 2 * a2x + 2 * a3x + a4x);
         vy += h6 * (a1y + 2 * a2y + 2 * a3y + a4y);
         vz += h6 * (a1z + 2 * a2z + 2 * a3z + a4z);
+    }
+}
+
+// Advance every live particle from its own time t[i] to t_end. Trajectory samples are taken
+// whenever a particle crosses a multiple of traj_dt; the histogram whenever it crosses hist_dt.
+__global__ void push_kernel(double* __restrict__ pos, double* __restrict__ vel,
+                            double* __restrict__ t, int64_t* __restrict__ nstep,
+                            int* __restrict__ alive, double* __restrict__ esc_time,
+                            int* __restrict__ esc_where, double* __restrict__ min_b,
+                            const double* __restrict__ br, const double* __restrict__ bz,
+                            int nr, int nz, double r0, double dr, double z0, double dz,
+                            double qm, int boris, double dt_max, double dt_frac, double t_end,
+                            double z_min, double z_max, double r_max,
+                            float* __restrict__ traj, int ntrack, double traj_dt, int nsub,
+                            int* __restrict__ hist, double hist_dt, int hnr, int hnz,
+                            double hz0, double hdz, double hr_max, double sc_kq, double sc_r, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n || !alive[i]) return;
+    Grid g{br, bz, nr, nz, r0, dr, z0, dz, sc_kq, sc_r};
+    double x = pos[3 * i], y = pos[3 * i + 1], z = pos[3 * i + 2];
+    double vx = vel[3 * i], vy = vel[3 * i + 1], vz = vel[3 * i + 2];
+    double ti = t[i], bmin = min_b[i];
+    int64_t ns = nstep[i];
+    int where = 0;
+    int64_t next_traj = (int64_t)floor(ti / traj_dt) + 1, next_hist = (int64_t)floor(ti / hist_dt) + 1;
+    while (ti < t_end) {
+        double h = local_dt(g, qm, x, y, z, dt_max, dt_frac);
+        if (ti + h > t_end) h = t_end - ti;
+        step_particle(g, qm, boris, h, x, y, z, vx, vy, vz);
+        ti += h; ++ns;
+        if (i < ntrack && ti >= next_traj * traj_dt) {
+            if (next_traj < nsub) {
+                float* tp = traj + ((size_t)i * nsub + next_traj) * 6;
+                tp[0] = x; tp[1] = y; tp[2] = z; tp[3] = vx; tp[4] = vy; tp[5] = vz;
+            }
+            ++next_traj;
+        }
+        if (ti >= next_hist * hist_dt) {
+            double r = sqrt(x * x + y * y);
+            int ir = (int)(r / hr_max * hnr), iz = (int)((z - hz0) / hdz);
+            if (ir >= 0 && ir < hnr && iz >= 0 && iz < hnz) atomicAdd(hist + iz * hnr + ir, 1);
+            double Bx, By, Bz;
+            field_at(g, x, y, z, Bx, By, Bz);
+            bmin = fmin(bmin, sqrt(Bx * Bx + By * By + Bz * Bz));
+            ++next_hist;
+        }
         if (z < z_min) { where = 1; }
         else if (z > z_max) { where = 2; }
         else if (x * x + y * y > r_max * r_max) { where = 3; }
-        if (where) {
-            alive[i] = 0; esc_time[i] = (step + 1) * dt; esc_where[i] = where;
-            break;
-        }
+        if (where) { alive[i] = 0; esc_time[i] = ti; esc_where[i] = where; break; }
     }
     pos[3 * i] = x; pos[3 * i + 1] = y; pos[3 * i + 2] = z;
     vel[3 * i] = vx; vel[3 * i + 1] = vy; vel[3 * i + 2] = vz;
+    t[i] = ti; nstep[i] = ns; min_b[i] = bmin;
 }
 
-void push(torch::Tensor pos, torch::Tensor vel, torch::Tensor alive, torch::Tensor esc_time,
-          torch::Tensor esc_where, torch::Tensor br, torch::Tensor bz,
-          double r0, double dr, double z0, double dz, double qm, double dt,
-          int64_t step0, int64_t nsteps, double z_min, double z_max, double r_max,
-          torch::Tensor traj, int64_t subsample, torch::Tensor hist, int64_t hist_every,
-          double hz0, double hdz, double hr_max) {
+void push(torch::Tensor pos, torch::Tensor vel, torch::Tensor t, torch::Tensor nstep,
+          torch::Tensor alive, torch::Tensor esc_time, torch::Tensor esc_where, torch::Tensor min_b,
+          torch::Tensor br, torch::Tensor bz,
+          double r0, double dr, double z0, double dz, double qm, int64_t boris,
+          double dt_max, double dt_frac, double t_end, double z_min, double z_max, double r_max,
+          torch::Tensor traj, double traj_dt, torch::Tensor hist, double hist_dt,
+          double hz0, double hdz, double hr_max, double sc_kq, double sc_r) {
     int n = pos.size(0);
     int threads = 128, blocks = (n + threads - 1) / threads;
     push_kernel<<<blocks, threads>>>(
-        pos.data_ptr<double>(), vel.data_ptr<double>(), alive.data_ptr<int>(),
-        esc_time.data_ptr<double>(), esc_where.data_ptr<int>(),
+        pos.data_ptr<double>(), vel.data_ptr<double>(), t.data_ptr<double>(), nstep.data_ptr<int64_t>(),
+        alive.data_ptr<int>(), esc_time.data_ptr<double>(), esc_where.data_ptr<int>(), min_b.data_ptr<double>(),
         br.data_ptr<double>(), bz.data_ptr<double>(), br.size(1), br.size(0), r0, dr, z0, dz,
-        qm, dt, (int)step0, (int)nsteps, z_min, z_max, r_max,
-        traj.data_ptr<float>(), traj.size(0), (int)subsample, traj.size(1),
-        hist.data_ptr<int>(), (int)hist_every, hist.size(1), hist.size(0), hz0, hdz, hr_max, n);
+        qm, (int)boris, dt_max, dt_frac, t_end, z_min, z_max, r_max,
+        traj.data_ptr<float>(), traj.size(0), traj_dt, traj.size(1),
+        hist.data_ptr<int>(), hist_dt, hist.size(1), hist.size(0), hz0, hdz, hr_max, sc_kq, sc_r, n);
 }
 """
 
 CPP_SRC = """
-void push(torch::Tensor pos, torch::Tensor vel, torch::Tensor alive, torch::Tensor esc_time,
-          torch::Tensor esc_where, torch::Tensor br, torch::Tensor bz,
-          double r0, double dr, double z0, double dz, double qm, double dt,
-          int64_t step0, int64_t nsteps, double z_min, double z_max, double r_max,
-          torch::Tensor traj, int64_t subsample, torch::Tensor hist, int64_t hist_every,
-          double hz0, double hdz, double hr_max);
+void push(torch::Tensor pos, torch::Tensor vel, torch::Tensor t, torch::Tensor nstep,
+          torch::Tensor alive, torch::Tensor esc_time, torch::Tensor esc_where, torch::Tensor min_b,
+          torch::Tensor br, torch::Tensor bz,
+          double r0, double dr, double z0, double dz, double qm, int64_t boris,
+          double dt_max, double dt_frac, double t_end, double z_min, double z_max, double r_max,
+          torch::Tensor traj, double traj_dt, torch::Tensor hist, double hist_dt,
+          double hz0, double hdz, double hr_max, double sc_kq, double sc_r);
 """
 
 
@@ -262,12 +323,15 @@ def try_build_kernel(device_index):
 
 
 class TorchPusher:
-    """Same algorithm as the CUDA kernel, vectorised with torch ops. Slower but portable."""
+    """Same algorithm as the CUDA kernel, vectorised with torch ops. Slower but portable.
+    All live particles take one (individually sized) step per iteration until every one has
+    reached t_end."""
 
-    def __init__(self, br, bz, r0, dr, z0, dz, qm):
+    def __init__(self, br, bz, r0, dr, z0, dz, qm, sc_kq=0.0, sc_r=1.0, boris=True):
         self.br, self.bz = br, bz
         self.nz, self.nr = br.shape
         self.r0, self.dr, self.z0, self.dz, self.qm = r0, dr, z0, dz, qm
+        self.sc_kq, self.sc_r, self.boris = sc_kq, sc_r, boris
 
     def field(self, p):
         x, y, z = p[:, 0], p[:, 1], p[:, 2]
@@ -286,40 +350,70 @@ class TorchPusher:
         inv_r = torch.where(r > 1e-12, 1.0 / r, torch.zeros_like(r))
         return torch.stack([Br * x * inv_r, Br * y * inv_r, Bz], 1)
 
-    def accel(self, p, v):
-        return self.qm * torch.cross(v, self.field(p), dim=1)
+    def efield(self, p):
+        rr2 = (p * p).sum(1)
+        rr = rr2.sqrt()
+        e_over_r = torch.where(rr < self.sc_r, torch.full_like(rr, self.sc_kq / self.sc_r**3), self.sc_kq / (rr2 * rr))
+        return e_over_r[:, None] * p
 
-    def push(self, pos, vel, alive, esc_time, esc_where, dt, step0, nsteps, z_min, z_max, r_max,
-             traj, subsample, hist, hist_every, hz0, hdz, hr_max):
+    def accel(self, p, v):
+        return self.qm * (torch.cross(v, self.field(p), dim=1) + self.efield(p))
+
+    def step(self, p, v, h):
+        h = h[:, None]
+        if self.boris:
+            hq = 0.5 * h * self.qm
+            e = self.efield(p)
+            v = v + hq * e
+            t = hq * self.field(p)
+            s = 2 * t / (1 + (t * t).sum(1, keepdim=True))
+            u = v + torch.cross(v, t, dim=1)
+            v = v + torch.cross(u, s, dim=1) + hq * e
+            return p + h * v, v
+        h2 = 0.5 * h
+        a1 = self.accel(p, v)
+        v2 = v + h2 * a1
+        a2 = self.accel(p + h2 * v, v2)
+        v3 = v + h2 * a2
+        a3 = self.accel(p + h2 * v2, v3)
+        v4 = v + h * a3
+        a4 = self.accel(p + h * v3, v4)
+        return p + (h / 6) * (v + 2 * v2 + 2 * v3 + v4), v + (h / 6) * (a1 + 2 * a2 + 2 * a3 + a4)
+
+    def push(self, pos, vel, t, nstep, alive, esc_time, esc_where, min_b, dt_max, dt_frac, t_end,
+             z_min, z_max, r_max, traj, traj_dt, hist, hist_dt, hz0, hdz, hr_max):
         ntrack, nsub = traj.shape[0], traj.shape[1]
         hnz, hnr = hist.shape
-        for s in range(nsteps):
-            step = step0 + s
-            idx = alive.nonzero().squeeze(1)
+        while True:
+            idx = ((alive > 0) & (t < t_end)).nonzero().squeeze(1)
             if idx.numel() == 0:
                 return
-            p, v = pos[idx], vel[idx]
-            if step % subsample == 0 and step // subsample < nsub:
-                t = idx[idx < ntrack]
-                traj[t, step // subsample, :3] = pos[t].float()
-                traj[t, step // subsample, 3:] = vel[t].float()
-            if step % hist_every == 0:
-                r = torch.sqrt(p[:, 0] ** 2 + p[:, 1] ** 2)
+            p, v, ti = pos[idx], vel[idx], t[idx]
+            if dt_frac > 0:
+                B = self.field(p).norm(dim=1)
+                h = (dt_frac * 2 * math.pi / (abs(self.qm) * B.clamp_min(1e-30))).clamp_max(dt_max)
+            else:
+                h = torch.full_like(ti, dt_max)
+            h = torch.minimum(h, t_end - ti)
+            k_traj0, k_hist0 = (ti / traj_dt).floor(), (ti / hist_dt).floor()
+            p, v = self.step(p, v, h)
+            ti = ti + h
+            pos[idx], vel[idx], t[idx] = p, v, ti
+            nstep[idx] += 1
+            crossed = ((ti / traj_dt).floor() > k_traj0) & (idx < ntrack) & (k_traj0 + 1 < nsub)
+            if crossed.any():
+                k = (k_traj0[crossed] + 1).long()
+                traj[idx[crossed], k, :3] = p[crossed].float()
+                traj[idx[crossed], k, 3:] = v[crossed].float()
+            hc = (ti / hist_dt).floor() > k_hist0
+            if hc.any():
+                ph = p[hc]
+                r = torch.sqrt(ph[:, 0] ** 2 + ph[:, 1] ** 2)
                 ir = (r / hr_max * hnr).long()
-                iz = ((p[:, 2] - hz0) / hdz).long()
+                iz = ((ph[:, 2] - hz0) / hdz).long()
                 ok = (ir >= 0) & (ir < hnr) & (iz >= 0) & (iz < hnz)
                 hist.view(-1).index_add_(0, (iz[ok] * hnr + ir[ok]), torch.ones(int(ok.sum()), dtype=hist.dtype, device=hist.device))
-            h, h2 = dt, 0.5 * dt
-            a1 = self.accel(p, v)
-            v2 = v + h2 * a1
-            a2 = self.accel(p + h2 * v, v2)
-            v3 = v + h2 * a2
-            a3 = self.accel(p + h2 * v2, v3)
-            v4 = v + h * a3
-            a4 = self.accel(p + h * v3, v4)
-            p = p + (h / 6) * (v + 2 * v2 + 2 * v3 + v4)
-            v = v + (h / 6) * (a1 + 2 * a2 + 2 * a3 + a4)
-            pos[idx], vel[idx] = p, v
+                min_b[idx[hc]] = torch.minimum(min_b[idx[hc]], self.field(ph).norm(dim=1))
             where = torch.zeros(idx.numel(), dtype=torch.int32, device=pos.device)
             where = torch.where(p[:, 2] < z_min, torch.ones_like(where), where)
             where = torch.where((where == 0) & (p[:, 2] > z_max), torch.full_like(where, 2), where)
@@ -328,7 +422,7 @@ class TorchPusher:
             if dead.any():
                 d = idx[dead]
                 alive[d] = 0
-                esc_time[d] = (step + 1) * dt
+                esc_time[d] = ti[dead]
                 esc_where[d] = where[dead]
 
 
@@ -336,7 +430,7 @@ class TorchPusher:
 
 
 def run_member(args, member, tag, device, log):
-    energy_ev, inject_r, pitch_lo_deg, pitch_hi_deg = member
+    energy_ev, inject_r, pitch_lo_deg, pitch_hi_deg, space_charge = member
     torch.manual_seed(args.seed + int.from_bytes(tag.encode(), "little") % 100_000)
     dev = torch.device(device)
     f64 = dict(device=dev, dtype=torch.float64)
@@ -357,13 +451,21 @@ def run_member(args, member, tag, device, log):
     r_max = args.wall_fraction * a
     b_for_dt = args.dt_ref_b if args.dt_ref_b else Bmag[:, r <= r_max].max().item()
     dt = args.steps_per_gyro_inv * (2 * math.pi / (abs(QM) * b_for_dt))  # fraction of the shortest gyroperiod
+    # adaptive: dt_i = dt_frac * local gyroperiod, capped so a step never exceeds the grid cell /
+    # a fraction of the transit time across the space-charge sphere
+    v0 = math.sqrt(2 * energy_ev * E_CHARGE / M_E)
+    v_cap = math.sqrt(v0 * v0 + 2 * abs(K_COULOMB * space_charge) / args.space_charge_radius * 1.5 * abs(QM))
+    dt_max = min(a / (args.grid_r - 1), args.space_charge_radius / 10) / v_cap if args.adaptive else dt
+    dt_max = max(dt_max, dt) if args.adaptive else dt
+    dt_frac = args.steps_per_gyro_inv if args.adaptive else 0.0
+    boris = args.integrator == "boris"
     log(f"[{tag}] field table {args.grid_z}x{args.grid_r}, on-axis rel err {axis_err:.2e}, "
-        f"B_axis_max={Bmag[:, 0].max().item():.4f} T, B_max(r<r_max)={b_for_dt:.4f} T, dt={dt:.3e} s")
+        f"B_axis_max={Bmag[:, 0].max().item():.4f} T, B_max(r<r_max)={b_for_dt:.4f} T, "
+        f"integrator={args.integrator} dt_ref={dt:.3e} s" + (f" adaptive dt<= {dt_max:.3e} s" if args.adaptive else ""))
 
     # ---- particles: injected through the -z point cusp on a ring of radius inject_r
     # (gaussian-blurred by inject_sigma), pitch uniform in [pitch_lo, pitch_hi]
     n = args.particles
-    v0 = math.sqrt(2 * energy_ev * E_CHARGE / M_E)
     pos = torch.zeros(n, 3, **f64)
     ang = torch.rand(n, **f64) * 2 * math.pi
     if args.inject_mode == "cusp":
@@ -384,11 +486,19 @@ def run_member(args, member, tag, device, log):
     alive = torch.ones(n, dtype=torch.int32, device=dev)
     esc_time = torch.full((n,), float("nan"), **f64)
     esc_where = torch.zeros(n, dtype=torch.int32, device=dev)
+    t_part = torch.zeros(n, **f64)
+    nstep = torch.zeros(n, dtype=torch.int64, device=dev)
+    min_b = torch.full((n,), float("inf"), **f64)
 
+    # --steps counts reference (fixed-dt) steps: total simulated time = steps * dt_ref
     total_steps = args.steps
-    subsample = max(1, total_steps // args.traj_samples)
-    nsub = total_steps // subsample
+    t_total = args.sim_time if args.sim_time else total_steps * dt
+    nsub = args.traj_samples
+    traj_dt = args.traj_dt if args.traj_dt else t_total / nsub
+    hist_dt = args.hist_every * dt
     traj = torch.full((args.tracked, nsub, 6), float("nan"), dtype=torch.float32, device=dev)
+    traj[:, 0, :3] = pos[: args.tracked].float()
+    traj[:, 0, 3:] = vel[: args.tracked].float()
     hist = torch.zeros(args.hist_z, args.hist_r, dtype=torch.int32, device=dev)
     hz0, hdz = z_lo, (z_hi - z_lo) / args.hist_z
 
@@ -403,41 +513,51 @@ def run_member(args, member, tag, device, log):
             log(f"[{tag}] fused CUDA kernel compiled")
         except Exception as e:  # noqa: BLE001 - fall back to torch ops on any build failure
             log(f"[{tag}] CUDA kernel build failed ({type(e).__name__}: {str(e)[:300]}); using torch pusher")
-    pusher = TorchPusher(Brc, Bzc, r0, dr, z0, dz, QM)
+    sc_kq = K_COULOMB * space_charge
+    pusher = TorchPusher(Brc, Bzc, r0, dr, z0, dz, QM, sc_kq, args.space_charge_radius, boris)
 
-    def push(step0, nsteps):
+    def potential_ev(p):  # electron potential energy in the sphere's field, eV
+        rr = p.norm(dim=1)
+        R = args.space_charge_radius
+        phi = torch.where(rr < R, sc_kq * (3 * R * R - rr * rr) / (2 * R**3), sc_kq / rr)
+        return -phi
+
+    def push(t_end):
         if kernel is not None:
-            kernel.push(pos, vel, alive, esc_time, esc_where, Brc, Bzc, r0, dr, z0, dz, QM, dt,
-                        step0, nsteps, z_min, z_max, r_max, traj, subsample, hist, args.hist_every,
-                        hz0, hdz, a)
+            kernel.push(pos, vel, t_part, nstep, alive, esc_time, esc_where, min_b, Brc, Bzc, r0, dr, z0, dz,
+                        QM, int(boris), dt_max, dt_frac, t_end, z_min, z_max, r_max, traj, traj_dt,
+                        hist, hist_dt, hz0, hdz, a, sc_kq, args.space_charge_radius)
         else:
-            pusher.push(pos, vel, alive, esc_time, esc_where, dt, step0, nsteps, z_min, z_max, r_max,
-                        traj, subsample, hist, args.hist_every, hz0, hdz, a)
+            pusher.push(pos, vel, t_part, nstep, alive, esc_time, esc_where, min_b, dt_max, dt_frac, t_end,
+                        z_min, z_max, r_max, traj, traj_dt, hist, hist_dt, hz0, hdz, a)
 
     # initial kinetic energy of tracked particles, for the drift diagnostic
-    ke0 = 0.5 * M_E * (vel[: args.tracked] ** 2).sum(1) / E_CHARGE
+    ke0 = 0.5 * M_E * (vel[: args.tracked] ** 2).sum(1) / E_CHARGE + potential_ev(pos[: args.tracked])
 
-    survival_steps, survival = [], []
-    block = args.block_steps
+    survival_t, survival = [], []
+    block_t = args.block_steps * dt
+    nblocks = math.ceil(t_total / block_t)
     t0 = time.time()
-    for step0 in range(0, total_steps, block):
-        nsteps = min(block, total_steps - step0)
-        push(step0, nsteps)
+    for b in range(nblocks):
+        t_end = min((b + 1) * block_t, t_total)
+        push(t_end)
         n_alive = int(alive.sum().item())
-        survival_steps.append(step0 + nsteps)
+        survival_t.append(t_end)
         survival.append(n_alive)
-        if (step0 // block) % max(1, (total_steps // block) // 20) == 0 or n_alive == 0:
+        if b % max(1, nblocks // 20) == 0 or n_alive == 0 or b == nblocks - 1:
             el = time.time() - t0
-            log(f"[{tag}] step {step0 + nsteps}/{total_steps} t={(step0 + nsteps) * dt * 1e6:.3f} us "
+            ps = nstep.sum().item()
+            log(f"[{tag}] t={t_end * 1e6:.3f}/{t_total * 1e6:.3f} us "
                 f"alive {n_alive}/{n} ({100 * n_alive / n:.1f}%) {el:.1f}s "
-                f"{(step0 + nsteps) * n / max(el, 1e-9) / 1e9:.2f} Gpart-steps/s")
+                f"{ps / max(el, 1e-9) / 1e9:.2f} Gpart-steps/s")
         if n_alive == 0:
             break
     if dev.type == "cuda":
         torch.cuda.synchronize(dev)
     sim_time = time.time() - t0
+    total_particle_steps = int(nstep.sum().item())
 
-    ke_end = 0.5 * M_E * (vel[: args.tracked] ** 2).sum(1) / E_CHARGE
+    ke_end = 0.5 * M_E * (vel[: args.tracked] ** 2).sum(1) / E_CHARGE + potential_ev(pos[: args.tracked])
     esc = esc_where.cpu().numpy()
     et = esc_time.cpu().numpy()
     confined = int((esc == 0).sum())
@@ -447,11 +567,19 @@ def run_member(args, member, tag, device, log):
         "inject_r_m": inject_r,
         "pitch_deg": [pitch_lo_deg, pitch_hi_deg],
         "particles": n,
+        "integrator": args.integrator,
+        "adaptive": bool(args.adaptive),
+        "space_charge_C": space_charge,
+        "space_charge_radius_m": args.space_charge_radius,
+        "centre_potential_V": 1.5 * sc_kq / args.space_charge_radius,
         "steps": total_steps,
-        "steps_run": survival_steps[-1],
         "dt_s": dt,
-        "sim_duration_s": total_steps * dt,
-        "sim_duration_run_s": survival_steps[-1] * dt,
+        "dt_max_s": dt_max,
+        "sim_duration_s": t_total,
+        "sim_duration_run_s": survival_t[-1],
+        "particle_steps_total": total_particle_steps,
+        "mean_steps_per_particle": total_particle_steps / n,
+        "min_B_seen_T_median": float(min_b[torch.isfinite(min_b)].median().item()) if torch.isfinite(min_b).any() else None,
         "confined_at_end": confined,
         "confined_fraction": confined / n,
         "escaped_minus_z_cusp": int((esc == 1).sum()),
@@ -459,8 +587,8 @@ def run_member(args, member, tag, device, log):
         "escaped_ring_cusp": int((esc == 3).sum()),
         "mean_escape_time_s": float(np.nanmean(et)) if np.isfinite(et).any() else None,
         "median_escape_time_s": float(np.nanmedian(et)) if np.isfinite(et).any() else None,
-        "energy_drift_rel_max": float(((ke_end - ke0).abs() / ke0).max().item()),
-        "energy_drift_rel_mean": float(((ke_end - ke0).abs() / ke0).mean().item()),
+        "energy_drift_rel_max": float(((ke_end - ke0).abs() / ke0.abs()).max().item()),
+        "energy_drift_rel_mean": float(((ke_end - ke0).abs() / ke0.abs()).mean().item()),
         "field_on_axis_rel_err": axis_err,
         "B_axis_max_T": Bmag[:, 0].max().item(),
         "ring_radius_m": a,
@@ -471,7 +599,7 @@ def run_member(args, member, tag, device, log):
         "device_name": torch.cuda.get_device_name(dev) if dev.type == "cuda" else "cpu",
         "wall_time_s": time.time() - t_start,
         "sim_wall_time_s": sim_time,
-        "particle_steps_per_s": survival_steps[-1] * n / max(sim_time, 1e-9),
+        "particle_steps_per_s": total_particle_steps / max(sim_time, 1e-9),
     }
     out_dir = os.path.join(args.out, tag)
     os.makedirs(out_dir, exist_ok=True)
@@ -480,7 +608,9 @@ def run_member(args, member, tag, device, log):
         esc_time=et.astype(np.float32),
         esc_where=esc.astype(np.int8),
         traj=traj.cpu().numpy(),
-        traj_dt=np.float64(dt * subsample),
+        traj_dt=np.float64(traj_dt),
+        min_b=min_b.cpu().numpy().astype(np.float32),
+        nstep=nstep.cpu().numpy(),
         density=hist.cpu().numpy(),
         density_r=np.linspace(0, a, args.hist_r + 1),
         density_z=np.linspace(z_lo, z_hi, args.hist_z + 1),
@@ -488,7 +618,7 @@ def run_member(args, member, tag, device, log):
         field_Bz=Bz.cpu().numpy().astype(np.float32),
         field_r=r.cpu().numpy(),
         field_z=z.cpu().numpy(),
-        survival_steps=np.array(survival_steps),
+        survival_t=np.array(survival_t),
         survival=np.array(survival),
         final_pos=pos[: args.tracked].cpu().numpy().astype(np.float32),
     )
@@ -502,15 +632,15 @@ def run_member(args, member, tag, device, log):
 
 
 def member_tag(m):
-    e, ri, plo, phi = m
-    return f"E{e:g}eV_r{ri * 1e3:g}mm_p{plo:g}-{phi:g}"
+    e, ri, plo, phi, q = m
+    return f"E{e:g}eV_r{ri * 1e3:g}mm_p{plo:g}-{phi:g}" + (f"_Q{q:g}C" if q else "")
 
 
 def sweep_members(args):
     """Cartesian product of energies x inject radii x pitch bands, unless --members is given."""
     if args.members:
-        return [tuple(float(x) for x in m.split(",")) for m in args.members]
-    return [(e, ri, plo, phi) for e in args.energies for ri in args.inject_r for plo, phi in zip(args.pitch_lo_deg, args.pitch_hi_deg)]
+        return [tuple((list(map(float, m.split(","))) + [0.0])[:5]) for m in args.members]
+    return [(e, ri, plo, phi, q) for e in args.energies for ri in args.inject_r for plo, phi in zip(args.pitch_lo_deg, args.pitch_hi_deg) for q in args.space_charge]
 
 
 def _worker(rank, args, members, devices, log_path):
@@ -532,13 +662,19 @@ def parse_args(argv=None):
     p.add_argument("--out", required=True, help="output directory (one subdir per sweep member)")
     p.add_argument("--energies", type=float, nargs="+", default=[20, 100, 500, 2500], help="injection energies, eV (one per GPU)")
     p.add_argument("--particles", type=int, default=250_000)
-    p.add_argument("--steps", type=int, default=400_000)
+    p.add_argument("--steps", type=int, default=400_000, help="reference steps; simulated time = steps * dt_ref (see --sim-time)")
+    p.add_argument("--traj-dt", type=float, default=None, help="trajectory sample spacing (s); default sim_time/traj_samples. Set small for beam runs so short-lived electrons are drawn (buffer fills after traj_samples samples)")
+    p.add_argument("--sim-time", type=float, default=None, help="simulated time (s); overrides --steps")
+    p.add_argument("--integrator", choices=["boris", "rk4"], default="boris", help="boris: symplectic leapfrog (energy/mu conserving); rk4: classic 4th order")
+    p.add_argument("--adaptive", type=int, default=1, help="1: per-particle dt = steps-per-gyro-inv * local gyroperiod (capped); 0: fixed dt from the max field")
     p.add_argument("--block-steps", type=int, default=2000, help="steps per kernel launch")
     p.add_argument("--steps-per-gyro-inv", type=float, default=1 / 40, help="dt as a fraction of the shortest gyroperiod")
     p.add_argument("--dt-ref-b", type=float, default=None, help="field (T) defining the gyroperiod used for dt; default is max |B| inside the wall (dominated by the near-wire region)")
     p.add_argument("--ring-radius", type=float, default=0.05, help="m")
     p.add_argument("--ring-half-sep", type=float, default=0.04, help="rings at z = +-this, m")
     p.add_argument("--current", type=float, default=4000.0, help="ring current (ampere-turns)")
+    p.add_argument("--space-charge", type=float, nargs="+", default=[0.0], help="fixed charge (C) of a uniform sphere at the trap centre; negative = trapped electron cloud / virtual cathode (decelerates and repels incoming electrons); positive = attractive well for electrons. Sweepable.")
+    p.add_argument("--space-charge-radius", type=float, default=0.02, help="m")
     p.add_argument("--wall-fraction", type=float, default=0.9, help="electrons beyond this fraction of the ring radius are lost")
     p.add_argument("--axial-margin", type=float, default=0.03, help="domain extends this far beyond the rings, m")
     p.add_argument("--inject-offset", type=float, default=0.02, help="injection plane this far outside the -z ring, m")
@@ -547,7 +683,7 @@ def parse_args(argv=None):
     p.add_argument("--inject-r", type=float, nargs="+", default=[0.0], help="injection ring radii (cusp) / birth ball radii (inside) to sweep, m")
     p.add_argument("--pitch-lo-deg", type=float, nargs="+", default=[0.0], help="pitch band lower edges to sweep (paired with --pitch-hi-deg)")
     p.add_argument("--pitch-hi-deg", type=float, nargs="+", default=[20.0])
-    p.add_argument("--members", nargs="+", default=None, help="explicit sweep members 'E_eV,inject_r_m,pitch_lo,pitch_hi' (overrides the product)")
+    p.add_argument("--members", nargs="+", default=None, help="explicit sweep members 'E_eV,inject_r_m,pitch_lo,pitch_hi[,space_charge_C]' (overrides the product)")
     p.add_argument("--grid-r", type=int, default=512)
     p.add_argument("--grid-z", type=int, default=1024)
     p.add_argument("--segments", type=int, default=720, help="Biot-Savart segments per ring")

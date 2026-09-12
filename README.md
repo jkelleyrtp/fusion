@@ -19,8 +19,19 @@ escape time + channel, survival curve, (r,z) density) and renders a report.
 - Field: Smythe's closed form for a circular filament, `B_r, B_z` in `K(k), E(k)` (AGM), tabulated on an
   (r,z) grid once per member; the kernel does bilinear lookups. Validated against the on-axis formula (1e-15)
   and a 2880-segment Biot-Savart polygon (6e-6).
-- Pusher: classic RK4 on `dv/dt = (q/m) v x B`, fixed `dt = gyroperiod(B_ref)/40`. Energy drift is reported
-  per member (typ. 1e-5 over 1e7-1e8 steps).
+- Pusher: Boris (default, `--integrator boris`) or classic RK4 (`--integrator rk4`, reference). Boris energy drift
+  is at machine precision (1e-14) with B only; RK4 drifts 1e-5..1e-2 depending on `dt`.
+- Time step: adaptive per particle (`--adaptive 1`, default): `dt = steps-per-gyro-inv * 2π m/(e|B|)` at the
+  particle's position, capped by grid spacing / v and by a tenth of the space-charge radius / v. Every particle is
+  integrated to the same physical `--sim-time`; trajectory and density sampling are on physical-time intervals.
+  `--adaptive 0` recovers a fixed `dt` from the reference field. Adaptive runs take ~8x fewer steps here (most of
+  the volume is far weaker than the field at the coils).
+- Electrostatics: `--space-charge Q [Q2 ...]` (C) puts a uniformly charged sphere of radius
+  `--space-charge-radius` at the null (linear E inside, Coulomb outside) - the fixed `c_sphere` from the 2015
+  OpenCL code. Negative = trapped electron cloud / virtual cathode (decelerates and repels incoming electrons);
+  positive = attractive well. It is a sweep axis like energy.
+- Diagnostics per particle: escape time / channel, step count, minimum |B| seen (loss-cone proxy).
+- Energy drift is reported per member.
 - Loss channels: `-z` point cusp, `+z` point cusp, ring cusp / wall (`r > wall_fraction * a`).
 - Injection modes: `cusp` (beam through the -z point cusp, ring of radius `inject_r`, pitch band) and
   `inside` (born in a ball around the null, pitch uniform in cos over the band; `0..180` = isotropic).
@@ -33,6 +44,7 @@ escape time + channel, survival curve, (r,z) density) and renders a report.
 | `run2_1T_onaxis` | a=25 cm, coils z=±20 cm, 400 kA-turn (0.86 T at the point cusp), on-axis beam | 0% confined, 99% out the ring cusp in one transit |
 | `run3_1T_sweep` | a=25 cm, coils z=±10 cm, 300 kA-turn (0.44 T point / 1.05 T ring cusp), beam, r_inj x pitch sweep | 0% confined; pitch 20-60° reflects at the ring cusp, then exits the point cusp it came in |
 | `run4_1T_inside` | same field, isotropic electrons born in a 5 cm ball at the null, 10 eV - 30 keV | see `results/run4_1T_inside/report.png` |
+| `run5_23kA_spacecharge` | 2015 geometry: a=10 cm, coils z=±5 cm, 23 kA-turn (99 mT axis), beam at r=14 mm, 100 eV-1 keV, central charge -1.4e-9..+1e-9 C (−940..+670 V); Boris + adaptive | 0% confined in every member: the beam rides its field line from the point cusp straight out the ring cusp in one transit (8 ns at 1 keV), regardless of the central charge - it never comes within a few cm of the sphere. See `traj_*.png`. |
 
 ## What the runs say
 
@@ -48,14 +60,29 @@ escape time + channel, survival curve, (r,z) density) and renders a report.
    low energy; at high energy the null region scatters pitch angle each pass and the trap leaks.
 3. Field strength and size help through `r_L / L_B` (adiabaticity), not by themselves: what matters is
    `d/a` (ring-cusp vs point-cusp mirror ratio), the ring-cusp aperture in gyroradii, and the energy.
+4. **Run 5, the 2015 configuration with the space-charge sphere, does not trap a 14 mm beam either.** At
+   sep = a the ring-cusp field at the wall is only ~2x the axis field, so a 0-10° beam is deep inside the loss
+   cone and exits at z=0 on its first pass; the central sphere is irrelevant because the field line from
+   r=14 mm never approaches the centre. The old code's "long confinement" almost certainly came from members
+   with much smaller `inject_r` (0.5-1 mm, lines that pass close to the null and see the sphere) and/or the
+   different E-field formula in `trajectory_conf.cl`. Next sweep: `inject_r` 0.5-5 mm x charge, and
+   `--inject-mode inside` with a positive well.
 
-## Easy improvements (not done yet)
+## Convergence (CPU, inside-born 100 eV, 400 electrons, seed 7, 0.5 µs)
 
-- Boris pusher as the production integrator (exactly energy-conserving, 4x cheaper per step than RK4);
-  keep RK4 as the reference.
-- Adaptive `dt` from the local `|B|` (electrons near the coils are stepping 10x finer than needed elsewhere).
-- Electrostatic potential: add a fixed φ(r,z) (e.g. a biased grid at the point cusps) - that is the actual
-  "potential well" experiment and needs only an E lookup in the kernel.
-- Loss-cone diagnostic: record pitch angle at the null crossings so the trapped/passing boundary can be plotted
-  directly versus energy.
-- Convergence checks in the harness: `dt`, grid resolution, particle count.
+| integrator | adaptive | dt / gyroperiod | confined | steps/particle |
+|---|---|---|---|---|
+| Boris | yes | 1/20 | 54.5% | 11k |
+| Boris | yes | 1/40 | 56.3% | 22k |
+| Boris | yes | 1/80 | 57.8% | 44k |
+| RK4 | yes | 1/40 | 55.8% | 22k |
+| Boris | fixed | 1/40 (of B_ref) | 55.3% | 174k |
+
+The ~1-2% spread is at the level of counting noise for 400 particles (±2.5%); adaptive Boris at 1/40 is the
+default. On a B200 the adaptive kernel does ~20 Gparticle-steps/s (per-particle step counts diverge, so
+warps are less uniform than fixed-step RK4's 50-100 G/s, but 8x fewer steps).
+
+## Still to do
+
+- Loss-cone diagnostic: pitch angle at each null crossing (min |B| per particle is recorded now).
+- A real φ(r,z) solve (biased grids at the cusps) and eventually self-consistent space charge (PIC).

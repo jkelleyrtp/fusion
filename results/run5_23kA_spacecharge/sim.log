@@ -1,0 +1,40 @@
+12:03:40 [E1000eV_r14mm_p0-10] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 1.043e-11 s
+12:03:40 [E1000eV_r14mm_p0-10_Q-3e-10C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 9.516e-12 s
+12:03:40 [E300eV_r14mm_p0-10_Q4e-10C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 1.382e-11 s
+12:03:40 [E100eV_r14mm_p0-10_Q-1.3e-10C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 2.409e-11 s
+12:03:40 [E1000eV_r14mm_p0-10_Q-1e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 8.064e-12 s
+12:03:40 [E1000eV_r14mm_p0-10_Q1e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 8.064e-12 s
+12:03:40 [E1000eV_r14mm_p0-10_Q-1.4e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 7.484e-12 s
+12:03:40 [E300eV_r14mm_p0-10_Q-4e-10C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 1.382e-11 s
+12:04:55 [E300eV_r14mm_p0-10_Q4e-10C] fused CUDA kernel compiled
+12:04:55 [E300eV_r14mm_p0-10_Q4e-10C] t=0.008/100.000 us alive 200000/200000 (100.0%) 0.0s 28.28 Gpart-steps/s
+12:04:55 [E300eV_r14mm_p0-10_Q4e-10C] t=0.016/100.000 us alive 0/200000 (0.0%) 0.0s 22.80 Gpart-steps/s
+12:04:55 [E300eV_r14mm_p0-10_Q4e-10C] done: confined 0/200000 (0.00%), ring-cusp 200000, +z 0, -z 0, energy drift max 5.63e-04, 19.54 Gpart-steps/s, 80.2s wall
+12:04:56 [E100eV_r14mm_p0-10_Q-1.3e-10C] fused CUDA kernel compiled
+12:04:56 [E100eV_r14mm_p0-10_Q-1.3e-10C] t=0.008/100.000 us alive 200000/200000 (100.0%) 0.0s 29.35 Gpart-steps/s
+12:04:56 [E100eV_r14mm_p0-10_Q-1.3e-10C] t=0.032/100.000 us alive 0/200000 (0.0%) 0.0s 23.66 Gpart-steps/s
+12:04:56 [E1000eV_r14mm_p0-10] fused CUDA kernel compiled
+12:04:56 [E1000eV_r14mm_p0-10] t=0.008/100.000 us alive 42242/200000 (21.1%) 0.0s 27.10 Gpart-steps/s
+12:04:56 [E1000eV_r14mm_p0-10] t=0.016/100.000 us alive 0/200000 (0.0%) 0.0s 19.30 Gpart-steps/s
+12:04:57 [E100eV_r14mm_p0-10_Q-1.3e-10C] done: confined 0/200000 (0.00%), ring-cusp 200000, +z 0, -z 0, energy drift max 5.14e-04, 21.51 Gpart-steps/s, 81.3s wall
+12:04:57 [E1000eV_r14mm_p0-10] done: confined 0/200000 (0.00%), ring-cusp 200000, +z 0, -z 0, energy drift max 8.98e-15, 15.34 Gpart-steps/s, 81.5s wall
+12:04:57 [E1000eV_r14mm_p0-10_Q-1.4e-09C] fused CUDA kernel compiled
+12:04:58 [E1000eV_r14mm_p0-10_Q-1.4e-09C] t=0.008/100.000 us alive 199987/200000 (100.0%) 0.0s 33.19 Gpart-steps/s
+12:04:58 [E1000eV_r14mm_p0-10_Q-1.4e-09C] t=0.016/100.000 us alive 0/200000 (0.0%) 0.0s 22.92 Gpart-steps/s
+12:04:58 [E300eV_r14mm_p0-10_Q-4e-10C] fused CUDA kernel compiled
+12:04:58 [E300eV_r14mm_p0-10_Q-4e-10C] t=0.008/100.000 us alive 200000/200000 (100.0%) 0.0s 28.37 Gpart-steps/s
+12:04:58 [E300eV_r14mm_p0-10_Q-4e-10C] t=0.024/100.000 us alive 0/200000 (0.0%) 0.0s 22.29 Gpart-steps/s
+12:04:58 [E1000eV_r14mm_p0-10_Q-1e-09C] fused CUDA kernel compiled
+12:04:58 [E1000eV_r14mm_p0-10_Q-1e-09C] t=0.008/100.000 us alive 198733/200000 (99.4%) 0.0s 32.63 Gpart-steps/s
+12:04:58 [E1000eV_r14mm_p0-10_Q-1e-09C] t=0.016/100.000 us alive 0/200000 (0.0%) 0.0s 22.72 Gpart-steps/s
+12:04:58 [E1000eV_r14mm_p0-10_Q-1.4e-09C] done: confined 0/200000 (0.00%), ring-cusp 200000, +z 0, -z 0, energy drift max 2.05e-04, 18.18 Gpart-steps/s, 82.9s wall
+12:04:58 [E300eV_r14mm_p0-10_Q-4e-10C] done: confined 0/200000 (0.00%), ring-cusp 200000, +z 0, -z 0, energy drift max 3.70e-04, 18.77 Gpart-steps/s, 83.1s wall
+12:04:59 [E1000eV_r14mm_p0-10_Q-3e-10C] fused CUDA kernel compiled
+12:04:59 [E1000eV_r14mm_p0-10_Q-1e-09C] done: confined 0/200000 (0.00%), ring-cusp 200000, +z 0, -z 0, energy drift max 1.68e-04, 18.04 Gpart-steps/s, 83.5s wall
+12:04:59 [E1000eV_r14mm_p0-10_Q-3e-10C] t=0.008/100.000 us alive 117060/200000 (58.5%) 0.0s 30.19 Gpart-steps/s
+12:04:59 [E1000eV_r14mm_p0-10_Q-3e-10C] t=0.016/100.000 us alive 0/200000 (0.0%) 0.0s 20.78 Gpart-steps/s
+12:04:59 [E1000eV_r14mm_p0-10_Q1e-09C] fused CUDA kernel compiled
+12:04:59 [E1000eV_r14mm_p0-10_Q1e-09C] t=0.008/100.000 us alive 512/200000 (0.3%) 0.0s 31.84 Gpart-steps/s
+12:04:59 [E1000eV_r14mm_p0-10_Q1e-09C] t=0.016/100.000 us alive 0/200000 (0.0%) 0.0s 23.08 Gpart-steps/s
+12:04:59 [E1000eV_r14mm_p0-10_Q-3e-10C] done: confined 0/200000 (0.00%), ring-cusp 200000, +z 0, -z 0, energy drift max 7.07e-05, 16.38 Gpart-steps/s, 84.2s wall
+12:05:00 [E1000eV_r14mm_p0-10_Q1e-09C] done: confined 0/200000 (0.00%), ring-cusp 200000, +z 0, -z 0, energy drift max 2.09e-04, 18.47 Gpart-steps/s, 84.6s wall
