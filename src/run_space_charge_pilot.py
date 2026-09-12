@@ -6,12 +6,16 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--track", type=int, default=64)
+    parser.add_argument("--trajectory-frames", type=int, default=1025)
+    parser.add_argument("--case-timeout", type=float, default=1800)
     args = parser.parse_args()
     revision = os.environ["CUSP_SOURCE_REVISION"]
     cases = [
@@ -36,6 +40,7 @@ def main() -> None:
             "--energy-ev", "5", "--temperature-ev", "0.2", "--source-sigma", "0.003",
             "--aim-deg", "30", "--relaxation", "0.5", "--iterations", "12",
             "--time-refinement", "2" if name == "10uA_dt" else "1", "--max-steps", "50000",
+            "--track", str(args.track), "--trajectory-frames", str(args.trajectory_frames),
         ]
         commands.append(command)
     (args.out / "manifest.json").write_text(json.dumps(
@@ -46,7 +51,7 @@ def main() -> None:
         with (args.out / f"{cases[index][0]}.log").open("w") as log:
             try:
                 result = subprocess.run(commands[index], stdout=log, stderr=subprocess.STDOUT,
-                                        timeout=900, check=False)
+                                        timeout=args.case_timeout, check=False)
                 return result.returncode
             except subprocess.TimeoutExpired:
                 log.write("\nTIMEOUT: incomplete reference case\n")
@@ -55,9 +60,12 @@ def main() -> None:
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         codes = list(executor.map(run, range(8)))
     (args.out / "exit_codes.json").write_text(json.dumps(codes) + "\n")
-    if any(codes):
+    if any(code not in (0, 124) for code in codes):
         raise SystemExit("Incomplete pilot: see exit_codes.json and case logs")
-    (args.out / "STATUS").write_text("All reference cases completed; inspect numerical convergence before interpretation.\n")
+    (args.out / "DONE").write_text(datetime.now(timezone.utc).isoformat() + "\n")
+    (args.out / "STATUS").write_text(
+        "Partial results: cases timed out; inspect exit_codes.json.\n" if any(codes) else
+        "All reference cases completed; inspect numerical convergence before interpretation.\n")
 
 
 if __name__ == "__main__":

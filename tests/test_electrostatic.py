@@ -7,7 +7,12 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from electrostatic import EPSILON_0, ElectrostaticMesh, clip_segment, sphere_segment_fraction
+from electrostatic import (
+    EPSILON_0,
+    ElectrostaticMesh,
+    clip_segment,
+    sphere_segment_fraction,
+)
 from steady_space_charge import E_CHARGE, M_E, thermal_source, trace_packet
 
 
@@ -120,6 +125,40 @@ class ElectrostaticTests(unittest.TestCase):
         self.assertFalse(bool(packet.escaped.any()))
         self.assertLess(float((packet.dwell - 0.1).abs().max()), 1e-15)
         self.assertAlmostEqual(float(packet.charge.sum()), -1e-7, places=20)
+
+    def test_recorded_orbits_preserve_ids_losses_and_physics(self) -> None:
+        mesh = self.mesh()
+        positions = torch.zeros(4, 3, dtype=torch.float64)
+        velocity = positions.new_tensor([[0, 0, -1], [0, 0, 2], [1, 0, 0], [0, 0, 0.1]])
+        potential = positions.new_zeros(mesh.shape)
+        baseline = trace_packet(mesh, positions, velocity, potential, zero_field,
+                                1e-6, 0.07, 3, 0.2)
+        packet = trace_packet(mesh, positions, velocity, potential, zero_field,
+                              1e-6, 0.07, 3, 0.2, track=4, frames=17)
+        self.assertTrue(torch.equal(packet.charge, baseline.charge))
+        self.assertTrue(torch.equal(packet.dwell, baseline.dwell))
+        self.assertTrue(torch.equal(packet.core_dwell, baseline.core_dwell))
+        self.assertTrue(torch.equal(packet.final_kinetic_energy, baseline.final_kinetic_energy))
+        self.assertEqual(packet.exit_codes.tolist(), [1, 2, 3, 0])
+        self.assertIsNotNone(packet.trajectory)
+        assert packet.trajectory is not None
+        self.assertEqual(packet.trajectory.shape, (4, 17, 3))
+        times = torch.arange(17, dtype=torch.float64) * packet.trajectory_dt
+        for particle in range(4):
+            live = times <= packet.dwell[particle]
+            torch.testing.assert_close(packet.trajectory[particle, live],
+                                       times[live, None] * velocity[particle])
+            self.assertTrue(torch.isnan(packet.trajectory[particle, ~live]).all())
+
+    def test_recorded_orbits_cover_fractional_final_step(self) -> None:
+        mesh = self.mesh()
+        positions = torch.zeros(1, 3, dtype=torch.float64)
+        velocity = positions.new_tensor([[0, 0, 1]])
+        packet = trace_packet(mesh, positions, velocity, positions.new_zeros(mesh.shape),
+                              zero_field, 0, 0.03, 0.11, 0.2, track=1, frames=12)
+        assert packet.trajectory is not None
+        torch.testing.assert_close(packet.trajectory[0, :, 2],
+                                   torch.linspace(0, 0.11, 12, dtype=torch.float64))
 
     def test_uniform_electric_field_energy(self) -> None:
         mesh = self.mesh()

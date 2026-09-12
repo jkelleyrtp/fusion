@@ -38,6 +38,9 @@ class PacketResult:
     escaped: torch.Tensor
     relative_energy_error: torch.Tensor
     final_kinetic_energy: torch.Tensor
+    exit_codes: torch.Tensor
+    trajectory: torch.Tensor | None
+    trajectory_dt: float
 
 
 def thermal_source(origin: list[float], direction: list[float], energy_ev: float,
@@ -69,7 +72,7 @@ def thermal_source(origin: list[float], direction: list[float], energy_ev: float
 def trace_packet(mesh: ElectrostaticMesh, initial_pos: torch.Tensor, initial_vel: torch.Tensor,
                  potential: torch.Tensor, magnetic_field: MagneticField, current_a: float,
                  dt: float, duration: float, core_radius: float,
-                 max_steps: int = 20000) -> PacketResult:
+                 max_steps: int = 20000, track: int = 0, frames: int = 1025) -> PacketResult:
     if current_a < 0 or dt <= 0 or duration <= 0 or core_radius <= 0:
         raise ValueError("Invalid current, time or core radius")
     steps = math.ceil(duration / dt)
@@ -78,6 +81,8 @@ def trace_packet(mesh: ElectrostaticMesh, initial_pos: torch.Tensor, initial_vel
     count = len(initial_pos)
     if count == 0:
         raise ValueError("Empty injection packet")
+    if not 0 <= track <= min(count, 256) or not 2 <= frames <= 4097:
+        raise ValueError("Record at most 256 particles and 2–4097 frames")
     mesh.stencil(initial_pos)
     pos, vel = initial_pos.clone(), initial_vel.clone()
     ids = torch.arange(count, device=pos.device)
@@ -85,6 +90,12 @@ def trace_packet(mesh: ElectrostaticMesh, initial_pos: torch.Tensor, initial_vel
     core_dwell = pos.new_zeros(count)
     entries = torch.zeros(count, device=pos.device, dtype=torch.int64)
     escaped = torch.zeros(count, device=pos.device, dtype=torch.bool)
+    exit_codes = torch.zeros(count, device=pos.device, dtype=torch.int64)
+    trajectory = pos.new_full((track, frames, 3), float("nan")) if track else None
+    sample_dt = duration / (frames - 1)
+    next_frame = 1
+    if trajectory is not None:
+        trajectory[:, 0] = initial_pos[:track]
     error = pos.new_zeros(count)
     charge = pos.new_zeros(mesh.shape)
     initial_ke = 0.5 * M_E * initial_vel.square().sum(dim=1)
@@ -100,8 +111,21 @@ def trace_packet(mesh: ElectrostaticMesh, initial_pos: torch.Tensor, initial_vel
             inside, entered = sphere_segment_fraction(pos, end, core_radius)
             core_dwell[ids] += elapsed * inside
             entries[ids] += entered.long()
+            if trajectory is not None:
+                start_time = step * dt + half * 0.5 * h
+                end_time = duration if step == steps - 1 and half == 1 else start_time + 0.5 * h
+                while next_frame < frames and next_frame * sample_dt <= end_time:
+                    delta = min(0.5 * h, max(0.0, next_frame * sample_dt - start_time))
+                    recorded = (ids < track) & (~hit | (elapsed >= delta))
+                    trajectory[ids[recorded], next_frame] = pos[recorded] + delta * vel[recorded]
+                    next_frame += 1
             if hit.any():
                 escaped[ids[hit]] = True
+                boundary_distance = torch.minimum((end[hit] - mesh.lower).abs(),
+                                                  (end[hit] - mesh.upper).abs()) / mesh.h
+                face_axis = boundary_distance.argmin(dim=1)
+                z_side = torch.where(end[hit, 2] < (mesh.lower[2] + mesh.upper[2]) / 2, 1, 2)
+                exit_codes[ids[hit]] = torch.where(face_axis == 2, z_side, 3)
                 final_ke[ids[hit]] = 0.5 * M_E * vel[hit].square().sum(dim=1)
                 energy = final_ke[ids[hit]] - E_CHARGE * mesh.gather(potential, end[hit])[0]
                 error[ids[hit]] = (energy - initial_h[ids[hit]]).abs() / initial_ke[ids[hit]]
@@ -122,7 +146,8 @@ def trace_packet(mesh: ElectrostaticMesh, initial_pos: torch.Tensor, initial_vel
         final_ke[ids] = 0.5 * M_E * vel.square().sum(dim=1)
         energy = final_ke[ids] - E_CHARGE * mesh.gather(potential, pos)[0]
         error[ids] = (energy - initial_h[ids]).abs() / initial_ke[ids]
-    return PacketResult(charge, dwell, core_dwell, entries, escaped, error, final_ke)
+    return PacketResult(charge, dwell, core_dwell, entries, escaped, error, final_ke,
+                        exit_codes, trajectory, sample_dt)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -146,6 +171,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--max-steps", type=int, default=20000)
     result.add_argument("--seed", type=int, default=1234)
     result.add_argument("--source-revision", default="unversioned")
+    result.add_argument("--track", type=int, default=0)
+    result.add_argument("--trajectory-frames", type=int, default=1025)
     return result
 
 
@@ -208,7 +235,8 @@ def main() -> None:
                  0.1 / omega if omega else math.inf) / args.time_refinement
         orbit_potential = potential.clone()
         packet = trace_packet(mesh, pos, vel, orbit_potential, pusher.field, args.current_a,
-                              dt, args.duration, 0.3 * a, args.max_steps)
+                              dt, args.duration, 0.3 * a, args.max_steps,
+                              args.track, args.trajectory_frames)
         candidate = mesh.potential(packet.charge)
         mismatch = float((candidate - orbit_potential).abs().max() / candidate.abs().max().clamp_min(1e-30))
         relaxed_charge = (1 - args.relaxation) * relaxed_charge + args.relaxation * packet.charge
@@ -256,7 +284,45 @@ def main() -> None:
             dwell_s=packet.dwell.cpu().numpy(), core_dwell_s=packet.core_dwell.cpu().numpy(),
             core_entries=packet.entries.cpu().numpy(), escaped=packet.escaped.cpu().numpy(),
             lower_m=mesh.lower.cpu().numpy(), upper_m=mesh.upper.cpu().numpy(),
+            exit_codes=packet.exit_codes.cpu().numpy(),
+            final_kinetic_energy_J=packet.final_kinetic_energy.cpu().numpy(),
         )
+        if packet.trajectory is not None:
+            snapshot = args.out / "viewer" / f"iteration-{iteration + 1:04d}"
+            snapshot.mkdir(parents=True)
+            np.savez_compressed(
+                snapshot / "results.npz", traj=packet.trajectory.cpu().numpy(),
+                traj_dt=packet.trajectory_dt, esc_where=packet.exit_codes.cpu().numpy(),
+                esc_time=packet.dwell.cpu().numpy(),
+            )
+            summary = {
+                "tag": args.out.name, "energy_eV": args.energy_ev, "ring_radius_m": a,
+                "ring_half_sep_m": 0.5 * a, "current_A": args.coil_current,
+                "particles": args.particles, "sim_duration_s": args.duration,
+                "confined_at_end": int((~packet.escaped).sum()),
+                "inject_mode": "gun", "gun_position_m": configuration["source_position_m"],
+                "gun_direction_unit": configuration["source_aim"],
+                "gun_axis_B_angle_deg": configuration["source_mean_local_B_angle_deg"],
+                "gun_source_sigma_m": args.source_sigma, "integrator": "FP64 drift–Boris–drift",
+                "dt_s": dt, "adaptive": False, "rng_seed": args.seed,
+                "energy_drift_rel_max": record["orbit_energy_error_max_rel_initial_ke"],
+                "model": "stationary-poisson", "source_revision": args.source_revision,
+                "poisson": {
+                    "iteration": iteration + 1, "requestedIterations": args.iterations,
+                    "currentA": args.current_a, "temperatureEV": args.temperature_ev,
+                    "nodes": args.nodes, "aimDeg": args.aim_deg,
+                    "orbitCentreV": float(mesh.gather(orbit_potential, pos.new_zeros((1, 3)))[0][0]),
+                    "depositedCentreV": record["core_centre_potential_V"],
+                    "fixedPointMismatch": mismatch,
+                    "poissonResidual": record["poisson_relative_residual"],
+                    "meanCoreDwellUs": record["mean_core_dwell_s"] * 1e6,
+                    "meanCoreEntries": record["mean_core_entries"],
+                    "boxLowerM": lower.tolist(), "boxUpperM": (-lower).tolist(),
+                },
+            }
+            marker = snapshot / "summary.tmp"
+            marker.write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n")
+            marker.replace(snapshot / "summary.json")
         print(json.dumps(record), flush=True)
     (args.out / "STATUS").write_text(
         "Iterations completed. Stationary candidate only; requires cutoff/grid/timestep/particle convergence.\n")

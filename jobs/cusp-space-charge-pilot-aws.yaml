@@ -2,13 +2,13 @@
 apiVersion: ray.io/v1
 kind: RayJob
 metadata:
-  name: jonathan-cusp-space-charge-pilot
+  name: jonathan-cusp-poisson-replay
   namespace: default
   annotations:
     slime.ai/owner: jonathan.kelley
 spec:
   entrypoint: >-
-    bash -c 'set -euo pipefail; nvidia-smi -L; export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1; export CUSP_SOURCE_REVISION=$(cat /public/jonathan/cusp/src/REVISION); python3 /public/jonathan/cusp/src/run_space_charge_pilot.py --out /public/jonathan/cusp/runs/space-charge-pilot-$(date +%Y%m%d-%H%M%S)' --
+    bash -c 'set -euo pipefail; nvidia-smi -L; export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1; export CUSP_SOURCE_REVISION=$(cat /public/jonathan/cusp/src/REVISION); python3 /public/jonathan/cusp/src/run_space_charge_pilot.py --track 64 --trajectory-frames 1025 --case-timeout 1800 --out /public/jonathan/cusp/runs/poisson-replay-$(date +%Y%m%d-%H%M%S)' --
     --actor-num-nodes 1
     --actor-num-gpus-per-node 8
     --rollout-num-gpus 0

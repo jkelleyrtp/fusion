@@ -112,6 +112,9 @@ def export_member(root: Path, study: str, kind: str, path: Path,
     }
     if sweep is not None:
         card["sweep"] = sweep
+    if summary.get("model") == "stationary-poisson":
+        card["model"] = summary["model"]
+        card["poisson"] = summary["poisson"]
     archive = path.with_name("results.npz")
     if not archive.exists():
         return card
@@ -164,13 +167,17 @@ def main() -> None:
                         metavar=("ID", "LABEL", "KIND", "DIRECTORY"))
     parser.add_argument("--bundle-out", type=Path)
     parser.add_argument("--bundle-study", action="append", default=[])
+    parser.add_argument("--merge", action="store_true")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
-    studies: list[dict[str, str | None]] = []
-    runs: list[dict] = []
+    catalog_path = args.out / "catalog.json"
+    previous = json.loads(catalog_path.read_text()) if args.merge and catalog_path.exists() else {"studies": [], "runs": []}
+    replaced = {entry[0] for entry in args.study}
+    studies: list[dict[str, str | None]] = [s for s in previous["studies"] if s["id"] not in replaced]
+    runs: list[dict] = [r for r in previous["runs"] if r["study"] not in replaced]
     for study, label, kind, directory in args.study:
-        if kind not in ("external", "control", "historical") or any(s["id"] == study for s in studies):
-            raise ValueError("Study IDs must be unique; kind is external, control, or historical")
+        if kind not in ("external", "control", "historical", "poisson") or any(s["id"] == study for s in studies):
+            raise ValueError("Study IDs must be unique; kind is external, control, historical, or poisson")
         study_root = Path(directory)
         sweeps = {}
         manifest_path = study_root / "manifest.json"
@@ -182,15 +189,23 @@ def main() -> None:
                     "coneDeg": case["cone"], "gridR": case["grid_r"],
                     "gridZ": case["grid_z"], "gyroFraction": case["gyro_fraction"],
                 }
-        paths = sorted(study_root.rglob("summary.json"))
+        if kind == "poisson":
+            paths = []
+            for case in sorted(study_root.iterdir()):
+                snapshots = sorted(case.glob("viewer/iteration-*/summary.json")) if case.is_dir() else []
+                if snapshots:
+                    paths.append(snapshots[-1])
+        else:
+            paths = sorted(study_root.rglob("summary.json"))
         if not paths:
             raise ValueError(f"No member summaries in {directory}")
-        studies.append({"id": study, "label": label, "kind": kind,
+        studies.append({"id": study, "label": label, "kind": "external" if kind == "poisson" else kind,
+                        "model": "stationary-poisson" if kind == "poisson" else "fixed-fields",
                         "finishedAt": completed_at(study_root)})
         for path in paths:
-            member_key = path.parent.relative_to(study_root).as_posix()
+            member_key = path.parents[2].name if kind == "poisson" else path.parent.relative_to(study_root).as_posix()
             sweep = sweeps.get(member_key.split("/")[0])
-            runs.append(export_member(args.out, study, kind, path, member_key, sweep))
+            runs.append(export_member(args.out, study, "external" if kind == "poisson" else kind, path, member_key, sweep))
     catalog = {"version": 1, "studies": studies, "runs": runs}
     (args.out / "catalog.json").write_text(json.dumps(catalog, separators=(",", ":"), allow_nan=False) + "\n")
     if args.bundle_out:
