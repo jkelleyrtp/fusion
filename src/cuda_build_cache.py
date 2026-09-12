@@ -88,10 +88,10 @@ def fingerprint(
     cpp_source: str,
     cuda_source: str,
     extra_cuda_cflags: list[str],
-    *,
-    functions: tuple[str, ...] = ("push",),
     toolchain: dict[str, object] | None = None,
     arch: str | None = None,
+    *,
+    functions: tuple[str, ...] = ("push",),
 ) -> str:
     """Deterministic 24-hex-char key for the extension build inputs. ``toolchain``
     and ``arch`` are injectable for tests; the rest is explicit environment reads."""

@@ -83,6 +83,27 @@ test("transient PIC profile registration and step progress parse", async () => {
   }
 });
 
+test("array progress unit is rejected", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fusion-pic-progress-"));
+  const service = new JobService({
+    root: repoRoot,
+    stateDir: root,
+    command: runner({ ...progress, progressUnit: ["steps"] }),
+    poll: false,
+  });
+  try {
+    await service.initialize();
+    await service.register("broker-pic-array", "pic-run-array", null, "PIC", "transient-pic");
+    await service.pollAll();
+    const job = (await service.jobs()).jobs[0];
+    assert.equal(job.progress, null);
+    assert.match(job.progressError ?? "", /Malformed progress unit/);
+  } finally {
+    await service.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("malformed optional progress fields are rejected", async () => {
   const root = await mkdtemp(join(tmpdir(), "fusion-pic-progress-"));
   const service = new JobService({

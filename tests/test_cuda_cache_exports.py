@@ -16,7 +16,7 @@ CPP = "void push(); void deposit(); void gather(); void drift(); void boris();"
 CU = "__global__ void k() {}"
 FLAGS = ["-O3", "--fmad=false"]
 KEY = "deadbeefdeadbeefdeadbeef"
-TOOLCHAIN = {
+TOOLCHAIN: dict[str, object] = {
     "cxx": {"command": "c++", "path": "/usr/bin/c++", "version": "g++ 13"},
     "nvcc": {"command": "/usr/local/cuda/bin/nvcc", "path": "/usr/local/cuda/bin/nvcc",
              "version": "12.9"},
@@ -42,6 +42,12 @@ def key(functions: tuple[str, ...] = ("push",)) -> str:
 class CacheExportTests(unittest.TestCase):
     def test_default_and_explicit_push_key_match(self) -> None:
         self.assertEqual(key(), key(("push",)))
+
+    def test_positional_toolchain_and_arch_match_keyword_call(self) -> None:
+        self.assertEqual(
+            cbc.fingerprint(CPP, CU, FLAGS, TOOLCHAIN, "explicit:10.0"),
+            key(),
+        )
 
     def test_export_names_and_order_change_key(self) -> None:
         base = key()
