@@ -233,10 +233,7 @@ class CUDAKernels(ReferenceKernels):
 
     def _positions(self, position: torch.Tensor) -> torch.Tensor:
         position = self._tensor(position, (len(position), 3))
-        if not torch.isfinite(position).all():
-            raise ValueError("Nonfinite particle position")
-        if ((position < self.mesh.lower) | (position > self.mesh.upper)).any():
-            raise ValueError("Deposit/gather requires positions inside the box")
+        self.mesh.check_positions(position)
         return position
 
     def deposit(self, position: torch.Tensor, charge: torch.Tensor) -> torch.Tensor:

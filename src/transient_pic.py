@@ -28,6 +28,8 @@ class Particles:
     entries: torch.Tensor
 
     def select(self, keep: torch.Tensor) -> "Particles":
+        if keep.dtype == torch.bool:
+            keep = keep.nonzero().squeeze(1)
         return Particles(
             self.ids[keep], self.birth[keep], self.position[keep],
             self.velocity[keep], self.weight[keep], self.dwell[keep],
@@ -61,9 +63,9 @@ class PIC:
         self.time = 0.0
         self.injected_count = 0
         self.lost_count = 0
-        self.injected_charge = 0.0
+        self._injected_charge = empty.new_zeros(())
         self.lost_charge = 0.0
-        self.injected_kinetic = 0.0
+        self._injected_kinetic = empty.new_zeros(())
         self.lost_kinetic = 0.0
         self.lost_dwell = 0.0
         self.lost_core_dwell = 0.0
@@ -78,6 +80,27 @@ class PIC:
         self.tracked_exit_face = torch.full(
             (track,), -1, device=empty.device, dtype=torch.int64,
         )
+        self._tracked_live = 0
+
+    @property
+    def injected_charge(self) -> float:
+        return float(self._injected_charge)
+
+    @property
+    def injected_kinetic(self) -> float:
+        return float(self._injected_kinetic)
+
+    def _raise_first(
+        self, checks: list[tuple[torch.Tensor, str]], *extra: torch.Tensor,
+    ) -> list[bool]:
+        tensors = [flag for flag, _ in checks] + list(extra)
+        if not tensors:
+            return []
+        flags = torch.stack(tensors).tolist()
+        for flag, (_, message) in zip(flags, checks, strict=False):
+            if flag:
+                raise ValueError(message)
+        return flags[len(checks):]
 
     def inject(
         self, position: torch.Tensor, velocity: torch.Tensor, weight: torch.Tensor,
@@ -92,11 +115,13 @@ class PIC:
         for tensor in (position, velocity, weight):
             if tensor.dtype != torch.float64 or tensor.device != self.mesh.lower.device:
                 raise ValueError("Particle arrays must be FP64 on the mesh device")
-            if not torch.isfinite(tensor).all():
-                raise ValueError("Particle arrays must be finite")
-        if (weight < 0).any():
-            raise ValueError("Represented electron counts must be nonnegative")
-        self.mesh.stencil(position)
+        self._raise_first([
+            (~torch.isfinite(tensor).all(), "Particle arrays must be finite")
+            for tensor in (position, velocity, weight)
+        ] + [
+            ((weight < 0).any(), "Represented electron counts must be nonnegative"),
+        ])
+        self.mesh.check_positions(position)
         ids = torch.arange(
             self.injected_count, self.injected_count + count, device=position.device,
         )
@@ -109,14 +134,14 @@ class PIC:
             torch.cat((p.weight, weight)), torch.cat((p.dwell, zeros)),
             torch.cat((p.core_dwell, zeros)), torch.cat((p.entries, zeros.long())),
         )
+        start = self.injected_count
+        tracked = max(0, min(count, len(self.tracked_birth) - start))
         self.injected_count += count
-        self.injected_charge += float(-E_CHARGE * weight.sum())
-        self.injected_kinetic += float(
-            (0.5 * M_E * weight * velocity.square().sum(dim=1)).sum(),
-        )
-        tracked = ids < len(self.tracked_birth)
-        self.tracked_birth[ids[tracked]] = self.time
-        self.tracked_position[ids[tracked]] = position[tracked]
+        self._injected_charge += -E_CHARGE * weight.sum()
+        self._injected_kinetic += (0.5 * M_E * weight * velocity.square().sum(dim=1)).sum()
+        self.tracked_birth[start:start + tracked] = self.time
+        self.tracked_position[start:start + tracked] = position[:tracked]
+        self._tracked_live += tracked
 
     def fields(self) -> tuple[torch.Tensor, torch.Tensor]:
         p = self.particles
@@ -127,79 +152,95 @@ class PIC:
         p = self.particles
         return (0.5 * M_E * p.weight * p.velocity.square().sum(dim=1)).sum()
 
-    def _drift(self, h: float, start_time: float) -> None:
+    def _drift(
+        self, h: float, start_time: float, checks: list[tuple[torch.Tensor, str]],
+    ) -> None:
         p = self.particles
         if len(p.ids) == 0:
+            self._raise_first(checks)
             return
         end, fraction, hit, inside, entered = self.kernels.drift(
             p.position, p.velocity, h, self.core_radius,
         )
+        (any_hit,) = self._raise_first(checks, hit.any())
         elapsed = h * fraction
         p.dwell += elapsed
         p.core_dwell += elapsed * inside
         p.entries += entered.long()
-        tracked = p.ids < len(self.tracked_birth)
-        self.tracked_position[p.ids[tracked]] = end[tracked]
-        if hit.any():
+        live = self._tracked_live
+        self.tracked_position[p.ids[:live]] = end[:live]
+        if any_hit:
             lost = p.select(hit)
-            self.lost_count += len(lost.ids)
-            self.lost_charge += float(-E_CHARGE * lost.weight.sum())
-            self.lost_kinetic += float(
+            tracked_hits = lost.ids < len(self.tracked_birth)
+            sums = torch.stack((
+                -E_CHARGE * lost.weight.sum(),
                 (0.5 * M_E * lost.weight * lost.velocity.square().sum(dim=1)).sum(),
-            )
-            self.lost_dwell += float(lost.dwell.sum())
-            self.lost_core_dwell += float(lost.core_dwell.sum())
-            self.lost_electron_dwell += float((lost.weight * lost.dwell).sum())
-            self.lost_electron_core_dwell += float((lost.weight * lost.core_dwell).sum())
-            self.lost_entries += int(lost.entries.sum())
-            self.lost_repeated_entries += int((lost.entries >= 2).sum())
+                lost.dwell.sum(),
+                lost.core_dwell.sum(),
+                (lost.weight * lost.dwell).sum(),
+                (lost.weight * lost.core_dwell).sum(),
+            )).tolist()
+            counts = torch.stack((
+                lost.entries.sum(), (lost.entries >= 2).sum(), tracked_hits.sum(),
+            )).tolist()
+            self.lost_count += len(lost.ids)
+            self.lost_charge += sums[0]
+            self.lost_kinetic += sums[1]
+            self.lost_dwell += sums[2]
+            self.lost_core_dwell += sums[3]
+            self.lost_electron_dwell += sums[4]
+            self.lost_electron_core_dwell += sums[5]
+            self.lost_entries += int(counts[0])
+            self.lost_repeated_entries += int(counts[1])
+            self._tracked_live = live - int(counts[2])
             distances = torch.stack((
                 (end[hit] - self.mesh.lower).abs() / self.mesh.h,
                 (end[hit] - self.mesh.upper).abs() / self.mesh.h,
             ), dim=2).flatten(start_dim=1)
             faces = distances.argmin(dim=1)
             self.exit_counts += torch.bincount(faces, minlength=6)
-            tracked_hits = lost.ids < len(self.tracked_birth)
             self.tracked_exit_time[lost.ids[tracked_hits]] = (
                 start_time + elapsed[hit][tracked_hits]
             )
             self.tracked_exit_face[lost.ids[tracked_hits]] = faces[tracked_hits]
-        p.position = end
-        self.particles = p.select(~hit)
+            p.position = end
+            self.particles = p.select(~hit)
+        else:
+            p.position = end
 
-    def _check_speed(self, h: float) -> None:
+    def _speed_checks(self, h: float) -> list[tuple[torch.Tensor, str]]:
         if len(self.particles.ids) == 0:
-            return
+            return []
         speed = self.particles.velocity.norm(dim=1).max()
-        if not torch.isfinite(speed):
-            raise ValueError("Nonfinite particle velocity")
-        if speed * h > 0.2 * self.mesh.h.min():
-            raise ValueError("Timestep exceeds the 0.2-cell drift bound")
+        return [
+            (~torch.isfinite(speed), "Nonfinite particle velocity"),
+            (speed * h > 0.2 * self.mesh.h.min(), "Timestep exceeds the 0.2-cell drift bound"),
+        ]
 
     def advance(self, h: float) -> None:
         if not math.isfinite(h) or h <= 0:
             raise ValueError("Timestep must be finite and positive")
-        self._check_speed(h)
-        self._drift(h / 2, self.time)
+        self._drift(h / 2, self.time, self._speed_checks(h))
         charge, potential = self.fields()
         omega_p = torch.sqrt(
             charge.abs().max() * E_CHARGE / (self.mesh.volume * EPSILON_0 * M_E),
         )
-        if omega_p * h > 0.1:
-            raise ValueError("Timestep exceeds omega_p * dt <= 0.1")
+        checks = [(omega_p * h > 0.1, "Timestep exceeds omega_p * dt <= 0.1")]
         p = self.particles
         if len(p.ids):
             electric = self.kernels.gather(potential, p.position)
             magnetic = self.magnetic_field(p.position)
             if (magnetic.shape != p.position.shape or magnetic.dtype != torch.float64
-                    or magnetic.device != p.position.device
-                    or not torch.isfinite(magnetic).all()):
+                    or magnetic.device != p.position.device):
                 raise ValueError("Magnetic field must be finite FP64, N by 3 on the mesh device")
-            if abs(QM) * magnetic.norm(dim=1).max() * h > 2 * math.pi / 80:
-                raise ValueError("Timestep requires at least 80 steps per gyration")
+            checks += [
+                (~torch.isfinite(magnetic).all(),
+                 "Magnetic field must be finite FP64, N by 3 on the mesh device"),
+                (abs(QM) * magnetic.norm(dim=1).max() * h > 2 * math.pi / 80,
+                 "Timestep requires at least 80 steps per gyration"),
+            ]
             p.velocity = self.kernels.boris(p.velocity, electric, magnetic, h)
-        self._check_speed(h)
-        self._drift(h / 2, self.time + h / 2)
+        self._drift(h / 2, self.time + h / 2, checks + self._speed_checks(h))
         self.time += h
 
     def diagnostics(

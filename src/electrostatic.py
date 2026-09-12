@@ -43,11 +43,18 @@ class ElectrostaticMesh:
         self.eigenvalues = (eigenvalues[0][:, None, None] + eigenvalues[1][None, :, None]
                             + eigenvalues[2][None, None, :])
 
-    def stencil(self, positions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        if not torch.isfinite(positions).all():
+    def check_positions(self, positions: torch.Tensor) -> None:
+        nonfinite, outside = torch.stack((
+            ~torch.isfinite(positions).all(),
+            ((positions < self.lower) | (positions > self.upper)).any(),
+        )).tolist()
+        if nonfinite:
             raise ValueError("Nonfinite particle position")
-        if ((positions < self.lower) | (positions > self.upper)).any():
+        if outside:
             raise ValueError("Deposit/gather requires positions inside the box")
+
+    def stencil(self, positions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        self.check_positions(positions)
         scaled = (positions - self.lower) / self.h
         base = torch.minimum(scaled.floor().long(),
                              self.corners.new_tensor(self.shape).sub(2))
