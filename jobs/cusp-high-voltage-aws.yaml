@@ -1,0 +1,141 @@
+{
+  "apiVersion": "ray.io/v1",
+  "kind": "RayJob",
+  "metadata": {
+    "name": "jonathan-cusp-poisson-5kev",
+    "namespace": "default",
+    "annotations": {
+      "slime.ai/owner": "jonathan.kelley"
+    }
+  },
+  "spec": {
+    "entrypoint": "bash -c 'set -euo pipefail; export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1; export CUSP_SOURCE_REVISION=070652d03b9b4081bc4c1b43eb6cf23901527504; python3 /public/jonathan/cusp/sources/070652d03b9b4081bc4c1b43eb6cf23901527504-high-voltage/src/run_space_charge_pilot.py --profile high-voltage --track 64 --trajectory-frames 1025 --case-timeout 1800 --out /public/jonathan/cusp/runs/poisson-5kev-070652d/attempt-$(date +%Y%m%d-%H%M%S-%N)' -- --actor-num-nodes 1 --actor-num-gpus-per-node 4 --rollout-num-gpus 0",
+    "shutdownAfterJobFinishes": true,
+    "ttlSecondsAfterFinished": 600,
+    "submissionMode": "K8sJobMode",
+    "submitterConfig": {
+      "backoffLimit": 2
+    },
+    "submitterPodTemplate": {
+      "spec": {
+        "restartPolicy": "OnFailure",
+        "nodeSelector": {
+          "kubernetes.io/arch": "amd64"
+        },
+        "imagePullSecrets": [
+          {
+            "name": "gcr-creds"
+          }
+        ],
+        "containers": [
+          {
+            "name": "ray-job-submitter",
+            "image": "us-docker.pkg.dev/cognition-research/cognition-training/slime:08110256_ubuntu_2e3428df",
+            "imagePullPolicy": "IfNotPresent",
+            "resources": {
+              "requests": {
+                "cpu": "500m",
+                "memory": "200Mi"
+              },
+              "limits": {
+                "cpu": "1",
+                "memory": "1Gi"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "rayClusterSpec": {
+      "headGroupSpec": {
+        "rayStartParams": {},
+        "template": {
+          "spec": {
+            "serviceAccountName": "slime-training-sa",
+            "nodeSelector": {
+              "kubernetes.io/arch": "amd64",
+              "workload_type": "training"
+            },
+            "tolerations": [
+              {
+                "key": "nvidia.com/gpu",
+                "operator": "Exists",
+                "effect": "NoSchedule"
+              }
+            ],
+            "imagePullSecrets": [
+              {
+                "name": "gcr-creds"
+              }
+            ],
+            "containers": [
+              {
+                "name": "ray-head",
+                "image": "us-docker.pkg.dev/cognition-research/cognition-training/slime:08110256_ubuntu_2e3428df",
+                "imagePullPolicy": "IfNotPresent",
+                "env": [
+                  {
+                    "name": "PYTHONFAULTHANDLER",
+                    "value": "1"
+                  }
+                ],
+                "ports": [
+                  {
+                    "containerPort": 6379,
+                    "name": "gcs-server"
+                  },
+                  {
+                    "containerPort": 8265,
+                    "name": "dashboard"
+                  },
+                  {
+                    "containerPort": 10001,
+                    "name": "client"
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "32",
+                    "memory": "200Gi",
+                    "nvidia.com/gpu": "4"
+                  },
+                  "limits": {
+                    "cpu": "32",
+                    "memory": "200Gi",
+                    "nvidia.com/gpu": "4"
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "shm",
+                    "mountPath": "/dev/shm"
+                  },
+                  {
+                    "name": "public",
+                    "mountPath": "/public",
+                    "subPath": "devcontainer-shared"
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "shm",
+                "emptyDir": {
+                  "medium": "Memory",
+                  "sizeLimit": "16Gi"
+                }
+              },
+              {
+                "name": "public",
+                "persistentVolumeClaim": {
+                  "claimName": "fsx-lustre"
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
