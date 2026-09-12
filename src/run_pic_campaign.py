@@ -15,18 +15,19 @@ from run_transient_pic import validate as validate_config
 
 def commands(out: Path, revision: str) -> list[list[str]]:
     cases = (
-        ("pic_vacuum", 0, 4e-12, 8, 625),
-        ("pic_1mA", 1e-3, 4e-12, 8, 625),
-        ("pic_1A", 1, 4e-12, 8, 625),
-        ("pic_1A_dt", 1, 2e-12, 4, 1250),
+        ("pic_vacuum", 0, 4e-12, 8, 1, 625),
+        ("pic_1mA", 1e-3, 4e-12, 8, 1, 625),
+        ("pic_1A", 1, 4e-12, 8, 1, 625),
+        ("pic_1A_dt", 1, 2e-12, 8, 2, 1250),
     )
     result = []
-    for device, (name, current, dt, packet, stride) in enumerate(cases):
+    for device, (name, current, dt, packet, interval, stride) in enumerate(cases):
         result.append([
             sys.executable, str(Path(__file__).with_name("run_transient_pic.py")),
             "--out", str(out / name), "--device", f"cuda:{device}",
             "--source-revision", revision, "--nodes", "33", "--current-a", str(current),
             "--dt", str(dt), "--duration", "3e-8", "--inject-per-step", str(packet),
+            "--inject-every", str(interval),
             "--coil-current", "30000", "--radius", "0.5", "--energy-ev", "5000",
             "--temperature-ev", "0.2", "--source-sigma", "5e-5",
             "--divergence-deg", "10", "--aim-deg", "30", "--seed", "1234",
@@ -52,9 +53,9 @@ def main() -> None:
         "step_targets": targets,
         "purpose": (
             "FP64 transient electron startup, 5 keV compact external gun, 30 kA-turn, "
-            "30 ns: vacuum, 1 mA, 1 A and half-step 1 A. Half-step halves the packet "
-            "size to preserve macroparticle weight and total count; source sampling "
-            "and pulse timing differ. Numerical exploration, not physical convergence."
+            "30 ns: vacuum, 1 mA, 1 A and half-step 1 A. Half-step retains the same "
+            "packet charge, particles and physical pulse times. Numerical exploration, "
+            "not physical convergence."
         ),
     }
     (args.out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

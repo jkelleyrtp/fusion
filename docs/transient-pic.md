@@ -1,8 +1,9 @@
 # Electron-only transient PIC reference
 
-`src/run_transient_pic.py` advances an evolving electron population on the FP64
-Torch backend. Every step injects a new packet at the grounded lower-z boundary.
-Particles remain in the population until they hit an absorbing wall.
+`src/run_transient_pic.py` advances an evolving electron population with either
+the FP64 Torch reference operators or explicitly selected FP64 CUDA operators.
+Packets enter at the grounded lower-z boundary and particles remain in the
+population until they hit an absorbing wall.
 
 This is a nonrelativistic electrostatic numerical reference with an imposed
 magnetic field. It does not yet establish a converged reactor well, model the gun
@@ -26,15 +27,17 @@ a fractional final step. Their total represented charge is −2.5e−21 C. It is
 short and too weak to study confinement. Omitting these overrides runs a separate
 100-step startup smoke configuration with 1,000 A-turn imposed coils.
 
-GPU execution uses `--device cuda:0` **only inside a broker-managed job**, following
-`AGENTS.md`; this CLI does not submit or allocate GPU resources.
+GPU execution uses `--device cuda:0 --kernels cuda` **only inside a
+broker-managed job**, following `AGENTS.md`; this CLI does not submit or allocate
+GPU resources. Selecting CUDA fails if its extension cannot compile or run.
 
 ## Charge and time semantics
 
-For step length `h`, positive input current `I` and `N` injected macroparticles,
-each represents `I*h/(e*N)` electrons and has charge `-I*h/N`. Current zero keeps
-zero-weight test particles. Injection is a pulse at the start of each step, so
-the pulse approximation must be refined with the timestep.
+For packet interval `p`, step length `h`, positive input current `I` and `N`
+injected macroparticles, each packet normally represents `I*p*h/e` electrons.
+The final packet is truncated to the remaining simulated duration. Current zero
+keeps zero-weight test particles. `--inject-every` lets a timestep comparison
+retain identical packet times, samples, represented charge and particle count.
 
 Each step:
 

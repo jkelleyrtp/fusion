@@ -14,11 +14,12 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual([item.current_a for item in configurations], [0, 1e-3, 1, 1])
         baseline, refined = configurations[-2:]
         self.assertEqual(
-            baseline.dt / baseline.inject_per_step, refined.dt / refined.inject_per_step,
+            baseline.dt * baseline.inject_every / baseline.inject_per_step,
+            refined.dt * refined.inject_every / refined.inject_per_step,
         )
         self.assertEqual(
-            validate(baseline) * baseline.inject_per_step,
-            validate(refined) * refined.inject_per_step,
+            validate(baseline) // baseline.inject_every * baseline.inject_per_step,
+            validate(refined) // refined.inject_every * refined.inject_per_step,
         )
         self.assertEqual(
             baseline.save_every * baseline.dt, refined.save_every * refined.dt,
