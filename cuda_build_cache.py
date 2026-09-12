@@ -186,8 +186,15 @@ def load_cached_extension(
                 verbose=verbose,
             )
             elapsed_s = time.perf_counter() - t_build
-            module_file = module.__dict__.get("__file__") if isinstance(module, types.ModuleType) else None
-            if not isinstance(module_file, str) or not module_file:
+            if not isinstance(module, types.ModuleType):
+                raise RuntimeError(  # noqa: TRY004 - RuntimeError keeps the caller's build-failure path uniform
+                    f"load_inline returned invalid module for {name}: {module!r}"
+                )
+            try:
+                module_file = module.__file__
+            except AttributeError:
+                module_file = None
+            if not module_file:
                 raise RuntimeError(f"load_inline returned invalid module for {name}: {module!r}")
             module_path = Path(module_file)
             after = _artifact_sig(module_path)
