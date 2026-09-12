@@ -95,6 +95,11 @@ export class Chamber {
     this.chamber.add(grid);
     const axis = new THREE.AxesHelper(0.28);
     axis.position.set(-1.25, -1.25, grid.position.z + 0.01); this.chamber.add(axis);
+    if (run.poisson) {
+      const lower = new THREE.Vector3(...run.poisson.boxLowerM).divideScalar(run.radiusM);
+      const upper = new THREE.Vector3(...run.poisson.boxUpperM).divideScalar(run.radiusM);
+      this.chamber.add(new THREE.Box3Helper(new THREE.Box3(lower, upper), 0x526577));
+    }
     if (meta && run.chargeC !== 0) {
       this.sphere = new THREE.Mesh(
         new THREE.SphereGeometry((meta.summary.space_charge_radius_m ?? run.radiusM * 0.3) / run.radiusM, 32, 24),

@@ -64,6 +64,8 @@ function occupancyPlot(meta: Meta): string {
 function contents(run: Run, meta: Meta | undefined, campaign: string): string {
   const lower = run.dwellLowerBound ? "≥ " : "";
   const summary = meta?.summary;
+  const poisson = run.poisson;
+  const outcomes = poisson ? ["Present at window end", "−z box face", "+z box face", "Side box face"] : channels;
   const remaining = run.survivors / run.particles * 100;
   const escaped = meta?.lossCounts.slice(1) ?? [];
   const dominant = escaped.length && Math.max(...escaped) > 0 ? escaped.indexOf(Math.max(...escaped)) + 1 : null;
@@ -72,9 +74,10 @@ function contents(run: Run, meta: Meta | undefined, campaign: string): string {
       `Mean launch-to-loss residence is ${lower}${number(run.meanDwellUs)} µs over an observation window of ${number(run.windowUs)} µs.`,
     `${number(run.survivors)} of ${number(run.particles)} particles (${number(remaining)}%) remain at the cutoff.${
       run.dwellLowerBound ? " The recorded mean dwell is a lower bound; longer observation is needed to measure the tail." : ""}`,
-    dominant !== null ? `${channels[dominant]} is the largest recorded escape channel: ${number(meta!.lossCounts[dominant] / run.particles * 100)}% of all launched particles.` :
+    dominant !== null ? `${outcomes[dominant]} is the largest recorded escape channel: ${number(meta!.lossCounts[dominant] / run.particles * 100)}% of all launched particles.` :
       meta ? "No escaped particles were recorded in the channel counts." : "Detailed metadata is not loaded. Loss-channel and raw curve data are unavailable in this report.",
-    run.kind === "control" ? "Inside-born control: this run does not measure capture from an external electron gun." :
+    poisson ? `Replay uses orbit iteration ${poisson.iteration}/${poisson.requestedIterations}, with the electric field frozen during each particle packet. Iteration number is not physical time.` :
+      run.kind === "control" ? "Inside-born control: this run does not measure capture from an external electron gun." :
       "This fixed-field run measures residence under the prescribed fields. It does not predict a self-consistent electron well.",
   ];
   const setup: [string, string][] = [
@@ -83,33 +86,44 @@ function contents(run: Run, meta: Meta | undefined, campaign: string): string {
     ["Coil half-separation (m)", number(summary?.ring_half_sep_m)],
     ["Gun position x, y, z (m)", summary?.gun_position_m?.map(number).join(", ") ?? "Not recorded"],
     ["Gun direction unit vector", summary?.gun_direction_unit?.map(number).join(", ") ?? "Not recorded"],
-    ["Injection aim (degrees)", number(run.sweep?.aimDeg)], ["Cone half-angle (degrees)", number(run.sweep?.coneDeg)],
-    ["Source RMS width (m)", number(summary?.gun_source_sigma_m)], ["Prescribed proxy charge (C)", run.chargeC.toExponential(5)],
+    ["Injection aim (degrees)", number(poisson?.aimDeg ?? run.sweep?.aimDeg)], ["Cone half-angle (degrees)", poisson ? "Thermal velocity distribution" : number(run.sweep?.coneDeg)],
+    ["Source RMS width (m)", number(summary?.gun_source_sigma_m)], [poisson ? "Injected current (A)" : "Prescribed proxy charge (C)", (poisson?.currentA ?? run.chargeC).toExponential(5)],
     ["Integrator", summary?.integrator ?? "Not recorded"],
     ["Adaptive timestep", summary?.adaptive == null ? "Not recorded" : summary.adaptive ? "Yes" : "No"],
-    ["Field grid (r × z)", run.sweep ? `${run.sweep.gridR} × ${run.sweep.gridZ}` : "Not recorded"],
+    ["Magnetic field grid (r × z)", poisson ? "256 × 512" : run.sweep ? `${run.sweep.gridR} × ${run.sweep.gridZ}` : "Not recorded"],
     ["Gyroperiod timestep fraction", number(run.sweep?.gyroFraction)],
     ["Reference timestep (ps)", number(summary?.dt_s == null ? null : summary.dt_s * 1e12)],
-    ["Maximum tracked |ΔE/E|", summary?.energy_drift_rel_max == null ? "Not recorded" : summary.energy_drift_rel_max.toExponential(4)],
+    [poisson ? "Maximum ensemble |ΔE/E|" : "Maximum tracked |ΔE/E|", summary?.energy_drift_rel_max == null ? "Not recorded" : summary.energy_drift_rel_max.toExponential(4)],
     ["Stored trajectories / ensemble", `${run.tracked} / ${run.particles}`],
     ["Trajectory observation window (µs)", number(run.trajectoryWindowUs)],
   ];
+  if (poisson) setup.push(
+    ["Electrostatic mesh", `${poisson.nodes}³ · grounded box`],
+    ["Source temperature (eV)", number(poisson.temperatureEV)],
+    ["Orbit field centre φ (V)", number(poisson.orbitCentreV)],
+    ["Deposited-charge centre φ (V)", number(poisson.depositedCentreV)],
+    ["Fixed-point relative mismatch", number(poisson.fixedPointMismatch)],
+    ["Poisson relative residual", poisson.poissonResidual.toExponential(4)],
+    ["Mean core dwell (µs)", number(poisson.meanCoreDwellUs)],
+    ["Mean core entries", number(poisson.meanCoreEntries)],
+  );
   return `<article class="analysis-article run-report">
     <small>${escape(campaign)}</small><h1>${number(run.energyEV)} eV · ${number(run.radiusM * 100)} cm${run.sweep ? ` · ${number(run.sweep.coilCurrentA / 1000)} kA-turn · ${run.sweep.aimDeg}° aim` : ""}</h1>
-    <p class="analysis-lead">Fixed-field electron residence report</p>
+    <p class="analysis-lead">${poisson ? `${escape(run.tag)} · stationary trajectory–Poisson reference` : "Fixed-field electron residence report"}</p>
     <section><h2>Findings</h2>${findings.map(f => `<p>${escape(f)}</p>`).join("")}</section>
     ${meta ? `<div class="report-charts"><section><h2>Residence / survival</h2>${survivalPlot(run, meta)}</section>
       <section><h2>Occupancy samples</h2>${occupancyPlot(meta)}</section></div>
       <section><h2>Outcomes at the observation cutoff</h2><div class="table-scroll"><table><thead><tr><th>Outcome</th><th>Particles</th><th>Ensemble share</th></tr></thead><tbody>
-      ${meta.lossCounts.map((count, i) => `<tr><td><span style="color:${colors[i]}">●</span> ${channels[i]}</td><td>${number(count)}</td><td>${number(count / run.particles * 100)}%</td></tr>`).join("")}</tbody></table></div></section>` :
+      ${meta.lossCounts.map((count, i) => `<tr><td><span style="color:${colors[i]}">●</span> ${outcomes[i]}</td><td>${number(count)}</td><td>${number(count / run.particles * 100)}%</td></tr>`).join("")}</tbody></table></div></section>` :
       "<p>This report currently has only the catalog summary. Static diagnostic plots require this run’s detailed metadata.</p>"}
     <section><h2>Run configuration & numerical diagnostics</h2><div class="table-scroll"><table><tbody>
       ${setup.map(([key, value]) => `<tr><th>${escape(key)}</th><td>${escape(value)}</td></tr>`).join("")}</tbody></table></div></section>
-    <section><h2>Interpretation limits</h2><p>Energy diagnostics cover tracked particles, not the entire ensemble.
+    <section><h2>Interpretation limits</h2><p>Energy diagnostics cover ${poisson ? "the entire ensemble" : "tracked particles, not the entire ensemble"}.
       Stored paths may undersample gyration. A small energy error alone does not establish orbit or loss convergence.
       Check timestep, field grid, sample size and observation window before interpreting rare surviving tails.</p>
-      <p>A prescribed charge sphere is an external proxy. This report contains no self-consistent space-charge feedback,
-        ion confinement, collisions, or fusion power balance. Dwell divided by a transit time is not a bounce count.</p></section>
+      <p>${poisson ? "The charge and Poisson field are iterated from current-weighted residence. A small Poisson residual does not establish nonlinear convergence or a useful ion well. Refine the orbit cutoff, mesh, timestep and particle count." :
+        "A prescribed charge sphere is an external proxy. This run contains no self-consistent space-charge feedback."}
+        There are no ions, collisions, or fusion power balance. Dwell divided by a transit time is not a bounce count.</p></section>
     <footer class="analysis-source">Run ID: ${escape(run.id)}<br>Campaign: ${escape(run.study)}
       ${run.meta ? `<br>Metadata: ${escape(run.meta.path)} · SHA-256: ${escape(run.meta.sha256)}` : "<br>Source: catalog summary only"}
       <br>Report plots use saved diagnostics; no trajectory chunks are needed. Static HTML export contains no external assets.</footer>

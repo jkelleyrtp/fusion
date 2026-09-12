@@ -122,7 +122,7 @@ $("app").innerHTML = `
             <article class="metric primary"><div>Mean dwell <span id="dwell-badge"></span></div><strong id="dwell">—</strong><small id="dwell-note">All simulated particles</small></article>
             <article class="metric"><div>Observation window</div><strong id="window">—</strong><small id="survivors">—</small></article>
             <article class="metric"><div>Coil radius</div><strong id="coil">—</strong><small id="coil-note">Opposed circular coils</small></article>
-            <article class="metric"><div>Prescribed φ(0)</div><strong id="potential">—</strong><small>Fixed charge proxy</small></article>
+            <article class="metric"><div id="potential-label">Prescribed φ(0)</div><strong id="potential">—</strong><small id="potential-note">Fixed charge proxy</small></article>
           </section>
           <section class="panel compare-panel" id="compare-panel" hidden><div class="panel-heading"><h2>Pinned comparisons</h2><button id="clear-comparisons" class="text-button">Clear</button></div><div id="comparison-table"></div></section>
         </div>
@@ -158,7 +158,7 @@ setupNavigation(page => {
   $("run-page").hidden = page !== "trajectories" && page !== "residence";
   $("model-context").textContent = page === "space-charge"
     ? "Stationary Poisson feedback · reference pilot"
-    : "Fixed fields · no Poisson feedback";
+    : selected?.poisson ? "Stationary Poisson · frozen orbit iteration" : "Fixed fields · no Poisson feedback";
   const widgetTarget = page === "campaign" ? "campaign-widget" : page === "reports" ? "report-widget" : "trajectory-home";
   $(widgetTarget).append(document.querySelector<HTMLElement>(".chamber-panel")!);
   $(page === "campaign" ? "campaign-widget" : page === "reports" ? "report-widget" : "bandwidth-home")
@@ -176,6 +176,7 @@ function showError(error: unknown): void {
 function clearError(): void { $("error").hidden = true; }
 function stop(): void { playing = false; $("play").textContent = "▶"; $("play").setAttribute("aria-label", "Play trajectories"); }
 function label(run: Run): string {
+  if (run.poisson) return `${run.tag} · ${fmt(run.poisson.currentA * 1e6)} µA · Poisson iteration ${run.poisson.iteration}/${run.poisson.requestedIterations}`;
   return run.sweep ? `${fmt(run.energyEV)} eV · ${fmt(run.sweep.coilCurrentA / 1000)} kA-turn · ${run.sweep.aimDeg}° aim · ${run.sweep.coneDeg}° cone` :
     `${fmt(run.energyEV)} eV · ${fmt(run.radiusM * 100)} cm · ${run.chargeC < 0 ? "negative proxy" : run.chargeC > 0 ? "positive proxy" : "neutral"}`;
 }
@@ -199,6 +200,7 @@ function finishTime(study: Catalog["studies"][number]): number {
 }
 function finishedAgo(study: Catalog["studies"][number]): string {
   const time = finishTime(study);
+  if (study.model === "stationary-poisson" && !Number.isFinite(time)) return "Saved iterations";
   if (!Number.isFinite(time)) return "Time unknown";
   const seconds = Math.max(0, (Date.now() - time) / 1000);
   if (seconds < 60) return "Just finished";
@@ -230,7 +232,7 @@ function renderLibrary(): void {
     members.map(run => `<button class="run-card ${selected?.id === run.id ? "selected" : ""}" data-run="${escape(run.id)}" aria-pressed="${selected?.id === run.id}">
     <div class="run-card-top"><strong>${fmt(run.energyEV)} <span>eV</span></strong><span class="run-size">${fmt(run.radiusM * 100)} cm</span></div>
     ${run.sweep ? `<div class="run-card-bottom">${fmt(run.sweep.coilCurrentA / 1000)} kA · ${run.sweep.aimDeg}° aim · ${run.sweep.coneDeg}° cone</div>` : ""}
-    <div class="run-card-bottom"><span><i class="${run.chargeC === 0 ? "neutral" : "charged"}"></i>${run.chargeC === 0 ? "Neutral" : run.chargeC < 0 ? "Negative proxy" : "Positive proxy"}</span>
+    <div class="run-card-bottom"><span><i class="${run.chargeC === 0 ? "neutral" : "charged"}"></i>${run.poisson ? `${fmt(run.poisson.currentA * 1e6)} µA · ${escape(run.tag)}` : run.chargeC === 0 ? "Neutral" : run.chargeC < 0 ? "Negative proxy" : "Positive proxy"}</span>
       <b>${run.meanDwellUs == null ? "Summary only" : `${run.dwellLowerBound ? "≥" : ""}${fmt(run.meanDwellUs)} µs`}</b></div>
     ${run.kind !== "external" ? `<span class="control-label">${run.kind === "control" ? "INSIDE-BORN CONTROL" : "LEGACY SOURCE"}</span>` : ""}
     </button>`).join("") + "</details>";
@@ -239,6 +241,16 @@ function renderLibrary(): void {
 
 function renderMetrics(): void {
   if (!selected) return;
+  const poisson = selected.poisson;
+  channelNames.splice(0, 4, ...(poisson
+    ? ["At window end", "−z box face", "+z box face", "Side box face"]
+    : ["At window end", "−z cusp", "+z cusp", "Radial wall"]));
+  document.querySelectorAll("#legend label:not(.sphere-toggle)").forEach((element, i) => {
+    const text = element.lastChild;
+    if (text?.nodeType === Node.TEXT_NODE) text.textContent = channelNames[i];
+  });
+  document.querySelector<HTMLElement>(".sphere-toggle")!.hidden = Boolean(poisson);
+  $("model-context").textContent = poisson ? "Stationary Poisson · frozen orbit iteration" : "Fixed fields · no Poisson feedback";
   document.querySelector<HTMLAnchorElement>('a[data-page="reports"]')!.href = reportHref(selected.id);
   renderReport($("report-body"), selected, meta, catalog.studies.find(s => s.id === selected?.study)?.label ?? selected.study);
   renderCampaignReport($("campaign-heading"), $("campaign-details"), catalog, selected, id => { void selectRun(id); });
@@ -257,7 +269,9 @@ function renderMetrics(): void {
   $("survivors").textContent = `${fmt(selected.survivors, 7)} still present · ${fmt(selected.survivors / selected.particles * 100)}%`;
   $("coil").innerHTML = `${fmt(selected.radiusM * 100)} <em>cm</em>`;
   $("coil-note").textContent = meta ? `${fmt(meta.summary.current_A / 1000)} kA-turn · ${fmt(meta.summary.ring_half_sep_m * 200)} cm separation` : "Opposed circular coils";
-  $("potential").innerHTML = `${fmt(meta?.summary.centre_potential_V)} <em>V</em>`;
+  $("potential").innerHTML = `${fmt(poisson?.orbitCentreV ?? meta?.summary.centre_potential_V)} <em>V</em>`;
+  $("potential-label").textContent = poisson ? "Orbit field φ(0)" : "Prescribed φ(0)";
+  $("potential-note").textContent = poisson ? `Iteration ${poisson.iteration} · convergence pending` : "Fixed charge proxy";
   $("view-mode").textContent = selected.kind === "control" ? "Inside-born control" : "";
   $("view-scale").textContent = "Coil thickness schematic";
   const s = meta?.summary;
@@ -266,18 +280,20 @@ function renderMetrics(): void {
     ["Source RMS", s?.gun_source_sigma_m == null ? "—" : `${fmt(s.gun_source_sigma_m * 1e6)} µm`],
     ["Launch cone", s?.pitch_deg?.map(v => fmt(v)).join("–") ? `${s.pitch_deg.map(v => fmt(v)).join("–")}°` : "—"],
     ["Gun r / z", s?.gun_position_m ? `${fmt(Math.hypot(s.gun_position_m[0], s.gun_position_m[1]) * 1000)} mm / ${fmt(s.gun_position_m[2] * 100)} cm` : "—"],
-    ["Charge proxy", `${scientific(selected.chargeC)} C`],
-    ["Proxy radius", s?.space_charge_radius_m == null ? "—" : `${fmt(s.space_charge_radius_m * 100)} cm`],
+    [poisson ? "Beam current" : "Charge proxy", poisson ? `${fmt(poisson.currentA * 1e6)} µA` : `${scientific(selected.chargeC)} C`],
+    [poisson ? "Source temperature" : "Proxy radius", poisson ? `${fmt(poisson.temperatureEV)} eV` : s?.space_charge_radius_m == null ? "—" : `${fmt(s.space_charge_radius_m * 100)} cm`],
   ]);
   readouts("quality", [
     ["Integrator", s ? `${s.integrator ?? "unknown"}${s.adaptive ? " · adaptive" : ""}` : "—"],
     ["Reference Δt", s?.dt_s == null ? "—" : `${fmt(s.dt_s * 1e12)} ps`],
     ["Maximum Δt", s?.dt_max_s == null ? "—" : `${fmt(s.dt_max_s * 1e12)} ps`],
     ["Max |ΔE/E|", scientific(s?.energy_drift_rel_max)],
-    ["Energy diagnostic", `${selected.tracked} tracked particles`],
+    ["Energy diagnostic", `${poisson ? selected.particles : selected.tracked} particles`],
     ["Stored state", "FP32 positions · FP64 pusher"],
   ]);
-  $("quality-note").textContent = selected.study.startsWith("conv")
+  $("quality-note").textContent = poisson
+    ? "The entire ensemble contributes to charge deposition. Replay shows one stationary iteration, not time-evolving PIC."
+    : selected.study.startsWith("conv")
     ? "Rare survival tails changed under timestep/grid refinement. Do not treat them as converged confinement."
     : "Dwell and core residence need convergence checks. Energy drift covers tracked particles, not the full ensemble.";
   $("sample-note").textContent = `${selected.tracked} paths / ${fmt(selected.particles, 7)} particles · first ${fmt(selected.trajectoryWindowUs)} µs · gyration may alias`;
@@ -286,7 +302,9 @@ function renderMetrics(): void {
 }
 
 function renderInventory(): void {
-  const current = Number($<HTMLInputElement>("current").value) * 1e-3;
+  $<HTMLInputElement>("current").disabled = Boolean(selected?.poisson);
+  if (selected?.poisson) $<HTMLInputElement>("current").value = String(selected.poisson.currentA * 1e3);
+  const current = selected?.poisson?.currentA ?? Number($<HTMLInputElement>("current").value) * 1e-3;
   const dwell = selected?.kind === "control" ? undefined : selected?.meanDwellUs;
   const charge = dwell == null || !Number.isFinite(current) || current < 0 ? undefined : current * dwell * 1e-6;
   $("inventory").textContent = charge == null ? "—" : `${selected?.dwellLowerBound ? "≥ " : ""}${scientific(charge / 1.602176634e-19)}`;
@@ -479,7 +497,7 @@ async function initialize(): Promise<void> {
   try {
     catalog = await store.catalog<Catalog>();
     if (catalog.version !== 1 || !catalog.runs.length) throw new Error("No supported runs in the catalog.");
-    catalog.studies.sort((a, b) => finishTime(b) - finishTime(a));
+    catalog.studies.sort((a, b) => Number(b.model === "stationary-poisson") - Number(a.model === "stationary-poisson") || finishTime(b) - finishTime(a));
     $("study").innerHTML = '<option value="">All campaigns</option>' + catalog.studies.map(s => `<option value="${escape(s.id)}">${escape(s.label)} · ${finishedAgo(s)}</option>`).join("");
     $("energy").innerHTML = '<option value="">All energies</option>' + [...new Set(catalog.runs.map(r => r.energyEV))].sort((a, b) => a - b).map(e => `<option value="${e}">${fmt(e)} eV</option>`).join("");
     $("radius").innerHTML = '<option value="">All sizes</option>' + [...new Set(catalog.runs.map(r => r.radiusM))].sort((a, b) => a - b).map(r => `<option value="${r}">${fmt(r * 100)} cm</option>`).join("");
