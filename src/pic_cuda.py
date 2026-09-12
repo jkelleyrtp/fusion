@@ -1,12 +1,13 @@
 """FP64 CUDA particle operators for the shared transient PIC integrator."""
 
+import math
 from typing import Protocol, cast
 
 import torch
 
 from cuda_build_cache import load_cached_extension
-from cusp_sim import QM
-from electrostatic import ElectrostaticMesh
+from cusp_sim import QM, TorchPusher
+from electrostatic import EPSILON_0, ElectrostaticMesh
 from pic_kernels import ReferenceKernels
 
 CPP_SRC = r"""
@@ -17,6 +18,8 @@ torch::Tensor gather(torch::Tensor phi, torch::Tensor x, torch::Tensor lower, to
 std::vector<torch::Tensor> drift(torch::Tensor x, torch::Tensor v, torch::Tensor lower,
                                torch::Tensor upper, double dt, double radius);
 torch::Tensor boris(torch::Tensor v, torch::Tensor e, torch::Tensor b, double factor);
+torch::Tensor axisymmetric(torch::Tensor x, torch::Tensor br, torch::Tensor bz,
+                           double r0, double dr, double z0, double dz);
 """
 
 CUDA_SRC = r"""
@@ -133,6 +136,31 @@ __global__ void boris_kernel(const double* v, const double* e, const double* b,
     for (int k = 0; k < 3; ++k) out[3*p+k] = (minus[k]+cross[k])+factor*e[3*p+k];
 }
 
+__device__ int64_t cell(double scaled, int64_t count) {
+    int64_t index = (int64_t)floor(scaled);
+    return index < 0 ? 0 : (index > count - 2 ? count - 2 : index);
+}
+
+__global__ void axisymmetric_kernel(const double* x, const double* br, const double* bz,
+                                    int64_t nr, int64_t nz, double r0, double dr,
+                                    double z0, double dz, int64_t count, double* out) {
+    int64_t p = (int64_t)blockIdx.x * blockDim.x + threadIdx.x;
+    if (p >= count) return;
+    double px = x[3*p], py = x[3*p+1], pz = x[3*p+2];
+    double r = sqrt(px*px + py*py);
+    double fr = (r - r0)/dr, fz = (pz - z0)/dz;
+    int64_t ir = cell(fr, nr), iz = cell(fz, nz);
+    double tr = clamp01(fr - (double)ir), tz = clamp01(fz - (double)iz);
+    int64_t i00 = iz*nr + ir;
+    double w00 = (1-tr)*(1-tz), w01 = tr*(1-tz), w10 = (1-tr)*tz, w11 = tr*tz;
+    double radial = ((w00*br[i00] + w01*br[i00+1]) + w10*br[i00+nr]) + w11*br[i00+nr+1];
+    double axial = ((w00*bz[i00] + w01*bz[i00+1]) + w10*bz[i00+nr]) + w11*bz[i00+nr+1];
+    double inverse = r > 1e-12 ? 1.0/r : 0.0;
+    out[3*p] = (radial*px)*inverse;
+    out[3*p+1] = (radial*py)*inverse;
+    out[3*p+2] = axial;
+}
+
 void check(torch::Tensor value, torch::Tensor like) {
     TORCH_CHECK(value.is_cuda() && value.is_contiguous() &&
                 value.scalar_type() == torch::kFloat64 && value.device() == like.device(),
@@ -196,6 +224,20 @@ torch::Tensor boris(torch::Tensor v, torch::Tensor e, torch::Tensor b, double fa
     C10_CUDA_KERNEL_LAUNCH_CHECK();
     return out;
 }
+
+torch::Tensor axisymmetric(torch::Tensor x, torch::Tensor br, torch::Tensor bz,
+                           double r0, double dr, double z0, double dz) {
+    check(x, x); check(br, x); check(bz, x);
+    TORCH_CHECK(x.dim() == 2 && x.size(1) == 3 && br.dim() == 2 && bz.sizes() == br.sizes());
+    TORCH_CHECK(br.size(0) >= 2 && br.size(1) >= 2);
+    c10::cuda::CUDAGuard guard(x.device());
+    auto out = torch::empty_like(x);
+    if (x.size(0)) axisymmetric_kernel<<<(x.size(0)+255)/256, 256, 0, at::cuda::getCurrentCUDAStream()>>>(
+        x.data_ptr<double>(), br.data_ptr<double>(), bz.data_ptr<double>(), br.size(1), br.size(0),
+        r0, dr, z0, dz, x.size(0), out.data_ptr<double>());
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
+    return out;
+}
 """
 
 
@@ -207,9 +249,23 @@ class Extension(Protocol):
     def drift(self, x: torch.Tensor, v: torch.Tensor, lower: torch.Tensor, upper: torch.Tensor,
               dt: float, radius: float) -> list[torch.Tensor]: ...
     def boris(self, v: torch.Tensor, e: torch.Tensor, b: torch.Tensor, factor: float) -> torch.Tensor: ...
+    def axisymmetric(self, x: torch.Tensor, br: torch.Tensor, bz: torch.Tensor,
+                     r0: float, dr: float, z0: float, dz: float) -> torch.Tensor: ...
 
 
 _MODULE: Extension | None = None
+
+
+def _sine_transform(count: int, device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
+    k = torch.arange(1, count - 1, device=device, dtype=torch.float64)
+    basis = torch.sin(math.pi * torch.outer(k, k) / (count - 1))
+    return 2 * basis, basis / (count - 1)
+
+
+def _apply_along_axes(values: torch.Tensor, matrices: list[torch.Tensor]) -> torch.Tensor:
+    values = torch.einsum("ia,abc->ibc", matrices[0], values)
+    values = torch.einsum("jb,ibc->ijc", matrices[1], values)
+    return torch.einsum("kc,ijc->ijk", matrices[2], values)
 
 
 class CUDAKernels(ReferenceKernels):
@@ -221,9 +277,12 @@ class CUDAKernels(ReferenceKernels):
         if _MODULE is None:
             _MODULE = cast(Extension, load_cached_extension(
                 CPP_SRC, CUDA_SRC, mesh.lower.device.index or 0, ["-O3", "--fmad=false"],
-                functions=("deposit", "gather", "drift", "boris"),
+                functions=("deposit", "gather", "drift", "boris", "axisymmetric"),
             ))
         self.extension = _MODULE
+        transforms = [_sine_transform(count, mesh.lower.device) for count in mesh.shape]
+        self.forward_transforms = [forward for forward, _ in transforms]
+        self.inverse_transforms = [inverse for _, inverse in transforms]
 
     def _tensor(self, value: torch.Tensor, shape: tuple[int, ...]) -> torch.Tensor:
         if (value.shape != shape or value.dtype != torch.float64
@@ -242,6 +301,17 @@ class CUDAKernels(ReferenceKernels):
         return self.extension.deposit(
             position, charge, self.mesh.lower.contiguous(), self.mesh.h.contiguous(), *self.mesh.shape,
         )
+
+    def potential(self, charge: torch.Tensor) -> torch.Tensor:
+        charge = self._tensor(charge, self.mesh.shape)
+        rhs = charge[1:-1, 1:-1, 1:-1] / (EPSILON_0 * self.mesh.volume)
+        rhs = _apply_along_axes(rhs, self.forward_transforms) / self.mesh.eigenvalues
+        potential = torch.zeros_like(charge)
+        potential[1:-1, 1:-1, 1:-1] = _apply_along_axes(rhs, self.inverse_transforms)
+        return potential
+
+    def magnetic_field(self, pusher: TorchPusher) -> "CUDAAxisymmetricField":
+        return CUDAAxisymmetricField(self, pusher)
 
     def gather(self, potential: torch.Tensor, position: torch.Tensor) -> torch.Tensor:
         position = self._positions(position)
@@ -268,3 +338,15 @@ class CUDAKernels(ReferenceKernels):
             self._tensor(velocity, shape), self._tensor(electric, shape),
             self._tensor(magnetic, shape), 0.5 * h * QM,
         )
+
+
+class CUDAAxisymmetricField:
+    def __init__(self, kernels: CUDAKernels, pusher: TorchPusher) -> None:
+        self.kernels = kernels
+        self.br = kernels._tensor(pusher.br, tuple(pusher.br.shape))
+        self.bz = kernels._tensor(pusher.bz, tuple(pusher.br.shape))
+        self.grid = (float(pusher.r0), float(pusher.dr), float(pusher.z0), float(pusher.dz))
+
+    def __call__(self, position: torch.Tensor) -> torch.Tensor:
+        position = self.kernels._tensor(position, (len(position), 3))
+        return self.kernels.extension.axisymmetric(position, self.br, self.bz, *self.grid)

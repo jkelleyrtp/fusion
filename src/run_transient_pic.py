@@ -14,7 +14,7 @@ from electrostatic import ElectrostaticMesh
 from pic_cuda import CUDAKernels
 from pic_kernels import ReferenceKernels
 from steady_space_charge import thermal_source
-from transient_pic import PIC
+from transient_pic import PIC, MagneticField
 
 
 def parser() -> argparse.ArgumentParser:
@@ -140,9 +140,16 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
     pusher = TorchPusher(
         br, bz, 0, float(r[1]), float(z[0]), float(z[1] - z[0]), QM,
     )
-    kernels = CUDAKernels(mesh) if args.kernels == "cuda" else ReferenceKernels(mesh)
+    kernels: ReferenceKernels
+    magnetic_field: MagneticField
+    if args.kernels == "cuda":
+        cuda = CUDAKernels(mesh)
+        kernels, magnetic_field = cuda, cuda.magnetic_field(pusher)
+    else:
+        kernels = ReferenceKernels(mesh)
+        magnetic_field = pusher.field
     simulation = PIC(
-        mesh, pusher.field, 0.25 * a, args.max_live_particles, args.track, kernels=kernels,
+        mesh, magnetic_field, 0.25 * a, args.max_live_particles, args.track, kernels=kernels,
     )
     origin, direction = source_geometry(args)
     source_field = pusher.field(lower.new_tensor([origin]))[0]

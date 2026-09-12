@@ -146,7 +146,7 @@ class PIC:
     def fields(self) -> tuple[torch.Tensor, torch.Tensor]:
         p = self.particles
         charge = self.kernels.deposit(p.position, -E_CHARGE * p.weight)
-        return charge, self.mesh.potential(charge)
+        return charge, self.kernels.potential(charge)
 
     def kinetic_energy(self) -> torch.Tensor:
         p = self.particles
@@ -162,51 +162,52 @@ class PIC:
         end, fraction, hit, inside, entered = self.kernels.drift(
             p.position, p.velocity, h, self.core_radius,
         )
-        (any_hit,) = self._raise_first(checks, hit.any())
+        (lost_count,) = self._raise_first(checks, hit.sum())
         elapsed = h * fraction
         p.dwell += elapsed
         p.core_dwell += elapsed * inside
         p.entries += entered.long()
         live = self._tracked_live
         self.tracked_position[p.ids[:live]] = end[:live]
-        if any_hit:
-            lost = p.select(hit)
-            tracked_hits = lost.ids < len(self.tracked_birth)
-            sums = torch.stack((
-                -E_CHARGE * lost.weight.sum(),
-                (0.5 * M_E * lost.weight * lost.velocity.square().sum(dim=1)).sum(),
-                lost.dwell.sum(),
-                lost.core_dwell.sum(),
-                (lost.weight * lost.dwell).sum(),
-                (lost.weight * lost.core_dwell).sum(),
-            )).tolist()
-            counts = torch.stack((
-                lost.entries.sum(), (lost.entries >= 2).sum(), tracked_hits.sum(),
-            )).tolist()
-            self.lost_count += len(lost.ids)
-            self.lost_charge += sums[0]
-            self.lost_kinetic += sums[1]
-            self.lost_dwell += sums[2]
-            self.lost_core_dwell += sums[3]
-            self.lost_electron_dwell += sums[4]
-            self.lost_electron_core_dwell += sums[5]
-            self.lost_entries += int(counts[0])
-            self.lost_repeated_entries += int(counts[1])
-            self._tracked_live = live - int(counts[2])
-            distances = torch.stack((
-                (end[hit] - self.mesh.lower).abs() / self.mesh.h,
-                (end[hit] - self.mesh.upper).abs() / self.mesh.h,
-            ), dim=2).flatten(start_dim=1)
-            faces = distances.argmin(dim=1)
-            self.exit_counts += torch.bincount(faces, minlength=6)
-            self.tracked_exit_time[lost.ids[tracked_hits]] = (
-                start_time + elapsed[hit][tracked_hits]
-            )
-            self.tracked_exit_face[lost.ids[tracked_hits]] = faces[tracked_hits]
-            p.position = end
-            self.particles = p.select(~hit)
-        else:
-            p.position = end
+        p.position = end
+        if not lost_count:
+            return
+        survivors = len(p.ids) - int(lost_count)
+        order = torch.argsort(hit.to(torch.int8), stable=True)
+        lost = p.select(order[survivors:])
+        lost_end = end[order[survivors:]]
+        stats = torch.stack((
+            -E_CHARGE * lost.weight.sum(),
+            (0.5 * M_E * lost.weight * lost.velocity.square().sum(dim=1)).sum(),
+            lost.dwell.sum(),
+            lost.core_dwell.sum(),
+            (lost.weight * lost.dwell).sum(),
+            (lost.weight * lost.core_dwell).sum(),
+            lost.entries.sum().to(torch.float64),
+            (lost.entries >= 2).sum().to(torch.float64),
+            (lost.ids < len(self.tracked_birth)).sum().to(torch.float64),
+        )).tolist()
+        tracked = int(stats[8])
+        self.lost_count += len(lost.ids)
+        self.lost_charge += stats[0]
+        self.lost_kinetic += stats[1]
+        self.lost_dwell += stats[2]
+        self.lost_core_dwell += stats[3]
+        self.lost_electron_dwell += stats[4]
+        self.lost_electron_core_dwell += stats[5]
+        self.lost_entries += int(stats[6])
+        self.lost_repeated_entries += int(stats[7])
+        self._tracked_live = live - tracked
+        distances = torch.stack((
+            (lost_end - self.mesh.lower).abs() / self.mesh.h,
+            (lost_end - self.mesh.upper).abs() / self.mesh.h,
+        ), dim=2).flatten(start_dim=1)
+        faces = distances.argmin(dim=1)
+        self.exit_counts.index_add_(0, faces, torch.ones_like(faces))
+        tracked_ids = lost.ids[:tracked]
+        self.tracked_exit_time[tracked_ids] = start_time + elapsed[order[survivors:survivors + tracked]]
+        self.tracked_exit_face[tracked_ids] = faces[:tracked]
+        self.particles = p.select(order[:survivors])
 
     def _speed_checks(self, h: float) -> list[tuple[torch.Tensor, str]]:
         if len(self.particles.ids) == 0:

@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from cusp_sim import E_CHARGE
+from cusp_sim import E_CHARGE, QM, TorchPusher
 from electrostatic import ElectrostaticMesh
 from pic_cuda import CUDAKernels
 from pic_kernels import ReferenceKernels
@@ -86,6 +86,20 @@ def operator_controls(out: Path, device: torch.device) -> None:
     torch.testing.assert_close(
         observed[3], 0.5 / (finishes - starts).norm(dim=1), rtol=1e-12, atol=1e-12,
     )
+    torch.testing.assert_close(
+        actual.potential(expected_charge), reference.potential(expected_charge),
+        rtol=1e-10, atol=1e-13,
+    )
+    r = torch.linspace(0, 2.2, 256, dtype=torch.float64, device=device)
+    z = torch.linspace(-2.1, 2.1, 512, dtype=torch.float64, device=device)
+    br = torch.randn((512, 256), generator=generator, dtype=torch.float64).to(device)
+    bz = torch.randn((512, 256), generator=generator, dtype=torch.float64).to(device)
+    pusher = TorchPusher(br, bz, 0, float(r[1]), float(z[0]), float(z[1] - z[0]), QM)
+    samples = torch.cat((position, position.new_tensor([[0, 0, 0], [0, 0, -2.5], [2, 2, 2.5]])))
+    np.testing.assert_array_equal(
+        actual.magnetic_field(pusher)(samples).cpu().numpy(), pusher.field(samples).cpu().numpy(),
+    )
+    assert actual.magnetic_field(pusher)(position[:0]).shape == (0, 3)
     empty = position[:0]
     torch.testing.assert_close(actual.deposit(empty, charge[:0]), torch.zeros_like(expected_charge))
     assert actual.gather(potential, empty).shape == (0, 3)

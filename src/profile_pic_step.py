@@ -49,6 +49,9 @@ class TimedKernels(ReferenceKernels):
     def deposit(self, position: torch.Tensor, charge: torch.Tensor) -> torch.Tensor:
         return cast(torch.Tensor, self._time("deposit", self._inner.deposit, position, charge))
 
+    def potential(self, charge: torch.Tensor) -> torch.Tensor:
+        return cast(torch.Tensor, self._time("poisson", self._inner.potential, charge))
+
     def gather(self, potential: torch.Tensor, position: torch.Tensor) -> torch.Tensor:
         return cast(torch.Tensor, self._time("gather", self._inner.gather, potential, position))
 
@@ -103,12 +106,8 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
 
     totals = {stage: 0.0 for stage in (*STAGES, "step_total")}
     inner_kernels = simulation.kernels
-    inner_potential = simulation.mesh.potential
     inner_magnetic = simulation.magnetic_field
     simulation.kernels = TimedKernels(inner_kernels, totals, device)
-    simulation.mesh.potential = timed_callable(  # type: ignore[method-assign]
-        "poisson", inner_potential, totals, device,
-    )
     simulation.magnetic_field = cast(
         MagneticField,
         timed_callable("magnetic", inner_magnetic, totals, device),
@@ -125,7 +124,6 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
     live_end = len(simulation.particles.ids)
 
     simulation.kernels = inner_kernels
-    simulation.mesh.potential = inner_potential  # type: ignore[method-assign]
     simulation.magnetic_field = inner_magnetic
 
     first = args.warm_steps + args.timed_steps
@@ -140,13 +138,14 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
 
     p = simulation.particles
     charge = inner_kernels.deposit(p.position, -E_CHARGE * p.weight)
-    potential = inner_potential(charge)
+    potential = inner_kernels.potential(charge)
     electric = inner_kernels.gather(potential, p.position)
     magnetic = inner_magnetic(p.position)
     benchmarks = {
         "deposit": microbenchmark(
             lambda: inner_kernels.deposit(p.position, -E_CHARGE * p.weight), device),
-        "poisson": microbenchmark(lambda: inner_potential(charge), device),
+        "poisson": microbenchmark(lambda: inner_kernels.potential(charge), device),
+        "magnetic": microbenchmark(lambda: inner_magnetic(p.position), device),
         "gather": microbenchmark(
             lambda: inner_kernels.gather(potential, p.position), device),
         "boris": microbenchmark(

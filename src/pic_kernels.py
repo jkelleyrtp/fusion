@@ -13,6 +13,9 @@ class ReferenceKernels:
     def deposit(self, position: torch.Tensor, charge: torch.Tensor) -> torch.Tensor:
         return self.mesh.deposit(position, charge)
 
+    def potential(self, charge: torch.Tensor) -> torch.Tensor:
+        return self.mesh.potential(charge)
+
     def gather(self, potential: torch.Tensor, position: torch.Tensor) -> torch.Tensor:
         return self.mesh.gather(potential, position)[1]
 
