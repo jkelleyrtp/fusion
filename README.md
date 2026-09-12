@@ -14,6 +14,30 @@ escape time + channel, survival curve, (r,z) density) and renders a report.
 | `jobs/*.yaml` | broker-submittable single-node RayJobs (`uv run train job submit jobs/<x>.yaml --cluster aws-usw2 --priority 1`) |
 | `results/` | reports and summaries pulled back from the runs |
 
+## GPU dispatch (shared B200 cluster)
+
+Submit GPU work only through the slime job broker, from the research checkout:
+
+```bash
+cd /home/ubuntu/repos/research
+uv run train gpus --cluster aws-usw2                       # check free capacity first
+uv run train job list --cluster aws-usw2
+uv run train job submit jobs/<name>.yaml --cluster aws-usw2 --priority 1
+```
+
+- **Priority 1, exactly one node** (`--actor-num-nodes 1 --actor-num-gpus-per-node 8
+  --rollout-num-gpus 0` in the entrypoint), broker-scheduled cliques only.
+- Priority 1 is a user requirement: it is preemptible by priorities 2–5 and can
+  preempt priority 0 — it is not the absolute lowest. The broker's
+  `preempt_min_runtime` may delay reclamation; do not promise instant release.
+- If no node is free, wait — never displace running work, pin cliques, bypass
+  health checks, or `kubectl apply` GPU jobs directly.
+- `shutdownAfterJobFinishes: true` is mandatory; never hold GPUs awaiting input.
+- A preempted run restarts the sweep from scratch; per-member outputs already
+  written under the run directory are preserved on FSx.
+
+See `AGENTS.md` for the full binding policy.
+
 ## Physics model
 
 - Field: Smythe's closed form for a circular filament, `B_r, B_z` in `K(k), E(k)` (AGM), tabulated on an
