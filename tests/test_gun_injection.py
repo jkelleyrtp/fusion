@@ -1,6 +1,8 @@
 """Tests for the external-gun injection mode in cusp_sim (CPU only, no GPU/kernel)."""
 
 import argparse
+import json
+import math
 import os
 import sys
 import tempfile
@@ -36,7 +38,6 @@ def _args(**over):
 
 def _run(args, member):
     out = Path(args.out)
-    import json
 
     def log(msg):
         pass
@@ -77,6 +78,14 @@ class SamplerTests(unittest.TestCase):
             _, vel, dn = cusp_sim.sample_gun_beam([0, 0, -0.06], d, 1e6, 500, 0.0, 0.0, 0.0, F64)
             np.testing.assert_allclose(vel.numpy()[0], 1e6 * np.asarray(d) / np.linalg.norm(d), atol=1e-8)
             np.testing.assert_allclose(dn, np.asarray(d) / np.linalg.norm(d))
+
+    def test_extreme_scale_directions(self):
+        # components so large/small that a naive norm() would over/underflow to inf/0
+        for d in ([1e300, 0, 1e300], [1e-300, 0, 1e-300]):
+            _, vel, dn = cusp_sim.sample_gun_beam([0, 0, -0.06], d, 3e6, 64, 0.0, 0.0, 0.0, F64)
+            self.assertTrue(np.all(np.isfinite(dn)))
+            np.testing.assert_allclose(dn, [math.sqrt(0.5), 0, math.sqrt(0.5)], atol=1e-12)
+            np.testing.assert_allclose(vel.norm(dim=1).numpy(), 3e6, rtol=1e-12)
 
     def test_invalid_inputs_rejected(self):
         for bad_dir in ([0, 0, 0], [float("nan"), 0, 1], [float("inf"), 0, 0]):
@@ -135,6 +144,18 @@ class GunMemberTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             _run(a, (100.0, 6e-4, 0.0, 1.0, 0.0))
         self.assertIn("axial-margin", str(ctx.exception))
+
+    def test_zero_field_angles_undefined(self):
+        # current=0 -> B identically zero everywhere: angle is undefined, not 0
+        a = _args(current=0.0, dt_ref_b=0.01, adaptive=0, sim_time=1e-11)
+        s = _run(a, (100.0, 6e-4, 0.0, 1.0, 0.0))
+        self.assertIsNone(s["gun_axis_B_angle_deg"])
+        for k in ("p05", "p50", "p95"):
+            self.assertIsNone(s[f"launch_angle_to_local_B_deg_{k}"])
+        self.assertEqual(s["launch_angle_undefined_count"], a.particles)
+        self.assertEqual(s["gun_B_T"], 0.0)
+        self.assertEqual(s["gun_source_sigma_m"], a.inject_sigma)
+        self.assertIsInstance(s["rng_seed"], int)
 
     def test_worker_tag_distinct_for_gun(self):
         # _worker appends a deterministic geometry hash for gun mode only

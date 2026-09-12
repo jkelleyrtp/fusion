@@ -449,12 +449,14 @@ def sample_gun_beam(origin, direction, speed, n, sigma, pitch_lo_deg, pitch_hi_d
     continuous current. `origin` (3,) m; `direction` is normalized here and must be
     finite and nonzero; positions are `origin + sigma` RMS gaussian in the beam plane;
     pitch is uniform in cos(theta) over [pitch_lo_deg, pitch_hi_deg] around the aim.
-    Returns (pos, vel) [n,3] float64 tensors. speed is exact from the member energy."""
+    Returns (pos, vel, direction_unit) [n,3]/[n,3]/[3] float64; speed is exact."""
     origin = np.asarray(origin, dtype=np.float64)
     direction = np.asarray(direction, dtype=np.float64)
-    if not np.all(np.isfinite(direction)) or np.linalg.norm(direction) == 0:
+    scale = np.abs(direction).max() if np.all(np.isfinite(direction)) else 0.0
+    if scale == 0 or not np.isfinite(scale):
         raise ValueError(f"gun direction must be finite and nonzero, got {direction.tolist()}")
-    direction = direction / np.linalg.norm(direction)
+    direction = direction / scale  # pre-scale so huge/tiny components can't over/underflow norm
+    direction /= np.linalg.norm(direction)
     if not (np.isfinite(sigma) and sigma >= 0):
         raise ValueError(f"gun --inject-sigma must be finite and >= 0, got {sigma}")
     if not (np.isfinite(pitch_lo_deg) and np.isfinite(pitch_hi_deg)
@@ -484,7 +486,8 @@ def sample_gun_beam(origin, direction, speed, n, sigma, pitch_lo_deg, pitch_hi_d
 
 def run_member(args, member, tag, device, log):
     energy_ev, inject_r, pitch_lo_deg, pitch_hi_deg, space_charge = member
-    torch.manual_seed(args.seed + int.from_bytes(tag.encode(), "little") % 100_000)
+    rng_seed = args.seed + int.from_bytes(tag.encode(), "little") % 100_000
+    torch.manual_seed(rng_seed)
     dev = torch.device(device)
     f64 = dict(device=dev, dtype=torch.float64)
     t_start = time.time()
@@ -639,6 +642,8 @@ def run_member(args, member, tag, device, log):
             angle_p05 = angle_p50 = angle_p95 = None
         gun_summary = {
             "gun_position_m": np.asarray(gun_origin, dtype=np.float64).tolist(),
+            "gun_source_sigma_m": args.inject_sigma,
+            "rng_seed": rng_seed,
             "gun_direction_unit": np.asarray(gun_dirn, dtype=np.float64).tolist(),
             "gun_B_T": b_origin,
             "gun_axis_B_angle_deg": axis_angle,
@@ -825,7 +830,7 @@ def parse_args(argv=None):
     p.add_argument("--inject-mode", choices=["cusp", "inside", "gun"], default="cusp", help="cusp: beam through the -z point cusp; inside: born in a ball of radius inject_r at the center; gun: external point source launched as a packet at t=0")
     p.add_argument("--gun-position", type=float, nargs=3, default=None, metavar=("X", "Y", "Z"), help="gun mode: source position in m; default (0, member inject_r, -(d+inject_offset)) — member inject_r must be 0 when given")
     p.add_argument("--gun-direction", type=float, nargs=3, default=[0.0, 0.0, 1.0], metavar=("DX", "DY", "DZ"), help="gun mode: aim vector, normalized; pitch band is around this direction")
-    p.add_argument("--inject-r", type=float, nargs="+", default=[0.0], help="injection ring radii (cusp) / birth ball radii (inside) to sweep, m")
+    p.add_argument("--inject-r", type=float, nargs="+", default=[0.0], help="injection ring radii (cusp) / birth ball radii (inside) to sweep, m; gun: source radial offset, ignored when --gun-position is set")
     p.add_argument("--pitch-lo-deg", type=float, nargs="+", default=[0.0], help="pitch band lower edges to sweep (paired with --pitch-hi-deg)")
     p.add_argument("--pitch-hi-deg", type=float, nargs="+", default=[20.0])
     p.add_argument("--members", nargs="+", default=None, help="explicit sweep members 'E_eV,inject_r_m,pitch_lo,pitch_hi[,space_charge_C]' (overrides the product)")

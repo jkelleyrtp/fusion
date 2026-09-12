@@ -12,7 +12,7 @@ escape time + channel, survival curve, (r,z) density) and renders a report.
 | `cusp_sim.py` | simulator: exact loop field (elliptic integrals), fused CUDA Boris/RK4 kernel (torch `load_inline`), torch fallback |
 | `cuda_build_cache.py` | persistent fingerprint-keyed build cache for the fused kernel (see below) |
 | `benchmark_build_cache.py` | measures extension startup in fresh worker processes on the GPUs |
-| `cusp_viz.py` | `report.png` + `traj_<member>.png` + markdown summary table from a run directory |
+| `cusp_viz.py` | `report.png` + `traj_<member>.png` + `traj3d_<member>.png` (equal-scale orthographic 3-D view with the coils and the gun source drawn below) + markdown summary table from a run directory. Trajectory plots show the subsampled stored path, so rapid gyration can be undersampled |
 | `jobs/*.yaml` | broker-submittable single-node RayJobs (`uv run train job submit /home/ubuntu/repos/fusion/jobs/<x>.yaml --cluster aws-usw2 --priority 1`) |
 | `results/` | reports and summaries pulled back from the runs |
 | `docs/` | [reassessment](docs/reassessment.md) and [precision notes](docs/precision-notes.md) |
@@ -112,7 +112,7 @@ inward toward the axis). These are starting guesses, not an optimum:
 python3 cusp_sim.py --inject-mode gun \
   --ring-radius 0.05 --ring-half-sep 0.025 --current 23000 \
   --inject-offset 0.03 --members 100,0.0006,0,1 \
-  --gun-direction 0 -0.007142857 1 --inject-sigma 0.0001 \
+  --gun-direction 0 -0.007142857 1 --inject-sigma 0.0001 --axial-margin 0.04 \
   --particles 20000 --sim-time 100e-6 --out out/gun_test
 ```
 
