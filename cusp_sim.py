@@ -714,10 +714,12 @@ def main(argv=None):
             _worker(rank, args, members, [device] * len(members), log_path)
         return
     ngpu = torch.cuda.device_count()
-    assert len(members) <= ngpu, f"{len(members)} sweep members but only {ngpu} GPUs"
-    devices = [f"cuda:{i}" for i in range(len(members))]
-    print(f"running {len(members)} sweep members on {devices}: {[member_tag(m) for m in members]}", flush=True)
-    torch.multiprocessing.spawn(_worker, args=(args, members, devices, log_path), nprocs=len(members), join=True)
+    for start in range(0, len(members), ngpu):
+        chunk = members[start : start + ngpu]
+        devices = [f"cuda:{i}" for i in range(len(chunk))]
+        print(f"running sweep members {start}..{start + len(chunk) - 1} on {devices}: "
+              f"{[member_tag(m) for m in chunk]}", flush=True)
+        torch.multiprocessing.spawn(_worker, args=(args, chunk, devices, log_path), nprocs=len(chunk), join=True)
     with open(os.path.join(args.out, "DONE"), "w") as f:
         f.write(time.strftime("%Y-%m-%dT%H:%M:%S"))
 
