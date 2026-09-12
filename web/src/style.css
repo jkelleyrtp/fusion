@@ -36,7 +36,7 @@ h2, h3 { font-size: 12px; font-weight: 600; }
 .brand { display: flex; align-items: center; gap: 7px; color: inherit; text-decoration: none; font-weight: 650; font-size: 15px; }
 .brand svg { width: 23px; height: 23px; fill: none; stroke: var(--mint); stroke-width: 1; }
 .top-context { color: var(--muted); font-size: 11px; white-space: nowrap; margin-left: auto; }
-.app-header { display: flex; align-items: center; gap: 24px; height: 56px; padding: 0 20px; position: sticky; top: 0; z-index: 20; background: #0d151d; border-bottom: 1px solid var(--line); }
+.app-header { display: flex; align-items: center; gap: 24px; height: 42px; padding: 0 20px; position: sticky; top: 0; z-index: 20; background: #0d151d; border-bottom: 1px solid var(--line); }
 .top-nav { display: flex; align-self: stretch; min-width: 0; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
 .top-nav a { display: flex; align-items: center; position: relative; color: #a8b9c7; padding: 0 10px; text-decoration: none; white-space: nowrap; }
 .top-nav a:hover { color: #edf5fa; background: #ffffff05; }
@@ -46,7 +46,7 @@ h2, h3 { font-size: 12px; font-weight: 600; }
 .sidebar {
   padding: 12px; border-right: 1px solid #26364277;
   display: flex; flex-direction: column; gap: 7px;
-  height: calc(100dvh - 56px); position: sticky; top: 56px;
+  height: calc(100dvh - 42px); position: sticky; top: 42px;
 }
 #sidebar-resizer { position: absolute; width: 9px; top: 0; right: -5px; bottom: 0; cursor: col-resize; touch-action: none; z-index: 10; }
 #sidebar-resizer:hover, #sidebar-resizer:focus-visible, .resizing-sidebar #sidebar-resizer { background: #83dfbd33; }
