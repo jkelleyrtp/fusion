@@ -70,6 +70,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--require-boris-bitwise", action="store_true")
     args = parser.parse_args()
     device = torch.device(args.device)
     lower = torch.full((3,), -1.0, dtype=torch.float64, device=device)
@@ -95,6 +96,12 @@ def main() -> None:
         "sum_left_associated_vs_native": difference(
             square.sum(dim=1), (square[:, 0] + square[:, 1]) + square[:, 2],
         ),
+        "sum_021_vs_native": difference(
+            square.sum(dim=1), (square[:, 0] + square[:, 2]) + square[:, 1],
+        ),
+        "sum_120_vs_native": difference(
+            square.sum(dim=1), (square[:, 1] + square[:, 2]) + square[:, 0],
+        ),
     }
     expected = reference.boris(velocity, electric, magnetic, h)
     observed = actual.boris(velocity, electric, magnetic, h)
@@ -109,6 +116,8 @@ def main() -> None:
     text = json.dumps(result, indent=2, allow_nan=False) + "\n"
     (args.out / "arithmetic.json").write_text(text)
     print(text, flush=True)
+    if args.require_boris_bitwise:
+        torch.testing.assert_close(observed, expected, rtol=0, atol=0)
 
 
 if __name__ == "__main__":

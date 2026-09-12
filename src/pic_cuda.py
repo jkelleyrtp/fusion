@@ -111,21 +111,21 @@ __global__ void drift_kernel(const double* x, const double* v, const double* low
 }
 
 __device__ void cross3(const double* a, const double* b, double* c) {
-    c[0] = a[1]*b[2] - a[2]*b[1];
-    c[1] = a[2]*b[0] - a[0]*b[2];
-    c[2] = a[0]*b[1] - a[1]*b[0];
+    c[0] = __fma_rn(a[1], b[2], -(a[2]*b[1]));
+    c[1] = __fma_rn(a[2], b[0], -(a[0]*b[2]));
+    c[2] = __fma_rn(a[0], b[1], -(a[1]*b[0]));
 }
 
 __global__ void boris_kernel(const double* v, const double* e, const double* b,
                              int64_t count, double factor, double* out) {
     int64_t p = (int64_t)blockIdx.x * blockDim.x + threadIdx.x;
     if (p >= count) return;
-    double minus[3], t[3], s[3], prime[3], cross[3], norm = 0;
+    double minus[3], t[3], s[3], prime[3], cross[3];
     for (int k = 0; k < 3; ++k) {
         minus[k] = v[3*p+k] + factor*e[3*p+k];
         t[k] = factor*b[3*p+k];
-        norm += t[k]*t[k];
     }
+    double norm = (t[0]*t[0] + t[2]*t[2]) + t[1]*t[1];
     for (int k = 0; k < 3; ++k) s[k] = (2*t[k])/(1+norm);
     cross3(minus, t, cross);
     for (int k = 0; k < 3; ++k) prime[k] = minus[k]+cross[k];

@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import cast
 
@@ -53,6 +54,7 @@ def summarize(name: str, history: list[Record]) -> dict[str, object]:
         ),
         "charge_balance_C": scalar(final, "charge_balance_C"),
         "deposition_error_C": scalar(final, "deposition_error_C"),
+        "boundary_shape_charge_C": scalar(final, "boundary_shape_charge_C"),
         "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": final[
             "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi"
         ],
@@ -109,9 +111,10 @@ def field_summary(case: Path) -> dict[str, object]:
         }
 
 
-def plot_fields(run: Path, output: Path) -> None:
-    names = ("pic_1A", "pic_1A_dt")
-    figure, axes = plt.subplots(2, 2, figsize=(11, 7), constrained_layout=True)
+def plot_fields(
+    run: Path, output: Path, names: tuple[str, ...] = ("pic_1A", "pic_1A_dt"),
+) -> None:
+    figure, axes = plt.subplots(len(names), 2, figsize=(11, 3.5 * len(names)), constrained_layout=True)
     for row, name in enumerate(names):
         snapshot = max((run / name / "snapshots").glob("*.npz"))
         with np.load(snapshot, allow_pickle=False) as values:
@@ -143,10 +146,44 @@ def plot_fields(run: Path, output: Path) -> None:
     plt.close(figure)
 
 
+def check_completed(case: Path, history: list[Record]) -> None:
+    configuration = json.loads((case / "configuration.json").read_text())
+    steps = math.ceil(math.nextafter(configuration["duration"] / configuration["dt"], -math.inf))
+    if (not (case / "DONE").is_file() or not history
+            or scalar(history[-1], "step") != steps
+            or scalar(history[-1], "time_s") != configuration["duration"]):
+        raise ValueError(f"Incomplete case: {case.name}")
+    previous = -1.0
+    for record in history:
+        assert scalar(record, "step") > previous
+        previous = scalar(record, "step")
+        assert all(math.isfinite(value) for value in record.values()
+                   if isinstance(value, (int, float)))
+        assert scalar(record, "alive_count") + scalar(record, "lost_count") == scalar(record, "injected_count")
+        with np.load(case / str(record["snapshot"]), allow_pickle=False) as values:
+            assert float(values["time_s"]) == scalar(record, "time_s")
+            assert int(values["step"]) == scalar(record, "step")
+            assert len(values["ids"]) == scalar(record, "alive_count")
+            assert len(np.unique(values["ids"])) == len(values["ids"])
+            assert np.isfinite(values["position_m"]).all()
+            assert np.isfinite(values["velocity_m_s"]).all()
+            assert np.isfinite(values["potential_V"]).all()
+            assert float(values["potential_V"].min()) == scalar(record, "minimum_potential_V")
+            np.testing.assert_allclose(
+                -E_CHARGE * values["electron_count"].sum(),
+                scalar(record, "alive_charge_C"), rtol=1e-12, atol=1e-25,
+            )
+            np.testing.assert_allclose(
+                values["charge_C"].sum(), scalar(record, "alive_charge_C"),
+                rtol=1e-12, atol=1e-25,
+            )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--study", choices=("startup", "refinement"), default="startup")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
     histories = {
@@ -156,11 +193,19 @@ def main() -> None:
     }
     if not histories:
         raise ValueError("No transient PIC histories found")
+    for name, history in histories.items():
+        check_completed(args.run / name, history)
+    names = (
+        ("pic_1A", "pic_1A_dt", "pic_1A_mesh", "pic_1A_particles")
+        if args.study == "refinement" else ("pic_1A", "pic_1A_dt")
+    )
+    if args.study == "refinement" and set(histories) != set(names):
+        raise ValueError("Refinement needs all four expected cases")
     summaries = {name: summarize(name, history) for name, history in histories.items()}
     report = {
         "cases": list(summaries.values()),
         "final_fields": {
-            name: field_summary(args.run / name) for name in ("pic_1A", "pic_1A_dt")
+            name: field_summary(args.run / name) for name in names
         },
         "preliminary_1A_timestep_relative_changes": {
             key: relative_change(summaries["pic_1A"], summaries["pic_1A_dt"], key)
@@ -173,13 +218,27 @@ def main() -> None:
         "limitations": [
             "Observed dwell is right-censored by the 30 ns startup window.",
             "Timestep comparisons require identical packet cadence and source sampling.",
-            "The 50 micrometre source is unresolved on the 33-cubed mesh.",
+            "The 50 micrometre source is unresolved on both the 33-cubed and 65-cubed meshes.",
             "A grounded-box startup is not a converged virtual-cathode or device prediction.",
+            "Particle-count refinement changes Monte Carlo samples; one realization is not convergence.",
         ],
     }
+    if args.study == "refinement":
+        report["refinement_relative_changes_normalized_to_refined_value"] = {
+            name: {
+                key: relative_change(summaries["pic_1A"], summaries[name], key)
+                for key in (
+                    "minimum_potential_V", "field_energy_J", "observed_dwell_s",
+                    "observed_core_dwell_s", "core_entry_events_per_injected_particle",
+                    "repeated_entry_particle_fraction", "core_electron_count",
+                )
+            }
+            for name in names[1:]
+        }
+        del report["preliminary_1A_timestep_relative_changes"]
     (args.out / "analysis.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     plot_histories(histories, args.out / "evolution.png")
-    plot_fields(args.run, args.out / "fields.png")
+    plot_fields(args.run, args.out / "fields.png", names)
 
 
 if __name__ == "__main__":
