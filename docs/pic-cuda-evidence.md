@@ -1,10 +1,118 @@
-# CUDA gather and deposition each miss the long-run tolerance
+# CUDA PIC backend: physics-level acceptance and throughput
 
-CUDA remains unvalidated under the existing long-run acceptance checks.
-The ordinary FP64 reference also fails against an identical repeat, while the
-opt-in deterministic reference repeats exactly on the tested toolchain.
-Against that stable control, replacing only gather or only deposition with
-CUDA is sufficient to fail the final charged-state comparison.
+The CUDA backend passes physics-level acceptance against the FP64 reference
+on four seeds and runs the 1 A external-gun step 1.40× faster at ~60k live
+particles. At that load the GPU is mostly idle: per-step time is dominated by
+Python/PyTorch launch overhead, not by the kernels. The history below keeps the
+earlier strict long-run failures, which motivated the change of acceptance
+policy.
+
+Four distinct claims, only the first two of which are established:
+
+| Claim | Status |
+|---|---|
+| Physics-level agreement (paired seeds, 1 A, 30 ns) | Passed at `3026943` |
+| Operator controls with explicit numerical tolerances | Passed at `b161e8a` |
+| Bitwise or strict long-run trajectory parity | Not required; fails for reference repeats too |
+| Physical convergence of the modeled device | Not established by any of this |
+
+## Current backend
+
+Commit `3026943` moves the remaining per-step PyTorch stages onto CUDA
+operators, following `space-charge-checks/pic-host-poisson-magnetic-design.md`:
+
+- Poisson: the grounded-box DST-I solve is applied as three dense sine-transform
+  matrix products (`einsum`) on the GPU. Against the reference solver the
+  maximum absolute potential difference is 1.6e−17 (17×19×21), 4.4e−17 (33³)
+  and 2.1e−16 (65³) on unit-scale inputs, ~1e−9 relative at 65³.
+- Magnetic lookup: a custom axisymmetric bilinear table kernel replaces the
+  Torch interpolation; indexing and clamping semantics are unchanged.
+- Loss compaction: survivors and lost particles are split with one stable
+  `argsort` instead of repeated boolean masks.
+
+Integrator arithmetic, injection, deposition, gather, Boris and drift are
+unchanged; CUDA compilation keeps `--fmad=false`.
+
+## Physics-level acceptance
+
+`accept_pic_cuda.py` compares reference and CUDA runs seed by seed. Each paired
+difference must be within 0.1 of the reference seed-to-seed spread, with
+numerical floors for accounting quantities. Metrics: minimum potential, field
+energy, observed dwell and core dwell, core electron count, loss fraction, core
+entries per injected particle, repeated-entry fraction, charge balance,
+deposition error and exit counts per face.
+
+| Campaign | Broker job | Source | Result | Median step speedup |
+|---|---|---|---|---:|
+| 1 A, 5 keV, 30 kA-turn, 33³, 4 ps, 30 ns, seeds 1234/2345/3456/4567 | `jonathan-pic-f420db2dd32f` | `3026943fc1221e97ecd7f9cdda3b7fa1c837bdab` | Passed, 0 failures | 1.78× |
+
+The largest paired difference as a fraction of its bound was 2e−12 for minimum
+potential, 6e−12 for field energy and 1e−12 for core dwell; dwell, entries,
+loss fractions and every exit count were identical. Deposition error reached
+0.13 of its accounting floor. The analysis is in
+`docs/data/pic-acceptance-3026943.json`; run artifacts are under:
+
+```text
+/public/devcontainer-shared/jonathan/cusp/runs/pic-f420db2dd32f/
+  attempt-20260912-234000-049357622/
+```
+
+The median campaign speedup includes injection, diagnostics and snapshot output,
+so it differs from the stage profile below.
+
+## Operator controls
+
+`validate_pic_cuda.py --controls-only` (job
+`jonathan-pic-cuda-4ce40f90f435-81e538`, source `b161e8a5be9b3b91a1b2776edc289b51f276b103`)
+passed deposit, gather, Boris, drift, Poisson, magnetic lookup, empty-tensor and
+closed wall/magnetic/charged controls. The earlier exact-equality gate on the
+magnetic lookup failed (4,710 of 12,297 components unequal, max 2.4e−13), so the
+lookup now uses the same `rtol=1e-12` style as the other operators:
+
+| Magnetic table | Absolute tolerance | Unequal components | Maximum absolute difference |
+|---|---:|---:|---:|
+| Random unit-normal table (worst-case gradients) | 1e−12 | 38.3% | 2.37e−13 |
+| Smooth analytic table | 1e−14 | 29.7% | 1.11e−15 |
+
+The difference scales with table gradient, consistent with last-bit
+differences in the cell coordinate between the Torch and CUDA arithmetic rather
+than an indexing error.
+
+## Throughput
+
+Stage profile (job `jonathan-pic-cuda-beaa55cc6269`, source `3026943`): 7,000
+warm steps then 500 timed steps of the 1 A case, 55,806–59,532 live particles.
+
+| | Reference | CUDA |
+|---|---:|---:|
+| Plain step (no stage synchronization) | 6.17 ms | 4.34 ms |
+| Instrumented step | 6.38 ms | 4.55 ms |
+| Host/launch fraction of instrumented step | 47% | 78% |
+
+| Stage | CUDA / reference time |
+|---|---:|
+| Deposit | 0.62 |
+| Poisson | 0.66 |
+| Gather | 0.30 |
+| Magnetic | 0.052 |
+| Boris | 0.22 |
+| Drift | 0.099 |
+
+Over 20 profiled CUDA steps, PyTorch operators consumed 46 ms of CPU launch time
+against ~10 ms of GPU kernel time. The remaining launches are validity checks
+(`isfinite`, `abs`, `all`, `any`), injection `cat`/`stack`, host copies and the
+Poisson `einsum`. At this particle count further kernel work cannot move the
+step time much; the backend earns its keep at larger live-particle counts.
+
+SCALING_PLACEHOLDER
+
+## History: strict long-run parity
+
+The sections below predate the physics-level policy. CUDA failed the strict
+long-run checks; so did the ordinary FP64 reference against an identical repeat,
+while the opt-in deterministic reference repeats exactly on the tested
+toolchain. Against that stable control, replacing only gather or only deposition
+with CUDA is sufficient to fail the final charged-state comparison.
 
 ## Experiments and provenance
 

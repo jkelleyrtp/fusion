@@ -136,6 +136,19 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
     synchronize(device)
     plain_seconds_per_step = (time.perf_counter() - start) / args.timed_steps
 
+    split = {"inject": 0.0, "advance": 0.0}
+    first += args.timed_steps
+    for step in range(first, first + args.timed_steps):
+        start = time.perf_counter()
+        inject_packet(simulation, args, step)
+        synchronize(device)
+        middle = time.perf_counter()
+        simulation.advance(h)
+        synchronize(device)
+        split["inject"] += middle - start
+        split["advance"] += time.perf_counter() - middle
+        simulation.time = (step + 1) * args.dt
+
     p = simulation.particles
     charge = inner_kernels.deposit(p.position, -E_CHARGE * p.weight)
     potential = inner_kernels.potential(charge)
@@ -180,6 +193,7 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
         "live_particles_end": live_end,
         "seconds_per_step": totals["step_total"] / args.timed_steps,
         "plain_seconds_per_step": plain_seconds_per_step,
+        "split_seconds_per_step": {name: value / args.timed_steps for name, value in split.items()},
         "stage_totals_s": {stage: totals[stage] for stage in STAGES},
         "stage_fraction_of_step": {
             stage: totals[stage] / totals["step_total"] for stage in STAGES
@@ -197,7 +211,7 @@ def main() -> None:
     arguments.add_argument("--warm-steps", type=int, default=7000)
     arguments.add_argument("--timed-steps", type=int, default=500)
     arguments.set_defaults(
-        kernels="both", nodes=33, current_a=1, dt=4e-12, duration=3.2e-8,
+        kernels="both", nodes=33, current_a=1, dt=4e-12, duration=4e-8,
         inject_per_step=8, inject_every=1, coil_current=30000, radius=0.5,
         energy_ev=5000, temperature_ev=0.2, source_sigma=5e-5,
         divergence_deg=10, aim_deg=30, seed=1234, max_live_particles=150000,
