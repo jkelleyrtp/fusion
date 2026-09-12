@@ -172,7 +172,7 @@ def main() -> None:
         },
         "limitations": [
             "Observed dwell is right-censored by the 30 ns startup window.",
-            "The half-step case changes packet cadence and source sampling.",
+            "Timestep comparisons require identical packet cadence and source sampling.",
             "The 50 micrometre source is unresolved on the 33-cubed mesh.",
             "A grounded-box startup is not a converged virtual-cathode or device prediction.",
         ],

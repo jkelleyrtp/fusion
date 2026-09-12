@@ -1,9 +1,9 @@
 # 30 ns transient PIC startup evidence
 
 The first bounded transient campaign advanced continuously injected 5 keV
-electrons for 30 ns on a 33³ grounded-box mesh. Six 30 kA-turn imposed coils
-produce a magnetic null at the box center. The source is a 50 µm Gaussian
-post-extraction inlet with 10° divergence and a 30° aim.
+electrons for 30 ns on a 33³ grounded-box mesh. Two oppositely driven
+30 kA-turn circular coils produce a magnetic null at the box center. The
+source is a 50 µm Gaussian post-extraction inlet with 10° divergence and a 30° aim.
 
 This campaign tests startup accounting and basic timestep sensitivity. It does
 not establish a converged virtual cathode or predict a Polywell device.
@@ -27,8 +27,8 @@ therefore an inlet charge concentration rather than a central virtual cathode.
 
 The 1 A case reduced core-entry events from 0.459 to 0.305 per injected
 particle and reduced observed core dwell by 39% relative to vacuum. It increased
-the repeated-entry fraction by 31%. The space charge reflects a subset of
-electrons repeatedly, but it also makes the core less accessible.
+the repeated-entry fraction by 31%. With space charge, more particles
+re-entered the core, but accumulated core residence fell.
 
 All 468 losses in the 4 ps case exited through the opposite \(z\) face. Losses
 began after 25 ns. The short window does not measure the final residence-time
@@ -40,7 +40,7 @@ distribution or a steady injection-loss balance.
 
 ## Numerical evidence
 
-The 2 ps result changed the following final values relative to the 4 ps result:
+The 2 ps result changed the following final values normalized to the 2 ps result:
 
 - minimum potential: 0.475%
 - field energy: 0.135%
@@ -64,8 +64,10 @@ injected kinetic energy. The 2 ps residual was −1.91 parts per million.
 The 50 µm source is far smaller than the 18.75 mm transverse and 40.625 mm
 axial mesh spacing. The mesh can represent total deposited charge and a
 subcell particle position, but it cannot resolve the source sheath or gun
-electrodes. The next physical interpretation should use the center and
-core-potential profile rather than the global minimum near the inlet.
+electrodes. This is an axisymmetric two-coil cusp; a six-coil Polywell
+geometry is not yet implemented. The next physical interpretation should use
+the center and core-potential profile rather than the global minimum near the
+inlet.
 
 The next bounded controls are:
 

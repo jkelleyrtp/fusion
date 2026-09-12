@@ -42,11 +42,23 @@ export const PIC_PROFILE = {
   gpus: 4,
 } as const;
 
+export const PIC_CUDA_PROFILE = {
+  id: "pic-cuda-validation",
+  title: "Transient PIC CUDA validation",
+  purpose: "Compare FP64 CUDA particle operators with the shared Torch reference, including identical external-gun packets, charge/energy accounting and timings.",
+  description: "One B200 GPU · FP64 · bounded numerical validation · no physical convergence claim",
+  cluster: "aws-usw2",
+  priority: 1,
+  nodes: 1,
+  gpus: 1,
+} as const;
+
 export const PROFILES = {
   [POISSON_PROFILE.id]: POISSON_PROFILE,
   [HIGH_VOLTAGE_PROFILE.id]: HIGH_VOLTAGE_PROFILE,
   [FILAMENT_PROFILE.id]: FILAMENT_PROFILE,
   [PIC_PROFILE.id]: PIC_PROFILE,
+  [PIC_CUDA_PROFILE.id]: PIC_CUDA_PROFILE,
 } as const;
 
 export function poissonEntrypoint(id: string, revision: string): string {

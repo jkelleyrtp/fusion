@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { PIC_PROFILE } from "./profile.ts";
+import { PIC_CUDA_PROFILE, PIC_PROFILE } from "./profile.ts";
 import { JobService } from "./service.ts";
 
 type Result = { stdout: Buffer; stderr: Buffer; code: number };
@@ -77,6 +77,47 @@ test("transient PIC profile registration and step progress parse", async () => {
     assert.equal(parsed?.cases[0].settings.dt, "1e-12");
     assert.equal(parsed?.cases[1].physicalTimeS, 4e-12);
     assert.equal(parsed?.cases[1].settings.dt, "5e-13");
+  } finally {
+    await service.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("PIC CUDA validation profile registers with no case rows", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fusion-pic-progress-"));
+  const service = new JobService({
+    root: repoRoot,
+    stateDir: root,
+    command: runner({
+      attempt: "attempt-cuda",
+      sourceRevision: "0123456789abcdef0123456789abcdef01234567",
+      purpose: "CUDA validation",
+      done: true,
+      statusText: "Operator comparison complete",
+      progressUnit: "steps",
+      cases: [],
+    }),
+    poll: false,
+  });
+  try {
+    await service.initialize();
+    const job = await service.register(
+      "broker-pic-cuda",
+      "pic-cuda-run",
+      null,
+      "Transient PIC CUDA validation",
+      "pic-cuda-validation",
+    );
+    assert.equal(job.profile, "pic-cuda-validation");
+    assert.equal(job.gpus, 1);
+    assert.equal(job.purpose, PIC_CUDA_PROFILE.purpose);
+
+    await service.pollAll();
+    const parsed = (await service.jobs()).jobs[0].progress;
+    assert.equal(parsed?.progressUnit, "steps");
+    assert.deepEqual(parsed?.cases, []);
+    assert.equal(parsed?.done, true);
+    assert.equal(parsed?.statusText, "Operator comparison complete");
   } finally {
     await service.close();
     await rm(root, { recursive: true, force: true });

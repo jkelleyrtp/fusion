@@ -21,7 +21,7 @@ export interface RunProgress {
 
 export interface SimulationJob {
   id: string;
-  profile: "poisson-reference" | "poisson-high-voltage" | "poisson-filament" | "transient-pic";
+  profile: "poisson-reference" | "poisson-high-voltage" | "poisson-filament" | "transient-pic" | "pic-cuda-validation";
   title: string;
   purpose: string;
   createdAt: string;
@@ -33,7 +33,7 @@ export interface SimulationJob {
   cluster: "aws-usw2";
   priority: 1;
   nodes: 1;
-  gpus: 4 | 8;
+  gpus: 1 | 4 | 8;
   runDirectory: string;
   campaignId: string | null;
   progress: RunProgress | null;

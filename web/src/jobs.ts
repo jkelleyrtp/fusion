@@ -64,6 +64,7 @@ function caseRow(item: CaseProgress, progressUnit: "iterations" | "steps"): stri
 }
 function jobArticle(job: SimulationJob, open: boolean): string {
   const progress = job.progress;
+  const caseless = job.profile === "pic-cuda-validation";
   const progressUnit = progress?.progressUnit ?? (job.profile === "transient-pic" ? "steps" : "iterations");
   const errors = [job.launchError, job.brokerError && `Scheduler: ${job.brokerError}`,
     job.progressError && `Results: ${job.progressError}`].filter((error): error is string => Boolean(error));
@@ -71,19 +72,22 @@ function jobArticle(job: SimulationJob, open: boolean): string {
   const source = job.sourceRevision ?? progress?.sourceRevision;
   const values = (key: string, scale = 1): string => [...new Set(progress?.cases.map(item =>
     (Number(item.settings[key]) * scale).toLocaleString()))].join(" / ");
-  const setup = progress?.cases.length ? `${values("energy-ev")} eV · ${values("radius", 100)} cm coils · ${values("coil-current")} A-turn · ${values("aim-deg")}° aim` : "Settings will appear when the runner publishes its manifest.";
+  const setup = progress?.cases.length ? `${values("energy-ev")} eV · ${values("radius", 100)} cm coils · ${values("coil-current")} A-turn · ${values("aim-deg")}° aim` : caseless ? progress?.statusText || job.brokerMessage : "Settings will appear when the runner publishes its manifest.";
   const stale = !job.brokerCheckedAt || Date.now() - Date.parse(job.brokerCheckedAt) > 120_000;
   return `<article class="job-record" id="job-${escape(job.id)}">
     <div class="job-heading"><div><h2>${escape(job.title)}</h2><p>${escape(setup)}</p></div>
       <span class="job-result">${escape(resultLabel(job))}</span></div>
     <p class="job-purpose">${escape(job.purpose)}</p>
-    <div class="job-facts"><span><b>${completed(job)}${pending ? `/${pending}` : ""}</b> cases completed</span>
+    <div class="job-facts">${caseless ? "" : `<span><b>${completed(job)}${pending ? `/${pending}` : ""}</b> cases completed</span>`}
       <span>${job.nodes} node · ${job.gpus} GPUs · priority ${job.priority}</span>
       <span>Scheduler: <b>${escape(job.phase)}</b>${stale ? " · last known" : ""}</span>
       ${job.restartCount || job.preemptedCount ? `<span>${job.restartCount} restarts · ${job.preemptedCount} preemptions</span>` : ""}
       ${job.campaignId ? `<a href="#campaign/${encodeURIComponent(job.campaignId)}">Open saved report →</a>` : ""}</div>
     ${errors.length ? `<p class="job-warning" role="status">${errors.map(escape).join("<br>")}<br>Previously saved state is retained; no automatic resubmission.</p>` : ""}
-    ${progress ? `<div class="table-scroll"><table class="job-cases"><thead><tr><th>Variant</th><th>What it tests</th><th>${progressUnit === "steps" ? "Steps" : "Iterations"}</th><th>Result</th><th>Last snapshot</th></tr></thead>
+    ${progress
+      ? caseless && !progress.cases.length
+        ? `<p class="job-empty">${escape(progress.statusText ?? job.brokerMessage)}</p>`
+        : `<div class="table-scroll"><table class="job-cases"><thead><tr><th>Variant</th><th>What it tests</th><th>${progressUnit === "steps" ? "Steps" : "Iterations"}</th><th>Result</th><th>Last snapshot</th></tr></thead>
       <tbody>${progress.cases.map(item => caseRow(item, progressUnit)).join("")}</tbody></table></div>
       <p class="job-footnote">${progressUnit === "steps" ? "Steps advance physical time. A completed startup run does not establish physical convergence." : "Iterations are stationary field updates, not elapsed physical time. Completing them does not establish convergence."}</p>`
       : `<p class="job-empty">Waiting for a published progress snapshot. Scheduler status is tracked separately.</p>`}
@@ -190,7 +194,7 @@ export class JobMonitor {
   private renderBanners(): void {
     const latest = this.jobs[0];
     const banner = (job: SimulationJob): string => `<a class="job-banner" href="#jobs">
-      <span><b>${escape(resultLabel(job))}</b> · ${escape(job.title)} · ${completed(job)}/${job.progress?.cases.length ?? "?"} cases</span>
+      <span><b>${escape(resultLabel(job))}</b> · ${escape(job.title)} · ${job.profile === "pic-cuda-validation" ? escape(job.phase || "Registered") : `${completed(job)}/${job.progress?.cases.length ?? "?"} cases`}</span>
       <span>${this.paused ? "Updates paused" : this.error ? "Connection lost · cached state" : `Scheduler ${escape(age(job.brokerCheckedAt))}`} · Job details →</span></a>`;
     this.home.innerHTML = latest ? banner(latest) :
       `<a class="job-banner muted" href="#jobs">${this.error ? "Live job service unavailable" : "Live jobs"} · View status →</a>`;
