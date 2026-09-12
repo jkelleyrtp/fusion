@@ -1,9 +1,10 @@
-# Charged PIC comparisons encounter reference variability
+# CUDA gather and deposition each miss the long-run tolerance
 
 CUDA remains unvalidated under the existing long-run acceptance checks.
-The FP64 reference also fails those checks against an identical repeat.
-This establishes a limitation of the current comparison; it does not prove
-that every CUDA operator is correct.
+The ordinary FP64 reference also fails against an identical repeat, while the
+opt-in deterministic reference repeats exactly on the tested toolchain.
+Against that stable control, replacing only gather or only deposition with
+CUDA is sufficient to fail the final charged-state comparison.
 
 ## Experiments and provenance
 
@@ -14,6 +15,9 @@ automatic shutdown and a 600-second cleanup TTL.
 |---|---|---|---|
 | Boris arithmetic preflight and strict CUDA validation | `jonathan-pic-cuda-3c4a2c3b893f-9f9afe` | `5639b4522465b95e2d931ac38aeed90b41afc5ac` | Preflight, controls and vacuum pass; charged final state fails |
 | Identical reference repeat and fixed-input operators | `jonathan-pic-cuda-f1a8b7bea7fa-7e155f` | `1b9945a51b301efce3ef120af4010b07f65fff79` | Diagnostic completes; repeated charged reference fails |
+| Deterministic reference repeat | `jonathan-pic-cuda-220efab29142-434c14` | `35e8d089ef7fe1c4c0f183d4926456aebe4290cd` | All five checkpoints repeat exactly |
+| CUDA gather only, deterministic reference | `jonathan-pic-cuda-066afd030603-d6688c` | `6d4f952c10897fed68b549c336d509aa3ec9a408` | Final position and velocity comparisons fail |
+| CUDA deposition only, deterministic reference | `jonathan-pic-cuda-b767eb18ac19-0413b9` | `6d4f952c10897fed68b549c336d509aa3ec9a408` | Final position and velocity comparisons fail |
 
 The first job's automatic retry was stopped. Its comparisons passed local
 operators, closed controls, and the vacuum external-gun checkpoints at steps
@@ -146,3 +150,56 @@ and save paired states even on failure; exact-state checks are additional
 measurements. The deposit variant retains CUDA atomics and may vary between
 repeats. These experiments isolate an operator's effect in this configuration;
 their errors need not add linearly, and neither clears full-backend acceptance.
+
+Both isolation jobs completed serially on B200 with Torch `2.11.0+cu129`
+and CUDA `12.9`. The original comparisons passed at steps 1, 64, 512 and 2,048,
+then failed at 8,192. Gather-only states were also exactly equal at steps 1
+and 64; later exact checks differed. Deposit-only exact checks already differed
+in nodal charge at step 1. Broker `SUCCEEDED` and `DIAGNOSTIC_COMPLETE` mean the
+measurement completed, not that CUDA passed.
+
+Independent inspection applied the unchanged componentwise tolerances to all
+15 saved state quantities, including those after the first failing assertion:
+
+| Final quantity | Gather-only failing components | Gather-only maximum absolute error | Deposit-only failing components | Deposit-only maximum absolute error |
+|---|---:|---:|---:|---:|
+| Position, 193,413 components | 1 | 4.5680e−13 m | 2 | 5.9775e−13 m |
+| Velocity, 193,413 components | 8 | 5.3801e−4 m/s | 16 | 5.2238e−4 m/s |
+| Nodal charge, 35,937 components | 0 | 1.0351e−23 C | 0 | 1.6052e−23 C |
+| Potential, 35,937 components | 0 | 7.1623e−12 V | 0 | 1.1028e−11 V |
+
+The maxima cover all components, not only failing components. Each variant
+retained exactly the same live IDs, weights, birth times, total dwell, entry
+counts and loss faces. Core dwell, tracked positions and tracked exit times
+passed their original tolerances. All 15 saved reference quantities in both
+jobs matched the earlier deterministic control exactly, including corresponding
+tracking NaNs.
+
+The gather-only run never uses CUDA deposition during evolution. Its failure
+therefore shows that custom atomic deposition variability is not required to
+produce a long-run mismatch. The deposit-only run establishes a separate
+deposition contribution; because that operator remains nonrepeatable, one pair
+does not characterize its error distribution. Neither result determines what
+fraction of the full-backend discrepancy comes from each operator.
+
+On the shared final reference inputs, the eight reference deposit repeats were
+exact in both jobs. CUDA deposit repeats differed at 591–620 nodes in the gather
+job and 554–597 in the deposit job, with maximum errors of 6.6174e−24 C and
+9.0990e−24 C respectively. Both jobs reproduced the same shared-input gather
+difference: 159,049 components, at most 5.4570e−11 V/m. Poisson and Boris remained
+exact on shared inputs.
+
+The paired archives, configurations, completion markers and reports are under:
+
+```text
+/public/devcontainer-shared/jonathan/cusp/runs/pic-cuda-066afd030603/
+  attempt-20260912-200459-618701729/validation/
+/public/devcontainer-shared/jonathan/cusp/runs/pic-cuda-b767eb18ac19/
+  attempt-20260912-200930-058796454/validation/
+```
+
+The next numerical work is to isolate gather term formation from its reduction
+order on these frozen inputs, and characterize deposition independently before
+changing either implementation. Production defaults and every acceptance
+tolerance remain unchanged. These diagnostics establish neither physical
+convergence nor a production speedup.
