@@ -33,20 +33,18 @@ $("app").innerHTML = `
   <header class="topbar">
     <a class="brand" href="./" aria-label="Fusion control room">
       <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="11" rx="12" ry="5"/><ellipse cx="16" cy="21" rx="12" ry="5"/><path d="M16 3v26M4 11l24 10M28 11L4 21"/></svg>
-      FUSION <span>RESEARCH CONSOLE</span>
+      Fusion
     </a>
-    <div class="top-context">BICONIC CUSP <b>/</b> ELECTRON ORBIT LAB</div>
-    <div class="archive-status"><i></i> ARCHIVED EXPERIMENTS</div>
+    <div class="top-context">Fixed fields · no Poisson feedback</div>
   </header>
   <div class="workspace">
     <aside class="sidebar">
-      <div class="sidebar-heading"><span>EXPERIMENT LIBRARY</span><b id="run-count">—</b></div>
+      <div class="sidebar-heading"><span>Runs · newest campaigns first</span><b id="run-count">—</b></div>
       <label class="search"><span>⌕</span><input id="search" placeholder="Find a run…" aria-label="Find a run"/></label>
-      <label class="field-label" for="study">CAMPAIGN</label><select id="study"><option value="">All campaigns</option></select>
-      <div class="filter-row"><div><label class="field-label" for="energy">ENERGY</label><select id="energy"><option value="">All energies</option></select></div>
-      <div><label class="field-label" for="radius">RADIUS</label><select id="radius"><option value="">All sizes</option></select></div></div>
+      <select id="study" aria-label="Campaign"><option value="">All campaigns</option></select>
+      <div class="filter-row"><select id="energy" aria-label="Energy"><option value="">All energies</option></select>
+      <select id="radius" aria-label="Radius"><option value="">All sizes</option></select></div>
       <div class="run-list" id="run-list" aria-label="Simulation runs"></div>
-      <div class="library-footer">READ-ONLY WORKSPACE<br><span>Browse results · no GPU jobs launched</span></div>
     </aside>
     <main>
       <section class="run-heading"><div><div class="eyebrow" id="campaign-name">LOADING EXPERIMENTS</div>
@@ -54,20 +52,20 @@ $("app").innerHTML = `
         <button id="pin" class="secondary">+ Compare run</button></section>
       <div id="error" class="error" role="alert" hidden></div>
       <section class="metrics" aria-label="Run metrics">
-        <article class="metric primary"><div>MEAN DWELL <span id="dwell-badge"></span></div><strong id="dwell">—</strong><small id="dwell-note">All simulated particles</small></article>
-        <article class="metric"><div>OBSERVATION WINDOW</div><strong id="window">—</strong><small id="survivors">—</small></article>
-        <article class="metric"><div>COIL RADIUS</div><strong id="coil">—</strong><small id="coil-note">Opposed circular coils</small></article>
-        <article class="metric"><div>PRESCRIBED φ(0)</div><strong id="potential">—</strong><small>Fixed proxy · not self-consistent</small></article>
+        <article class="metric primary"><div>Mean dwell <span id="dwell-badge"></span></div><strong id="dwell">—</strong><small id="dwell-note">All simulated particles</small></article>
+        <article class="metric"><div>Observation window</div><strong id="window">—</strong><small id="survivors">—</small></article>
+        <article class="metric"><div>Coil radius</div><strong id="coil">—</strong><small id="coil-note">Opposed circular coils</small></article>
+        <article class="metric"><div>Prescribed φ(0)</div><strong id="potential">—</strong><small>Fixed charge proxy</small></article>
       </section>
       <div class="console-grid">
         <div class="primary-column">
           <section class="panel chamber-panel">
-            <div class="panel-heading"><h2><span class="panel-dot"></span>Trajectory chamber</h2>
+            <div class="panel-heading"><h2>Trajectories</h2>
               <div class="view-buttons"><button data-view="iso" class="active" title="Isometric view">ISO</button><button data-view="side">SIDE</button><button data-view="top">AXIAL</button></div></div>
             <div id="viewport">
               <div class="view-info"><span id="view-mode">PRESCRIBED-FIELD MODEL</span><small id="view-scale">Coordinates scaled by coil radius</small></div>
               <div id="render-status" class="render-status">Connecting renderer…</div>
-              <div class="view-hint">DRAG TO ORBIT <b>·</b> SCROLL TO ZOOM</div>
+              <div class="view-hint">Drag to orbit · scroll to zoom</div>
               <div id="viewport-empty" class="viewport-empty">Loading run summary…</div>
             </div>
             <div class="legend" id="legend">${channelNames.map((name, i) =>
@@ -77,9 +75,9 @@ $("app").innerHTML = `
               <input id="scrub" type="range" min="0" max="1000" value="1000" aria-label="Trajectory playback time"/>
               <span id="time-end">—</span><select id="speed" aria-label="Playback duration"><option value="12">Slow</option><option value="6" selected>1×</option><option value="3">2×</option></select></div>
             <div class="stream-controls">
-              <label>DETAIL<select id="detail"><option value="0">Preview · stride 24</option><option value="1">Standard · stride 6</option><option value="2">Full stored samples</option></select></label>
-              <label>START PARTICLE<select id="first"><option>0</option></select></label>
-              <label>PATHS<select id="amount"><option value="16" selected>16</option><option value="32">32</option><option value="64">64</option><option value="128">128</option></select></label>
+              <label>Detail<select id="detail"><option value="0">Preview · stride 24</option><option value="1">Standard · stride 6</option><option value="2">Full stored samples</option></select></label>
+              <label>Start<select id="first"><option>0</option></select></label>
+              <label>Paths<select id="amount"><option value="16" selected>16</option><option value="32">32</option><option value="64">64</option><option value="128">128</option></select></label>
               <button id="load" class="accent">Load selection</button>
             </div>
             <div class="sample-note"><span id="loaded">No trajectories loaded</span><span id="sample-note">Stored paths are a subset of the ensemble.</span></div>
@@ -88,34 +86,31 @@ $("app").innerHTML = `
             <section class="panel survival-panel"><div class="panel-heading"><h2>Residence / survival</h2>
               <label class="inline-toggle"><input id="log-time" type="checkbox" checked/>Log-like time</label></div>
               <div id="survival-chart"></div><div id="chart-hover" class="chart-note">Fraction not yet lost by time t</div>
-              <div class="loss-strip" id="loss-strip"></div><div class="plot-note">Dwell is calculated from every escape time, including censored survivors.</div></section>
+              <div class="loss-strip" id="loss-strip"></div></section>
             <section class="panel occupancy-panel"><div class="panel-heading"><h2>Occupancy samples</h2><span class="tiny-label">r–z</span></div>
               <div class="heatmap-wrap"><canvas id="heatmap" width="220" height="175" aria-label="Axisymmetric occupancy sample histogram"></canvas><div id="heatmap-empty" hidden>Not recorded</div></div>
-              <div id="core-share" class="chart-note">—</div><div class="plot-note">Log count · sampling-dependent<br>Not volume-normalized density</div></section>
+              <div id="core-share" class="chart-note">—</div><div class="plot-note">Sample counts, not charge density</div></section>
           </div>
           <section class="panel compare-panel" id="compare-panel" hidden><div class="panel-heading"><h2>Pinned comparisons</h2><button id="clear-comparisons" class="text-button">Clear</button></div><div id="comparison-table"></div></section>
         </div>
         <aside class="instrument-column">
-          <section class="panel injection-panel"><div class="panel-heading"><h2>Continuous injection</h2><span class="tag">ESTIMATE</span></div>
-            <p>Total launch-to-loss inventory from dwell time, assuming the fields stay fixed.</p>
-            <label class="current-input" for="current">BEAM CURRENT <span><input id="current" type="number" min="0" step="0.1" value="1"/> mA</span></label>
-            <div class="inventory"><span>ELECTRON INVENTORY</span><strong id="inventory">—</strong><small id="charge">—</small></div>
-            <div class="formula">N ≈ (I / e) ⟨τ⟩</div>
-            <p class="caution">Includes time outside the core. No charge deposition or Poisson feedback: not a predicted virtual-cathode depth.</p>
+          <section class="panel injection-panel"><div class="panel-heading"><h2>Electron inventory</h2><span class="tag">estimate</span></div>
+            <label class="current-input" for="current">Beam current <span><input id="current" type="number" min="0" step="0.1" value="1"/> mA</span></label>
+            <div class="inventory"><strong id="inventory">—</strong><small id="charge">—</small></div>
+            <p class="caution">I⟨τ⟩/e · includes time outside the core.<br>Not a virtual-cathode prediction.</p>
           </section>
-          <section class="panel"><div class="panel-heading"><h2>Source & geometry</h2></div><dl id="geometry" class="readouts"></dl></section>
-          <section class="panel"><div class="panel-heading"><h2>Numerical quality</h2><span class="tag">FP64</span></div><dl id="quality" class="readouts"></dl>
-            <p class="quality-note" id="quality-note"></p></section>
-          <section class="panel bandwidth-panel"><div class="panel-heading"><h2>Data connection</h2><span id="cache-hits" class="tag">0 CACHE HITS</span></div>
-            <div class="download-total"><strong id="downloaded">0 KB</strong><span>received this session</span></div><div class="budget-track"><i id="budget-fill"></i></div>
-            <label class="budget-label">DATA LIMIT<select id="budget"><option value="1">1 MB</option><option value="5" selected>5 MB</option><option value="20">20 MB</option><option value="100">100 MB</option></select></label>
+          <section class="panel bandwidth-panel"><div class="panel-heading"><h2>Data</h2><span id="cache-hits" class="tag">0 cached</span></div>
+            <div class="download-total"><strong id="downloaded">0 KB</strong><span>this session</span></div><div class="budget-track"><i id="budget-fill"></i></div>
+            <label class="budget-label">Limit<select id="budget"><option value="1">1 MiB</option><option value="5" selected>5 MiB</option><option value="20">20 MiB</option><option value="100">100 MiB</option></select></label>
             <label class="offline-label"><input id="offline" type="checkbox"/>Offline · cached data only</label>
-            <div class="connection-actions"><button id="reload" class="text-button">Refresh catalog</button><button id="clear-cache" class="text-button">Clear cache</button></div>
-            <p id="cache-note">Compressed chunks · lazy paging<br>App shell excluded from the data limit.</p>
+            <div class="connection-actions"><button id="reload" class="text-button">Refresh</button><button id="clear-cache" class="text-button">Clear cache</button></div>
+            <p id="cache-note">Result data only; excludes app shell.</p>
           </section>
+          <details class="panel"><summary>Source & geometry</summary><dl id="geometry" class="readouts"></dl></details>
+          <details class="panel"><summary>Numerical quality <span class="tag">FP64</span></summary><dl id="quality" class="readouts"></dl>
+            <p class="quality-note" id="quality-note"></p></details>
         </aside>
       </div>
-      <footer>FUSION / ORBIT LAB <span>Collisionless test particles · fixed magnetic field · prescribed electrostatics</span></footer>
     </main>
   </div>`;
 
@@ -129,6 +124,19 @@ function label(run: Run): string { return `${fmt(run.energyEV)} eV · ${fmt(run.
 function readouts(id: string, rows: [string, string][]): void {
   $(id).innerHTML = rows.map(([name, value]) => `<div><dt>${escape(name)}</dt><dd>${escape(value)}</dd></div>`).join("");
 }
+function finishTime(study: Catalog["studies"][number]): number {
+  const time = Date.parse(study.finishedAt ?? "");
+  return Number.isFinite(time) ? time : -Infinity;
+}
+function finishedAgo(study: Catalog["studies"][number]): string {
+  const time = finishTime(study);
+  if (!Number.isFinite(time)) return "Time unknown";
+  const seconds = Math.max(0, (Date.now() - time) / 1000);
+  if (seconds < 60) return "Just finished";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
 
 function renderLibrary(): void {
   const query = $<HTMLInputElement>("search").value.toLowerCase();
@@ -139,23 +147,27 @@ function renderLibrary(): void {
     (!energy || run.energyEV === Number(energy)) && (!radius || run.radiusM === Number(radius)) &&
     `${run.tag} ${label(run)} ${run.study}`.toLowerCase().includes(query));
   $("run-count").textContent = String(runs.length);
-  $("run-list").innerHTML = runs.map(run => `<button class="run-card ${selected?.id === run.id ? "selected" : ""}" data-run="${escape(run.id)}" aria-pressed="${selected?.id === run.id}">
+  $("run-list").innerHTML = catalog.studies.map(campaign => {
+    const members = runs.filter(run => run.study === campaign.id);
+    if (!members.length) return "";
+    return `<div class="campaign-heading"><h3>${escape(campaign.label)}</h3><time title="${escape(campaign.finishedAt ?? "Completion time unavailable")}" ${campaign.finishedAt ? `datetime="${escape(campaign.finishedAt)}"` : ""}>${finishedAgo(campaign)}</time></div>` +
+    members.map(run => `<button class="run-card ${selected?.id === run.id ? "selected" : ""}" data-run="${escape(run.id)}" aria-pressed="${selected?.id === run.id}">
     <div class="run-card-top"><strong>${fmt(run.energyEV)} <span>eV</span></strong><span class="run-size">${fmt(run.radiusM * 100)} cm</span></div>
-    <div class="run-card-name">${escape(catalog.studies.find(s => s.id === run.study)?.label ?? run.study)}</div>
     <div class="run-card-bottom"><span><i class="${run.chargeC === 0 ? "neutral" : "charged"}"></i>${run.chargeC === 0 ? "Neutral" : run.chargeC < 0 ? "Negative proxy" : "Positive proxy"}</span>
       <b>${run.meanDwellUs == null ? "Summary only" : `${run.dwellLowerBound ? "≥" : ""}${fmt(run.meanDwellUs)} µs`}</b></div>
     ${run.kind !== "external" ? `<span class="control-label">${run.kind === "control" ? "INSIDE-BORN CONTROL" : "LEGACY SOURCE"}</span>` : ""}
-    </button>`).join("") || '<p class="empty-list">No matching runs.</p>';
+    </button>`).join("");
+  }).join("") || '<p class="empty-list">No matching runs.</p>';
 }
 
 function renderMetrics(): void {
   if (!selected) return;
-  $("campaign-name").textContent = catalog.studies.find(s => s.id === selected!.study)?.label.toUpperCase() ?? selected.study;
+  $("campaign-name").textContent = catalog.studies.find(s => s.id === selected!.study)?.label ?? selected.study;
   $("run-title").textContent = label(selected);
   $("run-title").title = selected.tag;
-  $("run-subtitle").textContent = `${fmt(selected.particles, 7)} particles · ${selected.kind === "external" ? "external focused gun" : selected.kind === "control" ? "inside-born numerical control" : "historical source"} · saved experiment`;
+  $("run-subtitle").textContent = `${fmt(selected.particles, 7)} particles · ${selected.kind === "external" ? "external gun" : selected.kind === "control" ? "inside-born numerical control" : "historical source"}`;
   $("dwell").innerHTML = `${selected.dwellLowerBound ? "≥ " : ""}${fmt(selected.meanDwellUs)} <em>µs</em>`;
-  $("dwell-badge").textContent = selected.dwellLowerBound ? "LOWER BOUND" : "";
+  $("dwell-badge").textContent = selected.dwellLowerBound ? "lower bound" : "";
   const transit = selected.meanDwellUs == null ? null : selected.meanDwellUs * 1e-6 * Math.sqrt(2 * selected.energyEV * 1.602176634e-19 / 9.1093837e-31) / selected.radiusM;
   $("dwell-note").textContent = transit == null ? "Raw escape data unavailable" : `${fmt(transit)} × a/v₀ · launch-to-loss through T`;
   $("window").innerHTML = `${fmt(selected.windowUs)} <em>µs</em>`;
@@ -163,8 +175,8 @@ function renderMetrics(): void {
   $("coil").innerHTML = `${fmt(selected.radiusM * 100)} <em>cm</em>`;
   $("coil-note").textContent = meta ? `${fmt(meta.summary.current_A / 1000)} kA-turn · ${fmt(meta.summary.ring_half_sep_m * 200)} cm separation` : "Opposed circular coils";
   $("potential").innerHTML = `${fmt(meta?.summary.centre_potential_V)} <em>V</em>`;
-  $("view-mode").textContent = selected.kind === "control" ? "INSIDE-BORN CONTROL" : "PRESCRIBED-FIELD MODEL";
-  $("view-scale").textContent = `Coil radius ${fmt(selected.radiusM * 100)} cm · coil thickness schematic`;
+  $("view-mode").textContent = selected.kind === "control" ? "Inside-born control" : "";
+  $("view-scale").textContent = "Coil thickness schematic";
   const s = meta?.summary;
   readouts("geometry", [
     ["Energy", `${fmt(selected.energyEV)} eV`], ["Gun / B angle", `${fmt(selected.axisAngleDeg)}°`],
@@ -328,9 +340,9 @@ function setCursor(fraction: number): void {
 
 store.onChange = () => {
   $("downloaded").textContent = bytes(store.spent);
-  $("cache-hits").textContent = `${store.cacheHits} CACHE HITS`;
+  $("cache-hits").textContent = `${store.cacheHits} cached`;
   $("budget-fill").style.width = `${Math.min(100, store.spent / store.budget * 100)}%`;
-  $("cache-note").textContent = store.cacheNotice || "Compressed chunks · lazy paging. App shell excluded from the data limit.";
+  $("cache-note").textContent = store.cacheNotice || "Result data only; excludes app shell.";
 };
 
 for (const id of ["search", "study", "energy", "radius"]) $(id).addEventListener("input", () => { if (catalog) renderLibrary(); });
@@ -374,10 +386,13 @@ async function initialize(): Promise<void> {
   try {
     catalog = await store.catalog<Catalog>();
     if (catalog.version !== 1 || !catalog.runs.length) throw new Error("No supported runs in the catalog.");
-    $("study").innerHTML = '<option value="">All campaigns</option>' + catalog.studies.map(s => `<option value="${escape(s.id)}">${escape(s.label)}</option>`).join("");
+    catalog.studies.sort((a, b) => finishTime(b) - finishTime(a));
+    $("study").innerHTML = '<option value="">All campaigns</option>' + catalog.studies.map(s => `<option value="${escape(s.id)}">${escape(s.label)} · ${finishedAgo(s)}</option>`).join("");
     $("energy").innerHTML = '<option value="">All energies</option>' + [...new Set(catalog.runs.map(r => r.energyEV))].sort((a, b) => a - b).map(e => `<option value="${e}">${fmt(e)} eV</option>`).join("");
     $("radius").innerHTML = '<option value="">All sizes</option>' + [...new Set(catalog.runs.map(r => r.radiusM))].sort((a, b) => a - b).map(r => `<option value="${r}">${fmt(r * 100)} cm</option>`).join("");
-    const preferred = selected?.id ?? catalog.runs.find(r => r.radiusM === 0.5 && r.energyEV === 5 && r.chargeC === 0)?.id ?? catalog.runs[0].id;
+    const latestRuns = catalog.runs.filter(r => r.study === catalog.studies[0]?.id);
+    const preferred = catalog.runs.find(r => r.id === selected?.id)?.id ??
+      latestRuns.find(r => r.energyEV === 5 && r.chargeC === 0)?.id ?? latestRuns[0]?.id ?? catalog.runs[0].id;
     await selectRun(preferred);
   } catch (error) { showError(error); }
 }

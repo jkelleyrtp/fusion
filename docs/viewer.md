@@ -68,6 +68,16 @@ cards. Each export replaces the catalog; include every campaign you want listed.
 `web/public/data/` is generated and ignored by git. Build again to update a
 production server's data.
 
+Campaigns are grouped and sorted newest-finished first in the library and
+campaign picker. Completion comes from the timestamp **inside** the campaign's
+`DONE` marker, never its filesystem modification time. New simulations write
+UTC with an explicit offset; legacy offset-free markers from our UTC GPU jobs
+are interpreted as UTC. Missing or empty markers appear as “Time unknown”
+after dated campaigns. Invalid nonempty timestamps fail export.
+
+The compact layout keeps plots and bandwidth controls visible, with source
+geometry and numerical diagnostics in expandable panels.
+
 For a portable subset, add `--bundle-out web/sample-data --bundle-study campaign-id`.
 The repository bundles eight complete larger-device runs, about 6 MB;
 the session workspace also includes earlier external-gun, convergence, and

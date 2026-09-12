@@ -6,10 +6,24 @@ import hashlib
 import json
 import shutil
 import struct
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
+
+
+def completed_at(directory: Path) -> str | None:
+    marker = directory / "DONE"
+    if not marker.exists():
+        return None
+    text = marker.read_text().strip()
+    if not text:
+        return None
+    completed = datetime.fromisoformat(text)
+    if completed.tzinfo is None:
+        completed = completed.replace(tzinfo=timezone.utc)
+    return completed.astimezone(timezone.utc).isoformat()
 
 
 def write_blob(root: Path, payload: bytes, suffix: str) -> dict[str, str | int]:
@@ -147,7 +161,7 @@ def main() -> None:
     parser.add_argument("--bundle-study", action="append", default=[])
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
-    studies: list[dict[str, str]] = []
+    studies: list[dict[str, str | None]] = []
     runs: list[dict] = []
     for study, label, kind, directory in args.study:
         if kind not in ("external", "control", "historical") or any(s["id"] == study for s in studies):
@@ -155,7 +169,8 @@ def main() -> None:
         paths = sorted(Path(directory).glob("*/summary.json"))
         if not paths:
             raise ValueError(f"No member summaries in {directory}")
-        studies.append({"id": study, "label": label, "kind": kind})
+        studies.append({"id": study, "label": label, "kind": kind,
+                        "finishedAt": completed_at(Path(directory))})
         for path in paths:
             runs.append(export_member(args.out, study, kind, path))
     catalog = {"version": 1, "studies": studies, "runs": runs}

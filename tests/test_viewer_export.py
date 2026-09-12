@@ -17,6 +17,21 @@ SPEC.loader.exec_module(exporter)
 
 
 class ViewerExportTests(unittest.TestCase):
+    def test_completion_uses_marker_contents_not_file_time(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            self.assertIsNone(exporter.completed_at(directory))
+            marker = directory / "DONE"
+            marker.write_text("")
+            self.assertIsNone(exporter.completed_at(directory))
+            marker.write_text("2026-09-12T09:53:57-04:00")
+            self.assertEqual(exporter.completed_at(directory), "2026-09-12T13:53:57+00:00")
+            marker.write_text("2026-09-12T13:52:56")
+            self.assertEqual(exporter.completed_at(directory), "2026-09-12T13:52:56+00:00")
+            marker.write_text("not a timestamp")
+            with self.assertRaises(ValueError):
+                exporter.completed_at(directory)
+
     def test_restricted_mean_includes_survivors(self):
         result = exporter.residence_statistics(
             np.array([1.0, 3.0, np.nan]), np.array([1, 3, 0]), 5.0

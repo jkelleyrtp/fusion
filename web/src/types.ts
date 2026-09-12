@@ -8,7 +8,7 @@ export interface Run {
   trajectoryWindowUs: number; meta: FileRef | null;
 }
 export interface Catalog {
-  version: number; studies: { id: string; label: string; kind: string }[]; runs: Run[];
+  version: number; studies: { id: string; label: string; kind: string; finishedAt?: string | null }[]; runs: Run[];
 }
 export interface Summary {
   ring_radius_m: number; ring_half_sep_m: number; current_A: number;
