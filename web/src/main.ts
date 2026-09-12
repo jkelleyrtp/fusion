@@ -7,6 +7,7 @@ import type { Page } from "./navigation";
 import { campaignHref, renderCampaignHome, renderCampaignReport, reportHref } from "./campaigns";
 import { renderSpaceCharge } from "./space-charge";
 import { renderReport } from "./reports";
+import { JobMonitor } from "./jobs";
 import type { Catalog, Meta, Run, TrajectoryChunk } from "./types";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
@@ -44,6 +45,7 @@ $("app").innerHTML = `
   </header>
   <nav class="top-nav" aria-label="Analysis pages">
     <a href="#campaigns" data-page="campaigns">Campaigns</a>
+    <a href="#jobs" data-page="jobs">Jobs</a>
     <a href="#sweeps" data-page="sweeps">Sweeps</a>
     <a href="#trajectories" data-page="trajectories">Trajectories</a>
     <a href="#residence" data-page="residence">Residence & losses</a>
@@ -64,9 +66,10 @@ $("app").innerHTML = `
     </aside>
     <main>
       <div id="error" class="error" role="alert" hidden></div>
-      <div id="campaigns-page" class="document-page" hidden></div>
+      <div id="campaigns-page" class="document-page" hidden><div id="campaign-jobs"></div><div id="campaign-list"></div></div>
+      <div id="jobs-page" class="document-page" hidden></div>
       <div id="campaign-page" class="document-page" hidden>
-        <div id="campaign-heading"></div><div id="campaign-widget" class="report-widget"></div>
+        <div id="campaign-heading"></div><div id="campaign-job-status" hidden></div><div id="campaign-widget" class="report-widget"></div>
         <div id="campaign-sweep"></div><section id="campaign-details" class="campaign-details"></section>
       </div>
       <div id="sweep-page">
@@ -102,7 +105,7 @@ $("app").innerHTML = `
               <input id="scrub" type="range" min="0" max="1000" value="1000" aria-label="Trajectory playback time"/>
               <span id="time-end">—</span><select id="speed" aria-label="Playback duration"><option value="12">Slow</option><option value="6" selected>1×</option><option value="3">2×</option></select></div>
             <div class="stream-controls">
-              <label>Detail<select id="detail"><option value="0">Preview · stride 24</option><option value="1">Standard · stride 6</option><option value="2">Full stored samples</option></select></label>
+              <label>Detail<select id="detail"><option value="0">Preview · stride 24</option><option value="1">Standard · stride 6</option><option value="2" selected>Full stored samples</option></select></label>
               <label>Start<select id="first"><option>0</option></select></label>
               <label>Paths<select id="amount"><option value="16" selected>16</option><option value="32">32</option><option value="64">64</option><option value="128">128</option></select></label>
               <button id="load" class="accent">Load selection</button>
@@ -149,14 +152,16 @@ $("app").innerHTML = `
   </div>`;
 
 renderSpaceCharge($("space-charge-page"));
+const jobMonitor = new JobMonitor($("jobs-page"), $("campaign-jobs"), $("campaign-job-status"));
 setupNavigation(page => {
   $("campaigns-page").hidden = page !== "campaigns";
+  $("jobs-page").hidden = page !== "jobs";
   $("campaign-page").hidden = page !== "campaign";
   $("sweep-page").hidden = page !== "sweeps";
   $("space-charge-page").hidden = page !== "space-charge";
   $("report-page").hidden = page !== "reports";
   $("run-page").hidden = page !== "trajectories" && page !== "residence";
-  $("model-context").textContent = page === "space-charge"
+  $("model-context").textContent = page === "jobs" ? "One node · priority 1" : page === "space-charge"
     ? "Stationary Poisson feedback · reference pilot"
     : selected?.poisson ? "Stationary Poisson · frozen orbit iteration" : "Fixed fields · no Poisson feedback";
   const widgetTarget = page === "campaign" ? "campaign-widget" : page === "reports" ? "report-widget" : "trajectory-home";
@@ -413,7 +418,7 @@ async function selectRun(id: string): Promise<void> {
   $("loaded").textContent = loadedName;
   $("viewport-empty").hidden = false; $("viewport-empty").textContent = "Loading compact summary…";
   $<HTMLButtonElement>("play").disabled = true;
-  $<HTMLSelectElement>("detail").value = "0"; $<HTMLSelectElement>("amount").value = "16";
+  $<HTMLSelectElement>("detail").value = "2"; $<HTMLSelectElement>("amount").value = "16";
   chamber?.setRun(run);
   renderLibrary(); renderSweep(); renderMetrics(); renderPlots(); updateStream();
   if (!run.meta) {
@@ -490,7 +495,10 @@ $("pin").onclick = () => {
 };
 $("clear-comparisons").onclick = () => { comparisons.clear(); renderPlots(); };
 $("budget").onchange = () => { store.budget = Number($<HTMLSelectElement>("budget").value) * 1024 * 1024; store.onChange(); };
-$("offline").onchange = () => { store.offline = $<HTMLInputElement>("offline").checked; };
+$("offline").onchange = () => {
+  store.offline = $<HTMLInputElement>("offline").checked;
+  jobMonitor.setPaused(store.offline);
+};
 $("clear-cache").onclick = () => { void store.clear().catch(showError); };
 
 async function initialize(): Promise<void> {
@@ -501,13 +509,13 @@ async function initialize(): Promise<void> {
     $("study").innerHTML = '<option value="">All campaigns</option>' + catalog.studies.map(s => `<option value="${escape(s.id)}">${escape(s.label)} · ${finishedAgo(s)}</option>`).join("");
     $("energy").innerHTML = '<option value="">All energies</option>' + [...new Set(catalog.runs.map(r => r.energyEV))].sort((a, b) => a - b).map(e => `<option value="${e}">${fmt(e)} eV</option>`).join("");
     $("radius").innerHTML = '<option value="">All sizes</option>' + [...new Set(catalog.runs.map(r => r.radiusM))].sort((a, b) => a - b).map(r => `<option value="${r}">${fmt(r * 100)} cm</option>`).join("");
-    renderCampaignHome($("campaigns-page"), catalog, finishedAgo);
+    renderCampaignHome($("campaign-list"), catalog, finishedAgo);
     renderLibrary();
     await resolveRoute(document.body.dataset.page as Page);
   } catch (error) { showError(error); }
 }
 async function resolveRoute(page: Page): Promise<void> {
-  if (page === "campaigns" || page === "space-charge") return;
+  if (page === "campaigns" || page === "space-charge" || page === "jobs") return;
   const id = decodeURIComponent(location.hash.split("/").slice(1).join("/"));
   let run = selected ?? catalog.runs.find(r => r.study === catalog.studies[0]?.id) ?? catalog.runs[0];
   if (page === "campaign") {
@@ -519,6 +527,7 @@ async function resolveRoute(page: Page): Promise<void> {
     if (!requested) throw new Error("Run not found.");
     run = requested;
   }
+  jobMonitor.setCampaign(run.study);
   if (selected?.id !== run.id || (!meta && run.meta)) await selectRun(run.id);
   else {
     renderMetrics(); renderSweep();

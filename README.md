@@ -38,6 +38,34 @@ fetches only the catalog, selected summary, and a small 16-particle preview.
 Full trajectories arrive only when requested. No GPU simulation is launched by
 the viewer. See [viewer usage and export format](docs/viewer.md).
 
+### Local job control
+
+The development server includes the authenticated, fixed `poisson-reference` job
+service at `/api/jobs`; static builds do not include this backend. It stores
+records and the chmod-600 control token under `.fusion/` (override job state with
+`FUSION_STATE_DIR`). The service uses the existing slime image and stages each
+clean Git `src/` snapshot under a revision/request-specific FSx directory before
+broker submission. The browser is read-only for this initial profile; use the
+local CLI from `web/` to launch or register jobs:
+
+```bash
+npm run job -- launch poisson-reference
+npm run job -- list
+npm run job -- register --job-id JOB --run-directory RUN --title TITLE [--campaign-id CAMPAIGN] [--profile poisson-reference|poisson-high-voltage]
+```
+
+The CLI defaults to `127.0.0.1:4173`; broker interaction remains through the
+research checkout's documented `uv run train` commands. Launches are fixed to one
+node, eight GPUs, priority 1, with capacity checked first. Existing jobs can be
+registered without launching them. `poisson-high-voltage` registration records
+four GPUs and the 5 keV study metadata; server launches currently support only
+`poisson-reference`.
+
+For transport retries, reuse the printed UUID with `launch poisson-reference
+--request-id UUID`. An uncertain broker submission stays `unknown` and is never
+automatically resubmitted. Status and case iterations refresh every minute;
+trajectory snapshots still require a separate import into the viewer catalog.
+
 The latest [external-gun results](docs/external-gun-study.md) emphasize launch-to-loss
 dwell and continuous-injection inventory. These remain fixed-field estimates,
 not a self-consistent virtual cathode.

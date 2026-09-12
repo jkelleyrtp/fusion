@@ -9,14 +9,17 @@
     "prebuild": "node scripts/prepare-data.mjs",
     "build": "tsc --noEmit && vite build && node scripts/compress.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "tsc src/data.ts src/types.ts --module ESNext --moduleResolution bundler --target ES2022 --skipLibCheck --outDir .test-build && node --test tests/*.test.mjs",
-    "lint": "eslint src",
-    "preview": "vite preview --host 0.0.0.0"
+    "test": "tsc src/data.ts src/types.ts --module ESNext --moduleResolution bundler --target ES2022 --skipLibCheck --outDir .test-build && node --test tests/*.test.mjs && node --experimental-strip-types --test server/*.test.ts",
+    "test:server": "node --experimental-strip-types --test server/*.test.ts",
+    "lint": "eslint src server vite.config.ts",
+    "preview": "vite preview --host 0.0.0.0",
+    "job": "node --experimental-strip-types server/cli.ts"
   },
   "dependencies": {
     "three": "0.180.0"
   },
   "devDependencies": {
+    "@types/node": "22.19.21",
     "@types/three": "0.180.0",
     "eslint": "9.39.1",
     "typescript": "5.9.3",
