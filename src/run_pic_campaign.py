@@ -13,19 +13,30 @@ from run_transient_pic import parser as pic_parser
 from run_transient_pic import validate as validate_config
 
 
-def commands(out: Path, revision: str) -> list[list[str]]:
-    cases = (
-        ("pic_vacuum", 0, 4e-12, 8, 1, 625),
-        ("pic_1mA", 1e-3, 4e-12, 8, 1, 625),
-        ("pic_1A", 1, 4e-12, 8, 1, 625),
-        ("pic_1A_dt", 1, 2e-12, 8, 2, 1250),
-    )
+def commands(
+    out: Path, revision: str, study: str = "startup", kernels: str = "reference",
+) -> list[list[str]]:
+    cases = {
+        "startup": (
+            ("pic_vacuum", 0, 4e-12, 8, 1, 625, 33),
+            ("pic_1mA", 1e-3, 4e-12, 8, 1, 625, 33),
+            ("pic_1A", 1, 4e-12, 8, 1, 625, 33),
+            ("pic_1A_dt", 1, 2e-12, 8, 2, 1250, 33),
+        ),
+        "refinement": (
+            ("pic_1A", 1, 4e-12, 8, 1, 625, 33),
+            ("pic_1A_dt", 1, 2e-12, 8, 2, 1250, 33),
+            ("pic_1A_mesh", 1, 4e-12, 8, 1, 625, 65),
+            ("pic_1A_particles", 1, 4e-12, 16, 1, 625, 33),
+        ),
+    }[study]
     result = []
-    for device, (name, current, dt, packet, interval, stride) in enumerate(cases):
+    for device, (name, current, dt, packet, interval, stride, nodes) in enumerate(cases):
         result.append([
             sys.executable, str(Path(__file__).with_name("run_transient_pic.py")),
             "--out", str(out / name), "--device", f"cuda:{device}",
-            "--source-revision", revision, "--nodes", "33", "--current-a", str(current),
+            "--kernels", kernels, "--source-revision", revision,
+            "--nodes", str(nodes), "--current-a", str(current),
             "--dt", str(dt), "--duration", "3e-8", "--inject-per-step", str(packet),
             "--inject-every", str(interval),
             "--coil-current", "30000", "--radius", "0.5", "--energy-ev", "5000",
@@ -41,11 +52,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--case-timeout", type=float, default=900)
+    parser.add_argument("--study", choices=("startup", "refinement"), default="startup")
+    parser.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
     args = parser.parse_args()
     if not math.isfinite(args.case_timeout) or args.case_timeout <= 0:
         parser.error("case-timeout must be finite and positive")
     revision = os.environ["CUSP_SOURCE_REVISION"]
-    argv = commands(args.out, revision)
+    argv = commands(args.out, revision, args.study, args.kernels)
     targets = [validate_config(pic_parser().parse_args(command[2:])) for command in argv]
     args.out.mkdir(parents=True, exist_ok=False)
     manifest = {
@@ -56,7 +69,13 @@ def main() -> None:
             "30 ns: vacuum, 1 mA, 1 A and half-step 1 A. Half-step retains the same "
             "packet charge, particles and physical pulse times. Numerical exploration, "
             "not physical convergence."
+        ) if args.study == "startup" else (
+            "FP64 1 A transient sensitivity: baseline, matched-packet half timestep, "
+            "65-cubed mesh and twice the particles per packet. All use 30 ns and "
+            "identical physical source geometry/current/cadence. Particle refinement "
+            "changes Monte Carlo samples; one realization does not establish convergence."
         ),
+        "study": args.study, "kernels": args.kernels,
     }
     (args.out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     with (args.out / "preflight.log").open("w") as log:
