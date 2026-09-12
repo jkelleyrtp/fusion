@@ -16,6 +16,29 @@ escape time + channel, survival curve, (r,z) density) and renders a report.
 | `jobs/*.yaml` | broker-submittable single-node RayJobs (`uv run train job submit /home/ubuntu/repos/fusion/jobs/<x>.yaml --cluster aws-usw2 --priority 1`) |
 | `results/` | reports and summaries pulled back from the runs |
 | `docs/` | [reassessment](docs/reassessment.md) and [precision notes](docs/precision-notes.md) |
+| `web/` | Three.js/WebGL2 control room; eight bundled larger-device runs |
+| `src/export_viewer.py` | compressed, content-addressed trajectory pages and exact ensemble dwell summaries |
+| `src/serve_viewer.py` | local production viewer server with precompressed application assets |
+
+## Browser control room
+
+```bash
+cd web
+npm ci
+npm run build
+cd ..
+python3 src/serve_viewer.py
+```
+
+Open `http://127.0.0.1:4173`. Development: `cd web && npm run dev`.
+The bundled 25/50 cm studies occupy about 6 MB **on disk**; the browser initially
+fetches only the catalog, selected summary, and a small 16-particle preview.
+Full trajectories arrive only when requested. No GPU simulation is launched by
+the viewer. See [viewer usage and export format](docs/viewer.md).
+
+The latest [external-gun results](docs/external-gun-study.md) emphasize launch-to-loss
+dwell and continuous-injection inventory. These remain fixed-field estimates,
+not a self-consistent virtual cathode.
 
 ## GPU dispatch (shared B200 cluster)
 

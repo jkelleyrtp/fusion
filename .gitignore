@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 .mypy_cache/
 .ruff_cache/
+web/node_modules/
+web/dist/
+web/public/data/
+web/.test-build/

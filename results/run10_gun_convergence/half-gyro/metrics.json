@@ -1,0 +1,42 @@
+[
+  {
+    "tag": "E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4",
+    "energy_eV": 5.0,
+    "radius_mm": 0.4,
+    "charge_C": -6.45951375e-12,
+    "axis_B_angle_deg": 29.69841234227876,
+    "survivors_at_20us": 0,
+    "survivors_at_end": 0,
+    "window_us": 100.0,
+    "minus_z_fraction": 0.074385,
+    "plus_z_fraction": 0.0,
+    "radial_fraction": 0.925615,
+    "escape_median_us": 0.1831256355444566,
+    "escape_p95_us": 0.5805830255667386,
+    "escape_max_us": 12.237999726494309,
+    "survivors_at_1us": 1917,
+    "survivors_at_5us": 1,
+    "tracked_energy_drift_max": 3.5240119959056774e-07,
+    "kernel_setup_s": 0.040295698679983616
+  },
+  {
+    "tag": "E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4",
+    "energy_eV": 30.0,
+    "radius_mm": 0.4,
+    "charge_C": -3.87570825e-11,
+    "axis_B_angle_deg": 29.69841234227876,
+    "survivors_at_20us": 0,
+    "survivors_at_end": 0,
+    "window_us": 100.0,
+    "minus_z_fraction": 0.23763,
+    "plus_z_fraction": 0.007,
+    "radial_fraction": 0.75537,
+    "escape_median_us": 0.0797458099555115,
+    "escape_p95_us": 0.19714359211775445,
+    "escape_max_us": 0.7540564297414676,
+    "survivors_at_1us": 0,
+    "survivors_at_5us": 0,
+    "tracked_energy_drift_max": 1.7447233149589926e-06,
+    "kernel_setup_s": 0.0614452101290226
+  }
+]

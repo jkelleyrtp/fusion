@@ -1,0 +1,24 @@
+{
+  "name": "fusion-control-room",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/prepare-data.mjs",
+    "dev": "vite --host 0.0.0.0",
+    "prebuild": "node scripts/prepare-data.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/compress.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc src/data.ts src/types.ts --module ESNext --moduleResolution bundler --target ES2022 --skipLibCheck --outDir .test-build && node --test tests/*.test.mjs",
+    "lint": "eslint src",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": { "three": "0.180.0" },
+  "devDependencies": {
+    "@types/three": "0.180.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.1",
+    "eslint": "9.39.1",
+    "typescript-eslint": "8.48.1"
+  }
+}

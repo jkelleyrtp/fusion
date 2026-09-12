@@ -1,0 +1,108 @@
+13:41:10 [E100eV_r0.4mm_p0-0.5_gun6312e2b4] field table 1024x512, on-axis rel err 8.07e-16, B_axis_max=0.0430 T, B_max(r<r_max)=0.2317 T, integrator=boris dt_ref=3.854e-12 s adaptive dt<= 1.650e-11 s
+13:41:10 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] field table 1024x512, on-axis rel err 8.07e-16, B_axis_max=0.0430 T, B_max(r<r_max)=0.2317 T, integrator=boris dt_ref=3.854e-12 s adaptive dt<= 1.394e-10 s
+13:41:10 [E100eV_r0.4mm_p0-0.5_gun6312e2b4] fused CUDA extension ready in 0.1s
+13:41:10 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] fused CUDA extension ready in 0.0s
+13:41:11 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] gun at [0.0, 0.0004, -0.055] aim [ 0.        -0.5        0.8660254]: B(origin)=0.0303 T, aim-vs-B angle 29.69841234227876 deg, 0 particles at zero field
+13:41:11 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=0.008/20.000 us alive 200000/200000 (100.0%) 0.0s 19.68 Gpart-steps/s
+13:41:11 [E100eV_r0.4mm_p0-0.5_gun6312e2b4] gun at [0.0, 0.0004, -0.055] aim [ 0.        -0.5        0.8660254]: B(origin)=0.0303 T, aim-vs-B angle 29.69841234227876 deg, 0 particles at zero field
+13:41:11 [E100eV_r0.4mm_p0-0.5_gun6312e2b4] t=0.008/20.000 us alive 200000/200000 (100.0%) 0.0s 28.47 Gpart-steps/s
+13:41:11 [E100eV_r0.4mm_p0-0.5_gun6312e2b4] t=0.462/20.000 us alive 0/200000 (0.0%) 0.1s 4.52 Gpart-steps/s
+13:41:11 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] field table 1024x512, on-axis rel err 8.07e-16, B_axis_max=0.0430 T, B_max(r<r_max)=0.2317 T, integrator=boris dt_ref=3.854e-12 s adaptive dt<= 5.019e-11 s
+13:41:11 [E30eV_r0.4mm_p0-0.5_gun6312e2b4] field table 1024x512, on-axis rel err 8.07e-16, B_axis_max=0.0430 T, B_max(r<r_max)=0.2317 T, integrator=boris dt_ref=3.854e-12 s adaptive dt<= 3.012e-11 s
+13:41:11 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] field table 1024x512, on-axis rel err 8.07e-16, B_axis_max=0.0430 T, B_max(r<r_max)=0.2317 T, integrator=boris dt_ref=3.854e-12 s adaptive dt<= 2.049e-11 s
+13:41:11 [E100eV_r0.4mm_p0-0.5_Q-1.2919e-10C_gun6312e2b4] field table 1024x512, on-axis rel err 8.07e-16, B_axis_max=0.0430 T, B_max(r<r_max)=0.2317 T, integrator=boris dt_ref=3.854e-12 s adaptive dt<= 1.122e-11 s
+13:41:11 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] field table 1024x512, on-axis rel err 8.07e-16, B_axis_max=0.0430 T, B_max(r<r_max)=0.2317 T, integrator=boris dt_ref=3.854e-12 s adaptive dt<= 9.485e-11 s
+13:41:11 [E5eV_r0.4mm_p0-0.5_gun6312e2b4] field table 1024x512, on-axis rel err 8.07e-16, B_axis_max=0.0430 T, B_max(r<r_max)=0.2317 T, integrator=boris dt_ref=3.854e-12 s adaptive dt<= 7.378e-11 s
+13:41:11 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] fused CUDA extension ready in 0.0s
+13:41:11 [E30eV_r0.4mm_p0-0.5_gun6312e2b4] fused CUDA extension ready in 0.0s
+13:41:11 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] fused CUDA extension ready in 0.1s
+13:41:11 [E100eV_r0.4mm_p0-0.5_Q-1.2919e-10C_gun6312e2b4] fused CUDA extension ready in 0.1s
+13:41:11 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] fused CUDA extension ready in 0.1s
+13:41:11 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] gun at [0.0, 0.0004, -0.055] aim [ 0.        -0.5        0.8660254]: B(origin)=0.0303 T, aim-vs-B angle 29.69841234227876 deg, 0 particles at zero field
+13:41:11 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=0.008/20.000 us alive 200000/200000 (100.0%) 0.0s 24.76 Gpart-steps/s
+13:41:11 [E5eV_r0.4mm_p0-0.5_gun6312e2b4] fused CUDA extension ready in 0.1s
+13:41:11 [E30eV_r0.4mm_p0-0.5_gun6312e2b4] gun at [0.0, 0.0004, -0.055] aim [ 0.        -0.5        0.8660254]: B(origin)=0.0303 T, aim-vs-B angle 29.69841234227876 deg, 0 particles at zero field
+13:41:11 [E30eV_r0.4mm_p0-0.5_gun6312e2b4] t=0.008/20.000 us alive 200000/200000 (100.0%) 0.0s 25.42 Gpart-steps/s
+13:41:11 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] gun at [0.0, 0.0004, -0.055] aim [ 0.        -0.5        0.8660254]: B(origin)=0.0303 T, aim-vs-B angle 29.69841234227876 deg, 0 particles at zero field
+13:41:11 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=0.008/20.000 us alive 200000/200000 (100.0%) 0.0s 29.82 Gpart-steps/s
+13:41:11 [E100eV_r0.4mm_p0-0.5_Q-1.2919e-10C_gun6312e2b4] gun at [0.0, 0.0004, -0.055] aim [ 0.        -0.5        0.8660254]: B(origin)=0.0303 T, aim-vs-B angle 29.69841234227876 deg, 0 particles at zero field
+13:41:11 [E100eV_r0.4mm_p0-0.5_Q-1.2919e-10C_gun6312e2b4] t=0.008/20.000 us alive 200000/200000 (100.0%) 0.0s 32.87 Gpart-steps/s
+13:41:11 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] gun at [0.0, 0.0004, -0.055] aim [ 0.        -0.5        0.8660254]: B(origin)=0.0303 T, aim-vs-B angle 29.69841234227876 deg, 0 particles at zero field
+13:41:11 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] t=0.008/20.000 us alive 200000/200000 (100.0%) 0.0s 23.89 Gpart-steps/s
+13:41:11 [E5eV_r0.4mm_p0-0.5_gun6312e2b4] gun at [0.0, 0.0004, -0.055] aim [ 0.        -0.5        0.8660254]: B(origin)=0.0303 T, aim-vs-B angle 29.69841234227876 deg, 0 particles at zero field
+13:41:11 [E5eV_r0.4mm_p0-0.5_gun6312e2b4] t=0.008/20.000 us alive 200000/200000 (100.0%) 0.0s 24.63 Gpart-steps/s
+13:41:11 [E100eV_r0.4mm_p0-0.5_gun6312e2b4] done: confined 0/200000 (0.00%), ring-cusp 14, +z 199930, -z 56, energy drift max 9.95e-15, 4.36 Gpart-steps/s, 2.6s wall
+13:41:11 [E100eV_r0.4mm_p0-0.5_Q-1.2919e-10C_gun6312e2b4] t=0.832/20.000 us alive 0/200000 (0.0%) 0.2s 5.41 Gpart-steps/s
+13:41:11 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=1.002/20.000 us alive 4/200000 (0.0%) 0.2s 4.26 Gpart-steps/s
+13:41:11 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] t=1.002/20.000 us alive 427/200000 (0.2%) 0.3s 10.33 Gpart-steps/s
+13:41:11 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=1.996/20.000 us alive 3/200000 (0.0%) 0.3s 2.94 Gpart-steps/s
+13:41:11 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=1.002/20.000 us alive 1956/200000 (1.0%) 0.4s 5.05 Gpart-steps/s
+13:41:11 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=1.002/20.000 us alive 48356/200000 (24.2%) 0.7s 4.90 Gpart-steps/s
+13:41:11 [E30eV_r0.4mm_p0-0.5_gun6312e2b4] t=1.002/20.000 us alive 208/200000 (0.1%) 0.5s 3.25 Gpart-steps/s
+13:41:11 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=2.991/20.000 us alive 3/200000 (0.0%) 0.5s 2.21 Gpart-steps/s
+13:41:11 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] t=1.996/20.000 us alive 95/200000 (0.0%) 0.4s 6.47 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=1.996/20.000 us alive 45/200000 (0.0%) 0.6s 3.63 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_gun6312e2b4] t=1.996/20.000 us alive 1/200000 (0.0%) 0.6s 2.55 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_gun6312e2b4] t=2.027/20.000 us alive 0/200000 (0.0%) 0.6s 2.53 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=3.985/20.000 us alive 2/200000 (0.0%) 0.6s 1.80 Gpart-steps/s
+13:41:12 [E100eV_r0.4mm_p0-0.5_Q-1.2919e-10C_gun6312e2b4] done: confined 0/200000 (0.00%), ring-cusp 133568, +z 39907, -z 26525, energy drift max 1.89e-06, 5.33 Gpart-steps/s, 2.2s wall
+13:41:12 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] t=2.991/20.000 us alive 21/200000 (0.0%) 0.6s 4.77 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=2.991/20.000 us alive 4/200000 (0.0%) 0.7s 2.97 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=4.980/20.000 us alive 1/200000 (0.0%) 0.7s 1.55 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_gun6312e2b4] t=1.002/20.000 us alive 11505/200000 (5.8%) 0.6s 3.63 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=3.985/20.000 us alive 2/200000 (0.0%) 0.8s 2.64 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=5.974/20.000 us alive 1/200000 (0.0%) 0.8s 1.36 Gpart-steps/s
+13:41:12 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] t=3.985/20.000 us alive 6/200000 (0.0%) 0.7s 3.83 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=4.980/20.000 us alive 2/200000 (0.0%) 0.8s 2.40 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=6.968/20.000 us alive 1/200000 (0.0%) 0.9s 1.21 Gpart-steps/s
+13:41:12 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] t=4.980/20.000 us alive 1/200000 (0.0%) 0.8s 3.30 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=5.974/20.000 us alive 2/200000 (0.0%) 0.9s 2.18 Gpart-steps/s
+13:41:12 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] t=5.357/20.000 us alive 0/200000 (0.0%) 0.8s 3.23 Gpart-steps/s
+13:41:12 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=1.996/20.000 us alive 10609/200000 (5.3%) 1.3s 3.20 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=7.963/20.000 us alive 1/200000 (0.0%) 0.9s 1.09 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_gun6312e2b4] t=1.996/20.000 us alive 657/200000 (0.3%) 0.9s 2.53 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=6.968/20.000 us alive 2/200000 (0.0%) 1.0s 1.97 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_gun6312e2b4] done: confined 0/200000 (0.00%), ring-cusp 35824, +z 34003, -z 130173, energy drift max 1.27e-14, 2.52 Gpart-steps/s, 2.8s wall
+13:41:12 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=8.957/20.000 us alive 1/200000 (0.0%) 1.0s 0.99 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=7.963/20.000 us alive 2/200000 (0.0%) 1.1s 1.81 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=9.951/20.000 us alive 1/200000 (0.0%) 1.1s 0.90 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=8.957/20.000 us alive 2/200000 (0.0%) 1.2s 1.67 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_gun6312e2b4] t=2.991/20.000 us alive 44/200000 (0.0%) 1.1s 2.09 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=10.946/20.000 us alive 1/200000 (0.0%) 1.2s 0.84 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=9.951/20.000 us alive 2/200000 (0.0%) 1.3s 1.55 Gpart-steps/s
+13:41:12 [E1.4eV_r0.4mm_p0-0.5_Q-1.80866e-12C_gun6312e2b4] done: confined 0/200000 (0.00%), ring-cusp 199797, +z 0, -z 203, energy drift max 2.28e-07, 3.22 Gpart-steps/s, 3.0s wall
+13:41:12 [E5eV_r0.4mm_p0-0.5_gun6312e2b4] t=3.985/20.000 us alive 3/200000 (0.0%) 1.2s 1.88 Gpart-steps/s
+13:41:12 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=2.991/20.000 us alive 2336/200000 (1.2%) 1.6s 2.57 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=11.940/20.000 us alive 1/200000 (0.0%) 1.3s 0.78 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_gun6312e2b4] t=4.494/20.000 us alive 0/200000 (0.0%) 1.3s 1.83 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=10.946/20.000 us alive 2/200000 (0.0%) 1.4s 1.44 Gpart-steps/s
+13:41:12 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=12.934/20.000 us alive 1/200000 (0.0%) 1.4s 0.72 Gpart-steps/s
+13:41:12 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=11.940/20.000 us alive 2/200000 (0.0%) 1.5s 1.35 Gpart-steps/s
+13:41:13 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=13.929/20.000 us alive 1/200000 (0.0%) 1.5s 0.68 Gpart-steps/s
+13:41:13 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=12.934/20.000 us alive 2/200000 (0.0%) 1.6s 1.29 Gpart-steps/s
+13:41:13 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=3.985/20.000 us alive 512/200000 (0.3%) 1.9s 2.26 Gpart-steps/s
+13:41:13 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=14.923/20.000 us alive 1/200000 (0.0%) 1.6s 0.64 Gpart-steps/s
+13:41:13 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=13.929/20.000 us alive 2/200000 (0.0%) 1.7s 1.22 Gpart-steps/s
+13:41:13 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=15.917/20.000 us alive 1/200000 (0.0%) 1.7s 0.60 Gpart-steps/s
+13:41:13 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=14.923/20.000 us alive 2/200000 (0.0%) 1.8s 1.16 Gpart-steps/s
+13:41:13 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=4.980/20.000 us alive 123/200000 (0.1%) 2.1s 2.02 Gpart-steps/s
+13:41:13 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=15.917/20.000 us alive 2/200000 (0.0%) 1.8s 1.11 Gpart-steps/s
+13:41:13 [E5eV_r0.4mm_p0-0.5_gun6312e2b4] done: confined 0/200000 (0.00%), ring-cusp 57786, +z 1, -z 142213, energy drift max 1.90e-14, 1.83 Gpart-steps/s, 3.4s wall
+13:41:13 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=16.912/20.000 us alive 1/200000 (0.0%) 1.8s 0.57 Gpart-steps/s
+13:41:13 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=16.912/20.000 us alive 2/200000 (0.0%) 1.9s 1.06 Gpart-steps/s
+13:41:13 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=17.906/20.000 us alive 1/200000 (0.0%) 1.9s 0.54 Gpart-steps/s
+13:41:13 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=17.906/20.000 us alive 2/200000 (0.0%) 2.0s 1.02 Gpart-steps/s
+13:41:13 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=5.974/20.000 us alive 28/200000 (0.0%) 2.3s 1.84 Gpart-steps/s
+13:41:13 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=18.901/20.000 us alive 1/200000 (0.0%) 2.0s 0.52 Gpart-steps/s
+13:41:13 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=18.901/20.000 us alive 1/200000 (0.0%) 2.1s 0.98 Gpart-steps/s
+13:41:13 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=19.895/20.000 us alive 1/200000 (0.0%) 2.1s 0.49 Gpart-steps/s
+13:41:13 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] t=20.000/20.000 us alive 1/200000 (0.0%) 2.1s 0.49 Gpart-steps/s
+13:41:13 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=19.895/20.000 us alive 1/200000 (0.0%) 2.1s 0.95 Gpart-steps/s
+13:41:13 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] t=20.000/20.000 us alive 1/200000 (0.0%) 2.1s 0.95 Gpart-steps/s
+13:41:13 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=6.968/20.000 us alive 10/200000 (0.0%) 2.5s 1.74 Gpart-steps/s
+13:41:13 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=7.963/20.000 us alive 4/200000 (0.0%) 2.6s 1.66 Gpart-steps/s
+13:41:13 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=8.957/20.000 us alive 1/200000 (0.0%) 2.6s 1.62 Gpart-steps/s
+13:41:13 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] t=9.427/20.000 us alive 0/200000 (0.0%) 2.7s 1.59 Gpart-steps/s
+13:41:13 [E30eV_r0.4mm_p0-0.5_Q-3.87571e-11C_gun6312e2b4] done: confined 1/200000 (0.00%), ring-cusp 151454, +z 1398, -z 47147, energy drift max 1.96e-06, 0.49 Gpart-steps/s, 4.3s wall
+13:41:14 [E5eV_r0.4mm_p0-0.5_Q-6.45951e-12C_gun6312e2b4] done: confined 1/200000 (0.00%), ring-cusp 185199, +z 0, -z 14800, energy drift max 1.58e-06, 0.94 Gpart-steps/s, 4.4s wall
+13:41:14 [E1.4eV_r0.4mm_p0-0.5_gun6312e2b4] done: confined 0/200000 (0.00%), ring-cusp 73831, +z 0, -z 126169, energy drift max 2.66e-14, 1.59 Gpart-steps/s, 5.1s wall
