@@ -1,0 +1,85 @@
+11:02:13 [E300eV] field table 1024x512, on-axis rel err 1.93e-05, B_axis_max=0.0431 T, B_max(r<r_max)=0.1898 T, dt=4.705e-12 s
+11:02:13 [E1000eV] field table 1024x512, on-axis rel err 1.93e-05, B_axis_max=0.0431 T, B_max(r<r_max)=0.1898 T, dt=4.705e-12 s
+11:02:13 [E3000eV] field table 1024x512, on-axis rel err 1.93e-05, B_axis_max=0.0431 T, B_max(r<r_max)=0.1898 T, dt=4.705e-12 s
+11:02:13 [E30eV] field table 1024x512, on-axis rel err 1.93e-05, B_axis_max=0.0431 T, B_max(r<r_max)=0.1898 T, dt=4.705e-12 s
+11:02:13 [E10eV] field table 1024x512, on-axis rel err 1.93e-05, B_axis_max=0.0431 T, B_max(r<r_max)=0.1898 T, dt=4.705e-12 s
+11:02:13 [E100eV] field table 1024x512, on-axis rel err 1.93e-05, B_axis_max=0.0431 T, B_max(r<r_max)=0.1898 T, dt=4.705e-12 s
+11:02:13 [E10000eV] field table 1024x512, on-axis rel err 1.93e-05, B_axis_max=0.0431 T, B_max(r<r_max)=0.1898 T, dt=4.705e-12 s
+11:02:13 [E30000eV] field table 1024x512, on-axis rel err 1.93e-05, B_axis_max=0.0431 T, B_max(r<r_max)=0.1898 T, dt=4.705e-12 s
+11:03:28 [E3000eV] fused CUDA kernel compiled
+11:03:28 [E3000eV] step 2000/400000 t=0.009 us alive 1007/250000 (0.4%) 0.0s 34.68 Gpart-steps/s
+11:03:28 [E30eV] fused CUDA kernel compiled
+11:03:28 [E3000eV] step 12000/400000 t=0.056 us alive 0/250000 (0.0%) 0.0s 91.46 Gpart-steps/s
+11:03:28 [E30eV] step 2000/400000 t=0.009 us alive 250000/250000 (100.0%) 0.0s 28.67 Gpart-steps/s
+11:03:28 [E30eV] step 22000/400000 t=0.104 us alive 105700/250000 (42.3%) 0.2s 25.80 Gpart-steps/s
+11:03:28 [E30eV] step 42000/400000 t=0.198 us alive 42976/250000 (17.2%) 0.4s 26.97 Gpart-steps/s
+11:03:28 [E3000eV] done: confined 0/250000 (0.00%), ring-cusp 473, +z 248729, -z 798, energy drift max 9.63e-09, 85.65 Gpart-steps/s, 80.5s wall
+11:03:28 [E10eV] fused CUDA kernel compiled
+11:03:28 [E30eV] step 62000/400000 t=0.292 us alive 18343/250000 (7.3%) 0.6s 27.53 Gpart-steps/s
+11:03:28 [E10eV] step 2000/400000 t=0.009 us alive 250000/250000 (100.0%) 0.0s 28.69 Gpart-steps/s
+11:03:29 [E30eV] step 82000/400000 t=0.386 us alive 8089/250000 (3.2%) 0.7s 28.03 Gpart-steps/s
+11:03:29 [E10eV] step 22000/400000 t=0.104 us alive 153766/250000 (61.5%) 0.2s 26.63 Gpart-steps/s
+11:03:29 [E300eV] fused CUDA kernel compiled
+11:03:29 [E30eV] step 102000/400000 t=0.480 us alive 3709/250000 (1.5%) 0.9s 29.34 Gpart-steps/s
+11:03:29 [E300eV] step 2000/400000 t=0.009 us alive 250000/250000 (100.0%) 0.0s 27.39 Gpart-steps/s
+11:03:29 [E10eV] step 42000/400000 t=0.198 us alive 85573/250000 (34.2%) 0.4s 27.32 Gpart-steps/s
+11:03:29 [E30eV] step 122000/400000 t=0.574 us alive 1776/250000 (0.7%) 1.0s 31.48 Gpart-steps/s
+11:03:29 [E30eV] step 142000/400000 t=0.668 us alive 887/250000 (0.4%) 1.0s 34.24 Gpart-steps/s
+11:03:29 [E300eV] step 22000/400000 t=0.104 us alive 7791/250000 (3.1%) 0.2s 27.83 Gpart-steps/s
+11:03:29 [E30eV] step 162000/400000 t=0.762 us alive 421/250000 (0.2%) 1.1s 37.22 Gpart-steps/s
+11:03:29 [E10eV] step 62000/400000 t=0.292 us alive 51481/250000 (20.6%) 0.6s 27.74 Gpart-steps/s
+11:03:29 [E30eV] step 182000/400000 t=0.856 us alive 204/250000 (0.1%) 1.1s 40.15 Gpart-steps/s
+11:03:29 [E300eV] step 42000/400000 t=0.198 us alive 370/250000 (0.1%) 0.3s 36.76 Gpart-steps/s
+11:03:29 [E30eV] step 202000/400000 t=0.950 us alive 105/250000 (0.0%) 1.2s 43.05 Gpart-steps/s
+11:03:29 [E300eV] step 62000/400000 t=0.292 us alive 22/250000 (0.0%) 0.3s 47.61 Gpart-steps/s
+11:03:29 [E30eV] step 222000/400000 t=1.044 us alive 53/250000 (0.0%) 1.2s 45.83 Gpart-steps/s
+11:03:29 [E300eV] step 82000/400000 t=0.386 us alive 3/250000 (0.0%) 0.4s 57.09 Gpart-steps/s
+11:03:29 [E300eV] step 92000/400000 t=0.433 us alive 0/250000 (0.0%) 0.4s 61.52 Gpart-steps/s
+11:03:29 [E30eV] step 242000/400000 t=1.139 us alive 33/250000 (0.0%) 1.2s 48.51 Gpart-steps/s
+11:03:29 [E30eV] step 262000/400000 t=1.233 us alive 14/250000 (0.0%) 1.3s 51.15 Gpart-steps/s
+11:03:29 [E10eV] step 82000/400000 t=0.386 us alive 31466/250000 (12.6%) 0.7s 27.99 Gpart-steps/s
+11:03:29 [E30eV] step 282000/400000 t=1.327 us alive 5/250000 (0.0%) 1.3s 53.67 Gpart-steps/s
+11:03:29 [E30eV] step 302000/400000 t=1.421 us alive 2/250000 (0.0%) 1.3s 56.06 Gpart-steps/s
+11:03:29 [E30eV] step 310000/400000 t=1.459 us alive 0/250000 (0.0%) 1.4s 56.95 Gpart-steps/s
+11:03:29 [E10eV] step 102000/400000 t=0.480 us alive 19472/250000 (7.8%) 0.9s 28.16 Gpart-steps/s
+11:03:29 [E30000eV] fused CUDA kernel compiled
+11:03:29 [E30000eV] step 2000/400000 t=0.009 us alive 0/250000 (0.0%) 0.0s 164.52 Gpart-steps/s
+11:03:29 [E300eV] done: confined 0/250000 (0.00%), ring-cusp 57254, +z 103709, -z 89037, energy drift max 1.18e-07, 61.18 Gpart-steps/s, 81.7s wall
+11:03:30 [E10eV] step 122000/400000 t=0.574 us alive 12126/250000 (4.9%) 1.1s 28.34 Gpart-steps/s
+11:03:30 [E30eV] done: confined 0/250000 (0.00%), ring-cusp 115795, +z 14687, -z 119518, energy drift max 4.44e-07, 56.87 Gpart-steps/s, 81.8s wall
+11:03:30 [E10eV] step 142000/400000 t=0.668 us alive 7660/250000 (3.1%) 1.2s 28.63 Gpart-steps/s
+11:03:30 [E30000eV] done: confined 0/250000 (0.00%), ring-cusp 0, +z 250000, -z 0, energy drift max 1.41e-09, 98.05 Gpart-steps/s, 82.0s wall
+11:03:30 [E10eV] step 162000/400000 t=0.762 us alive 4879/250000 (2.0%) 1.4s 29.35 Gpart-steps/s
+11:03:30 [E10eV] step 182000/400000 t=0.856 us alive 3163/250000 (1.3%) 1.5s 30.20 Gpart-steps/s
+11:03:30 [E10eV] step 202000/400000 t=0.950 us alive 2071/250000 (0.8%) 1.6s 31.54 Gpart-steps/s
+11:03:30 [E10eV] step 222000/400000 t=1.044 us alive 1355/250000 (0.5%) 1.7s 32.90 Gpart-steps/s
+11:03:30 [E10eV] step 242000/400000 t=1.139 us alive 900/250000 (0.4%) 1.7s 34.67 Gpart-steps/s
+11:03:30 [E10eV] step 262000/400000 t=1.233 us alive 603/250000 (0.2%) 1.8s 36.44 Gpart-steps/s
+11:03:30 [E10eV] step 282000/400000 t=1.327 us alive 416/250000 (0.2%) 1.8s 38.12 Gpart-steps/s
+11:03:30 [E100eV] fused CUDA kernel compiled
+11:03:30 [E10eV] step 302000/400000 t=1.421 us alive 300/250000 (0.1%) 1.9s 39.84 Gpart-steps/s
+11:03:30 [E10000eV] fused CUDA kernel compiled
+11:03:30 [E100eV] step 2000/400000 t=0.009 us alive 250000/250000 (100.0%) 0.0s 28.51 Gpart-steps/s
+11:03:30 [E10000eV] step 2000/400000 t=0.009 us alive 6/250000 (0.0%) 0.0s 67.03 Gpart-steps/s
+11:03:30 [E10000eV] step 4000/400000 t=0.019 us alive 0/250000 (0.0%) 0.0s 96.38 Gpart-steps/s
+11:03:30 [E10eV] step 322000/400000 t=1.515 us alive 208/250000 (0.1%) 1.9s 41.52 Gpart-steps/s
+11:03:30 [E10eV] step 342000/400000 t=1.609 us alive 142/250000 (0.1%) 2.0s 43.21 Gpart-steps/s
+11:03:30 [E10eV] step 362000/400000 t=1.703 us alive 97/250000 (0.0%) 2.0s 44.84 Gpart-steps/s
+11:03:30 [E10eV] step 382000/400000 t=1.797 us alive 69/250000 (0.0%) 2.1s 46.44 Gpart-steps/s
+11:03:31 [E1000eV] fused CUDA kernel compiled
+11:03:31 [E100eV] step 22000/400000 t=0.104 us alive 43254/250000 (17.3%) 0.2s 26.61 Gpart-steps/s
+11:03:31 [E1000eV] step 2000/400000 t=0.009 us alive 62509/250000 (25.0%) 0.0s 26.81 Gpart-steps/s
+11:03:31 [E1000eV] step 22000/400000 t=0.104 us alive 47/250000 (0.0%) 0.1s 49.18 Gpart-steps/s
+11:03:31 [E1000eV] step 36000/400000 t=0.169 us alive 0/250000 (0.0%) 0.1s 67.12 Gpart-steps/s
+11:03:31 [E100eV] step 42000/400000 t=0.198 us alive 9199/250000 (3.7%) 0.4s 27.67 Gpart-steps/s
+11:03:31 [E10000eV] done: confined 0/250000 (0.00%), ring-cusp 38, +z 249932, -z 30, energy drift max 4.37e-09, 81.13 Gpart-steps/s, 82.8s wall
+11:03:31 [E100eV] step 62000/400000 t=0.292 us alive 2062/250000 (0.8%) 0.5s 30.70 Gpart-steps/s
+11:03:31 [E100eV] step 82000/400000 t=0.386 us alive 490/250000 (0.2%) 0.6s 36.13 Gpart-steps/s
+11:03:31 [E10eV] done: confined 49/250000 (0.02%), ring-cusp 147006, +z 5003, -z 97942, energy drift max 4.46e-07, 47.86 Gpart-steps/s, 83.0s wall
+11:03:31 [E100eV] step 102000/400000 t=0.480 us alive 117/250000 (0.0%) 0.6s 41.77 Gpart-steps/s
+11:03:31 [E100eV] step 122000/400000 t=0.574 us alive 19/250000 (0.0%) 0.6s 47.17 Gpart-steps/s
+11:03:31 [E100eV] step 142000/400000 t=0.668 us alive 5/250000 (0.0%) 0.7s 52.22 Gpart-steps/s
+11:03:31 [E1000eV] done: confined 0/250000 (0.00%), ring-cusp 15343, +z 209231, -z 25426, energy drift max 1.06e-07, 66.12 Gpart-steps/s, 83.2s wall
+11:03:31 [E100eV] step 162000/400000 t=0.762 us alive 1/250000 (0.0%) 0.7s 56.80 Gpart-steps/s
+11:03:31 [E100eV] step 164000/400000 t=0.772 us alive 0/250000 (0.0%) 0.7s 57.31 Gpart-steps/s
+11:03:31 [E100eV] done: confined 0/250000 (0.00%), ring-cusp 85623, +z 45412, -z 118965, energy drift max 2.50e-07, 57.14 Gpart-steps/s, 83.6s wall

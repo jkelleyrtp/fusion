@@ -1,0 +1,84 @@
+# Biconic-cusp electron-trap kinetic sim (no PIC): 8 injection energies, one per B200.
+# Single node, priority 1, broker-managed placement. Not a SLIME job; the entrypoint only
+# carries --actor-num-nodes/--actor-num-gpus-per-node/--rollout-num-gpus because the broker
+# parses those to size the placement (cusp_sim.py ignores them and --training-clique-ids).
+apiVersion: ray.io/v1
+kind: RayJob
+metadata:
+  name: jonathan-cusp-demo
+  namespace: default
+  annotations:
+    slime.ai/owner: jonathan.kelley
+spec:
+  entrypoint: >-
+    bash -c 'set -euo pipefail;
+    nvidia-smi -L;
+    export CUSP_BUILD_DIR=/tmp/cusp_build TORCH_CUDA_ARCH_LIST=10.0;
+    OUT=/public/jonathan/cusp/runs/$(date +%Y%m%d-%H%M%S);
+    python3 /public/jonathan/cusp/cusp_sim.py --out $OUT
+    --energies 10 30 100 300 1000 3000 10000 30000
+    --particles 250000 --steps 400000 "$@"
+    && python3 /public/jonathan/cusp/cusp_viz.py --out $OUT
+    && du -sh $OUT && echo CUSP_DEMO_DONE $OUT' --
+    --actor-num-nodes 1
+    --actor-num-gpus-per-node 8
+    --rollout-num-gpus 0
+  shutdownAfterJobFinishes: true
+  ttlSecondsAfterFinished: 600
+  submissionMode: K8sJobMode
+  submitterConfig:
+    backoffLimit: 2
+  submitterPodTemplate:
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      imagePullSecrets:
+        - name: gcr-creds
+      containers:
+        - name: ray-job-submitter
+          image: us-docker.pkg.dev/cognition-research/cognition-training/slime:08110256_ubuntu_2e3428df
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests: { cpu: 500m, memory: 200Mi }
+            limits: { cpu: "1", memory: 1Gi }
+  rayClusterSpec:
+    headGroupSpec:
+      rayStartParams: {}
+      template:
+        spec:
+          serviceAccountName: slime-training-sa
+          nodeSelector:
+            kubernetes.io/arch: amd64
+            workload_type: training
+          tolerations:
+            - key: nvidia.com/gpu
+              operator: Exists
+              effect: NoSchedule
+          imagePullSecrets:
+            - name: gcr-creds
+          containers:
+            - name: ray-head
+              image: us-docker.pkg.dev/cognition-research/cognition-training/slime:08110256_ubuntu_2e3428df
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: PYTHONFAULTHANDLER
+                  value: "1"
+              ports:
+                - containerPort: 6379
+                  name: gcs-server
+                - containerPort: 8265
+                  name: dashboard
+                - containerPort: 10001
+                  name: client
+              resources:
+                requests: { cpu: "32", memory: 200Gi, nvidia.com/gpu: "8" }
+                limits: { cpu: "32", memory: 200Gi, nvidia.com/gpu: "8" }
+              volumeMounts:
+                - { name: shm, mountPath: /dev/shm }
+                - { name: public, mountPath: /public, subPath: devcontainer-shared }
+          volumes:
+            - name: shm
+              emptyDir: { medium: Memory, sizeLimit: 16Gi }
+            - name: public
+              persistentVolumeClaim: { claimName: fsx-lustre }

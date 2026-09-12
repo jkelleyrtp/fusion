@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""Plot the output of cusp_sim.py: field + trajectories, survival curves, escape channels,
+and time-integrated (r,z) density, one row per sweep member, into <out>/report.png plus
+per-member trajectory figures."""
+
+import argparse
+import glob
+import json
+import os
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+from matplotlib.colors import LogNorm  # noqa: E402
+
+
+def load_members(out):
+    members = []
+    for path in sorted(glob.glob(os.path.join(out, "*", "summary.json"))):
+        with open(path) as f:
+            summary = json.load(f)
+        data = np.load(os.path.join(os.path.dirname(path), "results.npz"))
+        members.append((summary, data))
+    members.sort(key=lambda m: (m[0]["energy_eV"], m[0].get("inject_r_m", 0), m[0].get("pitch_deg", [0])[0]))
+    return members
+
+
+def draw_field(ax, data, mirror=True):
+    r, z = data["field_r"], data["field_z"]
+    Br, Bz = data["field_Br"].astype(float), data["field_Bz"].astype(float)
+    B = np.hypot(Br, Bz)
+    if mirror:
+        k = 1 if r[0] == 0 else 0
+        rr = np.concatenate([-r[::-1][:-k or None], r])
+        Bp = np.concatenate([B[:, ::-1][:, :-k or None], B], axis=1)
+        Brp = np.concatenate([-Br[:, ::-1][:, :-k or None], Br], axis=1)
+        Bzp = np.concatenate([Bz[:, ::-1][:, :-k or None], Bz], axis=1)
+    else:
+        rr, Bp, Brp, Bzp = r, B, Br, Bz
+    ax.pcolormesh(z * 100, rr * 100, Bp.T, norm=LogNorm(vmin=max(B[B > 0].min(), 1e-4), vmax=B.max()), cmap="magma", shading="auto", rasterized=True)
+    ax.streamplot(z * 100, rr * 100, Bzp.T, Brp.T, color="w", linewidth=0.4, density=1.2, arrowsize=0.5)
+
+
+def rings(ax, summary):
+    a, d = summary["ring_radius_m"] * 100, summary["ring_half_sep_m"] * 100
+    for zc, c in ((-d, "cyan"), (d, "orange")):
+        ax.plot([zc, zc], [a, a], "o", color=c, ms=6, mec="k")
+        ax.plot([zc, zc], [-a, -a], "o", color=c, ms=6, mec="k")
+
+
+def plot_trajectories(summary, data, path, n_show=40):
+    traj = data["traj"]  # [T, S, 6]
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6), gridspec_kw={"width_ratios": [1.6, 1]})
+    ax = axes[0]
+    draw_field(ax, data)
+    rings(ax, summary)
+    esc = data["esc_where"][: traj.shape[0]]
+    colors = {0: "lime", 1: "deepskyblue", 2: "gold", 3: "red"}
+    labels = {0: "confined", 1: "lost -z cusp", 2: "lost +z cusp", 3: "lost ring cusp"}
+    shown = set()
+    for i in range(min(n_show, traj.shape[0])):
+        t = traj[i]
+        ok = np.isfinite(t[:, 0])
+        if ok.sum() < 2:
+            continue
+        rr = np.hypot(t[ok, 0], t[ok, 1]) * np.sign(t[ok, 0])
+        ax.plot(t[ok, 2] * 100, rr * 100, color=colors[int(esc[i])], lw=0.5, alpha=0.7,
+                label=labels[int(esc[i])] if esc[i] not in shown else None)
+        shown.add(int(esc[i]))
+    ax.set_xlabel("z [cm]")
+    ax.set_ylabel("signed r [cm]  (x-projection)")
+    ax.set_title(f"{summary['tag']}: |B| (log), field lines, {min(n_show, traj.shape[0])} tracked electrons")
+    ax.legend(loc="upper right", fontsize=8)
+    ax.set_aspect("equal")
+
+    ax = axes[1]
+    for i in range(min(n_show, traj.shape[0])):
+        t = traj[i]
+        ok = np.isfinite(t[:, 0])
+        ax.plot(t[ok, 0] * 100, t[ok, 1] * 100, color=colors[int(esc[i])], lw=0.4, alpha=0.6)
+    a = summary["ring_radius_m"] * 100
+    ax.add_patch(plt.Circle((0, 0), a, fill=False, color="w", ls="--"))
+    ax.set_xlim(-a * 1.05, a * 1.05)
+    ax.set_ylim(-a * 1.05, a * 1.05)
+    ax.set_aspect("equal")
+    ax.set_facecolor("k")
+    ax.set_xlabel("x [cm]")
+    ax.set_ylabel("y [cm]")
+    ax.set_title("end-on view")
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def plot_report(members, path):
+    n = len(members)
+    fig, axes = plt.subplots(n, 3, figsize=(18, 4.2 * n), squeeze=False)
+    for row, (s, d) in enumerate(members):
+        dt = s["dt_s"]
+        # survival
+        ax = axes[row, 0]
+        t_us = d["survival_steps"] * dt * 1e6
+        ax.plot(t_us, d["survival"] / s["particles"], lw=2)
+        ax.set_yscale("log")
+        ax.set_ylim(max(1e-4, 0.5 / s["particles"]), 1.1)
+        ax.set_xlabel("t [us]")
+        ax.set_ylabel("fraction still confined")
+        ax.set_title(f"{s['tag']}: survival  ({100 * s['confined_fraction']:.1f}% at {s['sim_duration_s'] * 1e6:.1f} us)")
+        ax.grid(alpha=0.3)
+        # escape time histogram by channel
+        ax = axes[row, 1]
+        et, ew = d["esc_time"], d["esc_where"]
+        bins = np.linspace(0, s["sim_duration_s"] * 1e6, 80)
+        for code, c, lab in ((1, "deepskyblue", "-z point cusp"), (2, "gold", "+z point cusp"), (3, "red", "ring cusp / wall")):
+            m = ew == code
+            if m.any():
+                ax.hist(et[m] * 1e6, bins=bins, color=c, alpha=0.7, label=f"{lab} ({m.sum()})")
+        ax.set_xlabel("escape time [us]")
+        ax.set_ylabel("electrons")
+        ax.set_yscale("log")
+        ax.set_title("loss channels")
+        ax.legend(fontsize=8)
+        # density
+        ax = axes[row, 2]
+        dens = d["density"].astype(float)
+        rz, zz = d["density_r"], d["density_z"]
+        # normalise by annulus volume so it's a density, not a count
+        area = np.pi * (rz[1:] ** 2 - rz[:-1] ** 2)
+        dens = dens / area[None, :]
+        dens_m = np.concatenate([dens[:, ::-1], dens], axis=1)
+        rr = np.concatenate([-rz[::-1][:-1], rz]) * 100
+        ax.pcolormesh(zz * 100, rr, dens_m.T, norm=LogNorm(vmin=max(dens[dens > 0].min(), 1e-12), vmax=dens.max()), cmap="inferno", shading="auto", rasterized=True)
+        rings(ax, s)
+        ax.set_aspect("equal")
+        ax.set_xlabel("z [cm]")
+        ax.set_ylabel("r [cm]")
+        ax.set_title("time-integrated electron density (log)")
+    fig.suptitle(
+        f"Biconic cusp electron trap - {members[0][0]['particles']:,} electrons per energy, "
+        f"rings R={members[0][0]['ring_radius_m'] * 100:.0f} cm at z=+-{members[0][0]['ring_half_sep_m'] * 100:.0f} cm, "
+        f"{members[0][0]['current_A']:.0f} A-turns, B_axis_max={members[0][0]['B_axis_max_T']:.3f} T, "
+        f"{members[0][0]['device_name']} x{n}",
+        fontsize=13,
+    )
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    fig.savefig(path, dpi=110)
+    plt.close(fig)
+
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--out", required=True)
+    args, _ = p.parse_known_args()
+    members = load_members(args.out)
+    assert members, f"no summary.json under {args.out}"
+    for s, d in members:
+        plot_trajectories(s, d, os.path.join(args.out, f"traj_{s['tag']}.png"))
+    plot_report(members, os.path.join(args.out, "report.png"))
+    print("| member | confined | lost -z | lost +z | lost ring | median t_esc | E drift | Gpart-steps/s | kernel |")
+    print("|---|---|---|---|---|---|---|---|---|")
+    for s, _ in members:
+        med = s["median_escape_time_s"]
+        print(f"| {s['tag']} | {100 * s['confined_fraction']:.2f}% | {s['escaped_minus_z_cusp']} | "
+              f"{s['escaped_plus_z_cusp']} | {s['escaped_ring_cusp']} | {med * 1e6 if med else float('nan'):.3f} us | "
+              f"{s['energy_drift_rel_max']:.1e} | {s['particle_steps_per_s'] / 1e9:.2f} | {s['kernel']} |")
+
+
+if __name__ == "__main__":
+    main()
