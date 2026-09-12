@@ -1,10 +1,12 @@
 import gzip
+import hashlib
 import importlib.util
 import json
 import struct
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
@@ -80,6 +82,52 @@ class ViewerExportTests(unittest.TestCase):
             np.frombuffer(payload, "<f4", offset=40).reshape(2, 4, 3), trajectory[:, [0, 3, 6, 7], :3]
         )
 
+    def _write_summary(self, path: Path, tag: str = "test"):
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps({
+            "tag": tag, "energy_eV": 5, "ring_radius_m": 0.5, "particles": 2,
+            "sim_duration_s": 5.0, "confined_at_end": 1,
+        }))
+
+    def test_nested_member_keys_distinguish_same_summary_tags(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = root / "input" / "case-a" / "tag" / "summary.json"
+            second = root / "input" / "case-b" / "tag" / "summary.json"
+            self._write_summary(first)
+            self._write_summary(second)
+            first_card = exporter.export_member(root / "out", "study", "external", first, "case-a/tag")
+            second_card = exporter.export_member(root / "out", "study", "external", second, "case-b/tag")
+            self.assertNotEqual(first_card["id"], second_card["id"])
+            self.assertEqual(first_card["tag"], "case-a/tag")
+            self.assertEqual(second_card["tag"], "case-b/tag")
+
+    def test_legacy_member_key_preserves_summary_tag_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            summary_path = root / "member" / "summary.json"
+            self._write_summary(summary_path, "legacy-tag")
+            card = exporter.export_member(root / "out", "study", "external", summary_path)
+            expected = "study-" + hashlib.sha256(b"legacy-tag").hexdigest()[:12]
+            self.assertEqual(card["id"], expected)
+            self.assertEqual(card["tag"], "legacy-tag")
+
+    def test_main_exports_nested_member_summaries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            study_root = root / "study"
+            self._write_summary(study_root / "case-a" / "tag" / "summary.json")
+            self._write_summary(study_root / "case-b" / "tag" / "summary.json")
+            with patch("sys.argv", [
+                "export_viewer", "--out", str(root / "out"), "--study", "s", "Study",
+                "external", str(study_root),
+            ]):
+                exporter.main()
+            catalog = json.loads((root / "out" / "catalog.json").read_text())
+            self.assertEqual(len(catalog["runs"]), 2)
+            self.assertEqual({run["tag"] for run in catalog["runs"]}, {"case-a/tag", "case-b/tag"})
+            self.assertEqual(len({run["id"] for run in catalog["runs"]}), 2)
+
     def test_content_addressed_chunks_and_member_consistency(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -94,15 +142,22 @@ class ViewerExportTests(unittest.TestCase):
             trajectory[0, 3:] = np.nan
             np.savez(member / "results.npz", traj=trajectory, traj_dt=0.5,
                      esc_time=np.array([1.0, np.nan]), esc_where=np.array([1, 0]))
-            card = exporter.export_member(root, "study", "external", member / "summary.json")
+            card = exporter.export_member(
+                root, "study", "external", member / "summary.json", "case/tag"
+            )
+            self.assertEqual(card["tag"], "case/tag")
             self.assertEqual(card["meanDwellUs"], 3e6)
             meta = json.loads(gzip.decompress((root / card["meta"]["path"]).read_bytes()))
+            self.assertEqual(meta["summary"], summary)
             self.assertEqual(meta["trajectory"]["escapeUs"], [1e6, None])
             for level in meta["trajectory"]["levels"]:
                 for chunk in level["chunks"]:
                     compressed = (root / chunk["path"]).read_bytes()
                     self.assertEqual(len(compressed), chunk["bytes"])
-            self.assertEqual(exporter.export_member(root, "study", "external", member / "summary.json"), card)
+            self.assertEqual(
+                exporter.export_member(root, "study", "external", member / "summary.json", "case/tag"),
+                card,
+            )
 
 
 if __name__ == "__main__":

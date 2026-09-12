@@ -93,12 +93,14 @@ def occupancy_map(data: np.lib.npyio.NpzFile, core_radius: float) -> dict | None
     }
 
 
-def export_member(root: Path, study: str, kind: str, path: Path) -> dict:
+def export_member(root: Path, study: str, kind: str, path: Path,
+                  member_key: str | None = None) -> dict:
     summary = json.loads(path.read_text())
     tag = str(summary["tag"])
-    run_id = f"{study}-{hashlib.sha256(tag.encode()).hexdigest()[:12]}"
+    identity = tag if member_key is None else member_key
+    run_id = f"{study}-{hashlib.sha256(identity.encode()).hexdigest()[:12]}"
     card = {
-        "id": run_id, "study": study, "kind": kind, "tag": tag,
+        "id": run_id, "study": study, "kind": kind, "tag": identity,
         "energyEV": summary["energy_eV"], "radiusM": summary["ring_radius_m"],
         "chargeC": summary.get("space_charge_C", 0),
         "particles": summary["particles"], "windowUs": summary["sim_duration_s"] * 1e6,
@@ -166,13 +168,15 @@ def main() -> None:
     for study, label, kind, directory in args.study:
         if kind not in ("external", "control", "historical") or any(s["id"] == study for s in studies):
             raise ValueError("Study IDs must be unique; kind is external, control, or historical")
-        paths = sorted(Path(directory).glob("*/summary.json"))
+        study_root = Path(directory)
+        paths = sorted(study_root.rglob("summary.json"))
         if not paths:
             raise ValueError(f"No member summaries in {directory}")
         studies.append({"id": study, "label": label, "kind": kind,
-                        "finishedAt": completed_at(Path(directory))})
+                        "finishedAt": completed_at(study_root)})
         for path in paths:
-            runs.append(export_member(args.out, study, kind, path))
+            member_key = path.parent.relative_to(study_root).as_posix()
+            runs.append(export_member(args.out, study, kind, path, member_key))
     catalog = {"version": 1, "studies": studies, "runs": runs}
     (args.out / "catalog.json").write_text(json.dumps(catalog, separators=(",", ":"), allow_nan=False) + "\n")
     if args.bundle_out:
