@@ -128,6 +128,51 @@ class ViewerExportTests(unittest.TestCase):
             self.assertEqual({run["tag"] for run in catalog["runs"]}, {"case-a/tag", "case-b/tag"})
             self.assertEqual(len({run["id"] for run in catalog["runs"]}), 2)
 
+    def test_main_maps_manifest_sweep_coordinates_to_nested_members(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            study_root = root / "study"
+            study_root.mkdir()
+            (study_root / "manifest.json").write_text(json.dumps({
+                "cases": [
+                    {"id": "case-a", "current": 50000, "angle": 30, "cone": 10,
+                     "grid_r": 1024, "grid_z": 2048, "gyro_fraction": 0.00625},
+                    {"id": "case-b", "current": 250000, "angle": 15, "cone": 1,
+                     "grid_r": 512, "grid_z": 1024, "gyro_fraction": 0.0125},
+                ],
+            }))
+            self._write_summary(study_root / "case-a" / "tag" / "summary.json")
+            self._write_summary(study_root / "case-b" / "tag" / "summary.json")
+            with patch("sys.argv", [
+                "export_viewer", "--out", str(root / "out"), "--study", "s", "Study",
+                "external", str(study_root),
+            ]):
+                exporter.main()
+            catalog = json.loads((root / "out" / "catalog.json").read_text())
+            by_tag = {run["tag"]: run for run in catalog["runs"]}
+            self.assertEqual(by_tag["case-a/tag"]["sweep"], {
+                "coilCurrentA": 50000, "aimDeg": 30, "coneDeg": 10,
+                "gridR": 1024, "gridZ": 2048, "gyroFraction": 0.00625,
+            })
+            self.assertEqual(by_tag["case-b/tag"]["sweep"], {
+                "coilCurrentA": 250000, "aimDeg": 15, "coneDeg": 1,
+                "gridR": 512, "gridZ": 1024, "gyroFraction": 0.0125,
+            })
+
+    def test_main_omits_sweep_without_matching_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            study_root = root / "study"
+            self._write_summary(study_root / "member" / "summary.json")
+            with patch("sys.argv", [
+                "export_viewer", "--out", str(root / "out"), "--study", "s", "Study",
+                "external", str(study_root),
+            ]):
+                exporter.main()
+            catalog = json.loads((root / "out" / "catalog.json").read_text())
+            self.assertEqual(len(catalog["runs"]), 1)
+            self.assertNotIn("sweep", catalog["runs"][0])
+
     def test_content_addressed_chunks_and_member_consistency(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

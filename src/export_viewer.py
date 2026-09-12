@@ -94,7 +94,8 @@ def occupancy_map(data: np.lib.npyio.NpzFile, core_radius: float) -> dict | None
 
 
 def export_member(root: Path, study: str, kind: str, path: Path,
-                  member_key: str | None = None) -> dict:
+                  member_key: str | None = None,
+                  sweep: dict[str, int | float] | None = None) -> dict:
     summary = json.loads(path.read_text())
     tag = str(summary["tag"])
     identity = tag if member_key is None else member_key
@@ -109,6 +110,8 @@ def export_member(root: Path, study: str, kind: str, path: Path,
         "axisAngleDeg": summary.get("gun_axis_B_angle_deg"), "meta": None,
         "tracked": 0, "trajectoryWindowUs": 0,
     }
+    if sweep is not None:
+        card["sweep"] = sweep
     archive = path.with_name("results.npz")
     if not archive.exists():
         return card
@@ -169,6 +172,16 @@ def main() -> None:
         if kind not in ("external", "control", "historical") or any(s["id"] == study for s in studies):
             raise ValueError("Study IDs must be unique; kind is external, control, or historical")
         study_root = Path(directory)
+        sweeps = {}
+        manifest_path = study_root / "manifest.json"
+        if manifest_path.exists():
+            manifest = json.loads(manifest_path.read_text())
+            for case in manifest.get("cases", []):
+                sweeps[case["id"]] = {
+                    "coilCurrentA": case["current"], "aimDeg": case["angle"],
+                    "coneDeg": case["cone"], "gridR": case["grid_r"],
+                    "gridZ": case["grid_z"], "gyroFraction": case["gyro_fraction"],
+                }
         paths = sorted(study_root.rglob("summary.json"))
         if not paths:
             raise ValueError(f"No member summaries in {directory}")
@@ -176,7 +189,8 @@ def main() -> None:
                         "finishedAt": completed_at(study_root)})
         for path in paths:
             member_key = path.parent.relative_to(study_root).as_posix()
-            runs.append(export_member(args.out, study, kind, path, member_key))
+            sweep = sweeps.get(member_key.split("/")[0])
+            runs.append(export_member(args.out, study, kind, path, member_key, sweep))
     catalog = {"version": 1, "studies": studies, "runs": runs}
     (args.out / "catalog.json").write_text(json.dumps(catalog, separators=(",", ":"), allow_nan=False) + "\n")
     if args.bundle_out:
