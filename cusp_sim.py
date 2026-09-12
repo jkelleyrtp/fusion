@@ -176,7 +176,10 @@ __device__ __forceinline__ double local_dt(const Grid& g, double qm, double x, d
     field_at(g, x, y, z, Bx, By, Bz);
     double B = sqrt(Bx * Bx + By * By + Bz * Bz);
     double dt = dt_frac * 6.283185307179586 / (fabs(qm) * fmax(B, 1e-30));
-    return fmin(dt, dt_max);
+    if (dt >= dt_max) return dt_max;
+    // quantise to dt_max / 2^k: step changes are then rare and by a factor 2, which keeps the
+    // leapfrog's energy error bounded instead of secular (continuously varying h is not symplectic)
+    return ldexp(dt_max, -(int)ceil(log2(dt_max / dt)));
 }
 
 // One step of either integrator. Boris: leapfrog with E half-kicks and exact rotation about B
@@ -185,6 +188,12 @@ __device__ __forceinline__ void step_particle(const Grid& g, double qm, int bori
                                               double& x, double& y, double& z,
                                               double& vx, double& vy, double& vz) {
     if (boris) {
+        // synchronised (position-Verlet) Boris: half drift, kick+rotate with the fields at the
+        // midpoint, half drift. Time-symmetric for each step on its own, so a per-particle h that
+        // changes between steps costs O(h^2) per change rather than the O(h) kick mismatch of the
+        // staggered form.
+        double hh = 0.5 * h;
+        x += hh * vx; y += hh * vy; z += hh * vz;
         double Bx, By, Bz, ex, ey, ez;
         field_at(g, x, y, z, Bx, By, Bz);
         efield_at(g, x, y, z, ex, ey, ez);
@@ -198,9 +207,7 @@ __device__ __forceinline__ void step_particle(const Grid& g, double qm, int bori
         double ux = vx + (vy * tz - vz * ty), uy = vy + (vz * tx - vx * tz), uz = vz + (vx * ty - vy * tx);
         vx += uy * sz - uz * sy; vy += uz * sx - ux * sz; vz += ux * sy - uy * sx;
         vx += hq * ex; vy += hq * ey; vz += hq * ez;
-        // drift with the full-step velocity (synchronised leapfrog: x_{n+1} = x_n + h v_{n+1/2}
-        // approximated by the rotated velocity; second order for uniform B).
-        x += h * vx; y += h * vy; z += h * vz;
+        x += hh * vx; y += hh * vy; z += hh * vz;
     } else {
         double h2 = 0.5 * h, h6 = h / 6.0;
         double a1x, a1y, a1z, a2x, a2y, a2z, a3x, a3y, a3z, a4x, a4y, a4z;
@@ -363,13 +370,14 @@ class TorchPusher:
         h = h[:, None]
         if self.boris:
             hq = 0.5 * h * self.qm
+            p = p + 0.5 * h * v
             e = self.efield(p)
             v = v + hq * e
             t = hq * self.field(p)
             s = 2 * t / (1 + (t * t).sum(1, keepdim=True))
             u = v + torch.cross(v, t, dim=1)
             v = v + torch.cross(u, s, dim=1) + hq * e
-            return p + h * v, v
+            return p + 0.5 * h * v, v
         h2 = 0.5 * h
         a1 = self.accel(p, v)
         v2 = v + h2 * a1
@@ -391,7 +399,9 @@ class TorchPusher:
             p, v, ti = pos[idx], vel[idx], t[idx]
             if dt_frac > 0:
                 B = self.field(p).norm(dim=1)
-                h = (dt_frac * 2 * math.pi / (abs(self.qm) * B.clamp_min(1e-30))).clamp_max(dt_max)
+                h = dt_frac * 2 * math.pi / (abs(self.qm) * B.clamp_min(1e-30))
+                h = torch.where(h >= dt_max, torch.full_like(h, dt_max),
+                                dt_max * torch.exp2(-torch.ceil(torch.log2(dt_max / h))))
             else:
                 h = torch.full_like(ti, dt_max)
             h = torch.minimum(h, t_end - ti)
@@ -457,6 +467,12 @@ def run_member(args, member, tag, device, log):
     v_cap = math.sqrt(v0 * v0 + 2 * abs(K_COULOMB * space_charge) / args.space_charge_radius * 1.5 * abs(QM))
     dt_max = min(a / (args.grid_r - 1), args.space_charge_radius / 10) / v_cap if args.adaptive else dt
     dt_max = max(dt_max, dt) if args.adaptive else dt
+    if space_charge:
+        # inside the sphere the motion is a harmonic oscillation at the plasma frequency of the
+        # uniform charge; resolve it like a gyration (fixed dt too, B -> 0 at the null)
+        omega_p = math.sqrt(abs(QM * K_COULOMB * space_charge) / args.space_charge_radius**3)
+        dt_e = args.steps_per_gyro_inv * 2 * math.pi / omega_p
+        dt, dt_max = min(dt, dt_e), min(dt_max, dt_e)
     dt_frac = args.steps_per_gyro_inv if args.adaptive else 0.0
     boris = args.integrator == "boris"
     log(f"[{tag}] field table {args.grid_z}x{args.grid_r}, on-axis rel err {axis_err:.2e}, "

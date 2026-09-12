@@ -1,0 +1,87 @@
+12:15:10 [E1000eV_r0.5mm_p0-5_Q-3.6e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 7.433e-12 s
+12:15:10 [E1000eV_r1mm_p0-5_Q-3e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 7.758e-12 s
+12:15:11 [E1000eV_r1mm_p0-5_Q-3.6e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 7.433e-12 s
+12:15:11 [E1000eV_r0.5mm_p0-5_Q-3e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 7.758e-12 s
+12:15:11 [E1000eV_r1mm_p0-5] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 1.043e-11 s
+12:15:11 [E1000eV_r1mm_p0-5_Q3.6e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 7.433e-12 s
+12:15:11 [E1000eV_r0.5mm_p0-5_Q3.6e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 7.433e-12 s
+12:15:11 [E1000eV_r0.5mm_p0-5] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 1.043e-11 s
+12:16:25 [E1000eV_r0.5mm_p0-5_Q-3.6e-09C] fused CUDA kernel compiled
+12:16:26 [E1000eV_r1mm_p0-5_Q3.6e-09C] fused CUDA kernel compiled
+12:16:26 [E1000eV_r0.5mm_p0-5_Q-3.6e-09C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 26.79 Gpart-steps/s
+12:16:26 [E1000eV_r1mm_p0-5_Q3.6e-09C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 26.46 Gpart-steps/s
+12:16:26 [E1000eV_r0.5mm_p0-5_Q-3.6e-09C] t=0.357/20.000 us alive 0/100000 (0.0%) 0.1s 2.77 Gpart-steps/s
+12:16:26 [E1000eV_r1mm_p0-5_Q3.6e-09C] t=0.674/20.000 us alive 0/100000 (0.0%) 0.2s 3.47 Gpart-steps/s
+12:16:26 [E1000eV_r1mm_p0-5_Q-3e-09C] fused CUDA kernel compiled
+12:16:26 [E1000eV_r1mm_p0-5_Q-3e-09C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 26.30 Gpart-steps/s
+12:16:26 [E1000eV_r0.5mm_p0-5_Q-3.6e-09C] done: confined 0/100000 (0.00%), ring-cusp 5773, +z 78163, -z 16064, energy drift max 4.21e-04, 2.72 Gpart-steps/s, 80.8s wall
+12:16:26 [E1000eV_r1mm_p0-5_Q-3.6e-09C] fused CUDA kernel compiled
+12:16:26 [E1000eV_r1mm_p0-5_Q-3.6e-09C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 26.34 Gpart-steps/s
+12:16:26 [E1000eV_r1mm_p0-5_Q-3e-09C] t=0.476/20.000 us alive 0/100000 (0.0%) 0.1s 3.80 Gpart-steps/s
+12:16:26 [E1000eV_r1mm_p0-5_Q-3.6e-09C] t=0.452/20.000 us alive 0/100000 (0.0%) 0.1s 3.96 Gpart-steps/s
+12:16:27 [E1000eV_r1mm_p0-5_Q3.6e-09C] done: confined 0/100000 (0.00%), ring-cusp 13658, +z 20247, -z 66095, energy drift max 1.06e-03, 3.44 Gpart-steps/s, 81.0s wall
+12:16:27 [E1000eV_r0.5mm_p0-5_Q-3e-09C] fused CUDA kernel compiled
+12:16:27 [E1000eV_r0.5mm_p0-5_Q-3e-09C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 26.72 Gpart-steps/s
+12:16:27 [E1000eV_r0.5mm_p0-5_Q-3e-09C] t=0.428/20.000 us alive 0/100000 (0.0%) 0.1s 2.24 Gpart-steps/s
+12:16:27 [E1000eV_r1mm_p0-5_Q-3e-09C] done: confined 0/100000 (0.00%), ring-cusp 23803, +z 9319, -z 66878, energy drift max 4.14e-04, 3.75 Gpart-steps/s, 81.5s wall
+12:16:27 [E1000eV_r0.5mm_p0-5_Q3.6e-09C] fused CUDA kernel compiled
+12:16:27 [E1000eV_r0.5mm_p0-5_Q3.6e-09C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 26.01 Gpart-steps/s
+12:16:27 [E1000eV_r1mm_p0-5_Q-3.6e-09C] done: confined 0/100000 (0.00%), ring-cusp 26409, +z 6920, -z 66671, energy drift max 4.45e-04, 3.90 Gpart-steps/s, 81.7s wall
+12:16:27 [E1000eV_r1mm_p0-5] fused CUDA kernel compiled
+12:16:27 [E1000eV_r0.5mm_p0-5_Q3.6e-09C] t=0.555/20.000 us alive 0/100000 (0.0%) 0.2s 1.35 Gpart-steps/s
+12:16:27 [E1000eV_r1mm_p0-5] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 22.85 Gpart-steps/s
+12:16:28 [E1000eV_r1mm_p0-5] t=0.539/20.000 us alive 0/100000 (0.0%) 0.2s 2.78 Gpart-steps/s
+12:16:28 [E1000eV_r0.5mm_p0-5_Q-3e-09C] done: confined 0/100000 (0.00%), ring-cusp 4211, +z 83199, -z 12590, energy drift max 4.17e-04, 2.21 Gpart-steps/s, 82.2s wall
+12:16:28 [E1000eV_r0.5mm_p0-5_Q3.6e-09C] done: confined 0/100000 (0.00%), ring-cusp 1132, +z 92821, -z 6047, energy drift max 9.47e-04, 1.33 Gpart-steps/s, 82.4s wall
+12:16:28 [E1000eV_r0.5mm_p0-5] fused CUDA kernel compiled
+12:16:28 [E1000eV_r0.5mm_p0-5] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 22.62 Gpart-steps/s
+12:16:28 [E1000eV_r1mm_p0-5] done: confined 0/100000 (0.00%), ring-cusp 16978, +z 17953, -z 65069, energy drift max 2.98e-14, 2.75 Gpart-steps/s, 82.8s wall
+12:16:28 [E1000eV_r0.5mm_p0-5] t=0.428/20.000 us alive 0/100000 (0.0%) 0.1s 1.43 Gpart-steps/s
+12:16:29 [E1000eV_r0.5mm_p0-5] done: confined 0/100000 (0.00%), ring-cusp 1921, +z 90155, -z 7924, energy drift max 1.21e-14, 1.41 Gpart-steps/s, 83.6s wall
+12:16:36 [E1000eV_r3mm_p0-5_Q-3.6e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 7.433e-12 s
+12:16:36 [E1000eV_r3mm_p0-5_Q-3.6e-09C] fused CUDA kernel compiled
+12:16:36 [E1000eV_r3mm_p0-5_Q-3.6e-09C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 27.04 Gpart-steps/s
+12:16:36 [E1000eV_r3mm_p0-5_Q-3.6e-09C] t=0.516/20.000 us alive 0/100000 (0.0%) 0.1s 3.96 Gpart-steps/s
+12:16:36 [E300eV_r1mm_p0-5] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 1.905e-11 s
+12:16:36 [E1000eV_r3mm_p0-5] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 1.043e-11 s
+12:16:36 [E100eV_r1mm_p0-5_Q3.5e-10C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 2.367e-11 s
+12:16:36 [E300eV_r1mm_p0-5] fused CUDA kernel compiled
+12:16:36 [E100eV_r1mm_p0-5_Q3.5e-10C] fused CUDA kernel compiled
+12:16:36 [E1000eV_r3mm_p0-5] fused CUDA kernel compiled
+12:16:36 [E100eV_r1mm_p0-5_Q-3.5e-10C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 2.367e-11 s
+12:16:36 [E1000eV_r3mm_p0-5] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 23.20 Gpart-steps/s
+12:16:36 [E300eV_r1mm_p0-5] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 22.75 Gpart-steps/s
+12:16:36 [E100eV_r1mm_p0-5_Q3.5e-10C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 25.57 Gpart-steps/s
+12:16:36 [E300eV_r1mm_p0-5_Q1e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 1.382e-11 s
+12:16:36 [E100eV_r1mm_p0-5] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 3.300e-11 s
+12:16:36 [E100eV_r1mm_p0-5_Q-3.5e-10C] fused CUDA kernel compiled
+12:16:36 [E1000eV_r3mm_p0-5] t=0.325/20.000 us alive 0/100000 (0.0%) 0.1s 3.21 Gpart-steps/s
+12:16:36 [E300eV_r1mm_p0-5_Q1e-09C] fused CUDA kernel compiled
+12:16:36 [E100eV_r1mm_p0-5_Q-3.5e-10C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 26.20 Gpart-steps/s
+12:16:36 [E100eV_r1mm_p0-5] fused CUDA kernel compiled
+12:16:36 [E300eV_r1mm_p0-5_Q-1.05e-09C] field table 1024x512, on-axis rel err 7.01e-16, B_axis_max=0.0989 T, B_max(r<r_max)=2.2519 T, integrator=boris dt_ref=3.966e-13 s adaptive dt<= 1.366e-11 s
+12:16:36 [E300eV_r1mm_p0-5_Q1e-09C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 25.40 Gpart-steps/s
+12:16:36 [E100eV_r1mm_p0-5] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 23.88 Gpart-steps/s
+12:16:37 [E300eV_r1mm_p0-5_Q-1.05e-09C] fused CUDA kernel compiled
+12:16:37 [E300eV_r1mm_p0-5_Q-1.05e-09C] t=0.008/20.000 us alive 100000/100000 (100.0%) 0.0s 25.50 Gpart-steps/s
+12:16:37 [E300eV_r1mm_p0-5] t=1.007/20.000 us alive 1/100000 (0.0%) 0.3s 1.99 Gpart-steps/s
+12:16:37 [E300eV_r1mm_p0-5] t=1.229/20.000 us alive 0/100000 (0.0%) 0.3s 1.81 Gpart-steps/s
+12:16:37 [E100eV_r1mm_p0-5_Q3.5e-10C] t=1.007/20.000 us alive 364/100000 (0.4%) 0.4s 2.65 Gpart-steps/s
+12:16:37 [E100eV_r1mm_p0-5_Q-3.5e-10C] t=1.007/20.000 us alive 3/100000 (0.0%) 0.3s 2.39 Gpart-steps/s
+12:16:37 [E100eV_r1mm_p0-5_Q-3.5e-10C] t=1.182/20.000 us alive 0/100000 (0.0%) 0.3s 2.26 Gpart-steps/s
+12:16:37 [E300eV_r1mm_p0-5_Q-1.05e-09C] t=0.690/20.000 us alive 0/100000 (0.0%) 0.2s 2.70 Gpart-steps/s
+12:16:37 [E300eV_r1mm_p0-5_Q1e-09C] t=1.007/20.000 us alive 10/100000 (0.0%) 0.3s 2.80 Gpart-steps/s
+12:16:37 [E300eV_r1mm_p0-5_Q1e-09C] t=1.404/20.000 us alive 0/100000 (0.0%) 0.4s 2.39 Gpart-steps/s
+12:16:37 [E1000eV_r3mm_p0-5_Q-3.6e-09C] done: confined 0/100000 (0.00%), ring-cusp 35289, +z 0, -z 64711, energy drift max 4.46e-04, 3.91 Gpart-steps/s, 5.6s wall
+12:16:37 [E100eV_r1mm_p0-5] t=1.007/20.000 us alive 91/100000 (0.1%) 0.4s 1.97 Gpart-steps/s
+12:16:37 [E100eV_r1mm_p0-5_Q3.5e-10C] t=2.007/20.000 us alive 1/100000 (0.0%) 0.6s 1.81 Gpart-steps/s
+12:16:37 [E100eV_r1mm_p0-5_Q3.5e-10C] t=2.213/20.000 us alive 0/100000 (0.0%) 0.6s 1.75 Gpart-steps/s
+12:16:37 [E100eV_r1mm_p0-5] t=2.007/20.000 us alive 1/100000 (0.0%) 0.6s 1.43 Gpart-steps/s
+12:16:37 [E100eV_r1mm_p0-5] t=2.031/20.000 us alive 0/100000 (0.0%) 0.6s 1.41 Gpart-steps/s
+12:16:37 [E1000eV_r3mm_p0-5] done: confined 0/100000 (0.00%), ring-cusp 29664, +z 0, -z 70336, energy drift max 1.63e-14, 3.16 Gpart-steps/s, 5.9s wall
+12:16:38 [E300eV_r1mm_p0-5_Q-1.05e-09C] done: confined 0/100000 (0.00%), ring-cusp 34391, +z 133, -z 65476, energy drift max 1.18e-03, 2.67 Gpart-steps/s, 6.2s wall
+12:16:38 [E300eV_r1mm_p0-5] done: confined 0/100000 (0.00%), ring-cusp 28283, +z 336, -z 71381, energy drift max 2.22e-14, 1.80 Gpart-steps/s, 6.1s wall
+12:16:38 [E100eV_r1mm_p0-5_Q-3.5e-10C] done: confined 0/100000 (0.00%), ring-cusp 37903, +z 15, -z 62082, energy drift max 1.23e-03, 2.25 Gpart-steps/s, 6.2s wall
+12:16:38 [E300eV_r1mm_p0-5_Q1e-09C] done: confined 0/100000 (0.00%), ring-cusp 25614, +z 391, -z 73995, energy drift max 4.77e-03, 2.38 Gpart-steps/s, 6.3s wall
+12:16:38 [E100eV_r1mm_p0-5] done: confined 0/100000 (0.00%), ring-cusp 33512, +z 32, -z 66456, energy drift max 3.50e-14, 1.41 Gpart-steps/s, 6.4s wall
+12:16:38 [E100eV_r1mm_p0-5_Q3.5e-10C] done: confined 0/100000 (0.00%), ring-cusp 30963, +z 47, -z 68990, energy drift max 1.12e-02, 1.74 Gpart-steps/s, 6.4s wall
