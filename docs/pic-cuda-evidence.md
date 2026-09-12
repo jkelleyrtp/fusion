@@ -80,9 +80,9 @@ mechanism, consistent with those implementations. Gather also has a distinct
 small arithmetic difference. These observations do not isolate how much each
 contributes to the coupled long-run discrepancy.
 
-## Next diagnostic design
+## Deterministic reference control
 
-Add an explicit `--deterministic-reference` mode only to
+The explicit `--deterministic-reference` mode is limited to
 `diagnose_pic_reproducibility.py`. It calls
 `torch.use_deterministic_algorithms(True, warn_only=False)` before creating
 the reference. Unsupported operations must raise; there is no silent fallback.
@@ -102,8 +102,47 @@ convergence. If repeatability is established, use that control to investigate
 deposit/gather arithmetic and design an explicit CUDA acceptance protocol.
 The existing failed gate remains visible until a reviewed protocol passes.
 
+Job `jonathan-pic-cuda-220efab29142-434c14`, immutable source
+`35e8d089ef7fe1c4c0f183d4926456aebe4290cd`, completed on the same B200/Torch/CUDA
+toolchain. All five checkpoints passed both the original strict comparison and
+zero-tolerance state comparison. Independent inspection of the final paired
+archive confirmed exact numerical equality across all 15 state quantities,
+including corresponding tracking NaNs. This is not a byte-level equality test.
+All eight fixed-input reference deposit repeats were exact.
+
+CUDA deposit still varied on identical inputs: 566–592 unequal nodes, with
+maximum absolute differences from 3.5155e−24 to 5.5835e−24 C. Shared-input
+gather differed in 159,049 components, at most 5.4570e−11 V/m. Shared-input
+Poisson and Boris remained exact. These measurements use the deterministic
+run's final state, not the earlier run's final inputs.
+
+This establishes a repeatable reference control for this configuration and
+toolchain. It does not establish cross-toolchain determinism or CUDA agreement.
+The final paired state and `reproducibility.json` are under:
+
+```text
+/public/devcontainer-shared/jonathan/cusp/runs/pic-cuda-220efab29142/
+  attempt-20260912-195659-191529068/validation/
+```
+
 Performance timings were not reached in the strict CUDA validation.
 No production speedup is established. The
 [next simulation milestones](transient-pic.md#research-gates-after-startup-and-refinement)
 separate this numerical work from physical inlet, mesh, species and scaling
 studies.
+
+### Single-operator isolation after the repeat control
+
+Once the deterministic repeat is established, compare it with two diagnostic
+variants using the same packets, mesh, time window and checkpoints:
+
+- `--deterministic-reference --cuda-operator gather`: replace only gather;
+  deposition, drift and Boris remain reference operations.
+- `--deterministic-reference --cuda-operator deposit`: replace only deposition;
+  gather, drift and Boris remain reference operations.
+
+The mode is limited to this diagnostic. Both preserve the original comparisons
+and save paired states even on failure; exact-state checks are additional
+measurements. The deposit variant retains CUDA atomics and may vary between
+repeats. These experiments isolate an operator's effect in this configuration;
+their errors need not add linearly, and neither clears full-backend acceptance.

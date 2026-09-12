@@ -1,17 +1,37 @@
-"""Measure repeated FP64 reference runs without changing validation tolerances."""
+"""Measure FP64 repeatability and isolated CUDA operators at unchanged tolerances."""
 
 import argparse
 import json
 from pathlib import Path
+from typing import Literal
 
 import torch
 
 from cusp_sim import E_CHARGE
 from diagnose_pic_cuda import difference
+from electrostatic import ElectrostaticMesh
 from pic_cuda import CUDAKernels
+from pic_kernels import ReferenceKernels
 from run_transient_pic import create_simulation, inject_packet, parser, validate
 from transient_pic import PIC
 from validate_pic_gpu import LIMITS, compare_states, state
+
+
+class SingleCUDAOperator(ReferenceKernels):
+    def __init__(self, mesh: ElectrostaticMesh, operator: Literal["deposit", "gather"]) -> None:
+        super().__init__(mesh)
+        self.operator = operator
+        self.cuda = CUDAKernels(mesh)
+
+    def deposit(self, position: torch.Tensor, charge: torch.Tensor) -> torch.Tensor:
+        if self.operator == "deposit":
+            return self.cuda.deposit(position, charge)
+        return super().deposit(position, charge)
+
+    def gather(self, potential: torch.Tensor, position: torch.Tensor) -> torch.Tensor:
+        if self.operator == "gather":
+            return self.cuda.gather(potential, position)
+        return super().gather(potential, position)
 
 
 def repeated_operators(simulation: PIC, h: float) -> dict[str, object]:
@@ -51,7 +71,10 @@ def main() -> None:
     arguments.add_argument("--out", type=Path, required=True)
     arguments.add_argument("--device", default="cuda:0")
     arguments.add_argument("--deterministic-reference", action="store_true")
+    arguments.add_argument("--cuda-operator", choices=("deposit", "gather"))
     options = arguments.parse_args()
+    if options.cuda_operator and not options.deterministic_reference:
+        raise ValueError("Single-operator diagnosis requires --deterministic-reference")
     device = torch.device(options.device)
     if device.type != "cuda" or not torch.cuda.is_available():
         raise ValueError("Reproducibility diagnosis requires a broker-allocated CUDA GPU")
@@ -67,15 +90,20 @@ def main() -> None:
     steps = validate(args)
     reference, configuration = create_simulation(args)
     configuration["diagnostic_deterministic_reference"] = options.deterministic_reference
+    configuration["diagnostic_cuda_operator"] = options.cuda_operator
     repeated = PIC(
         reference.mesh, reference.magnetic_field, reference.core_radius,
         args.max_live_particles, args.track,
+        kernels=(
+            SingleCUDAOperator(reference.mesh, options.cuda_operator)
+            if options.cuda_operator else None
+        ),
     )
     (options.out / "configuration.json").write_text(
         json.dumps(configuration, indent=2, allow_nan=False) + "\n",
     )
     report: dict[str, object] = {
-        "scope": "Reference repeatability and fixed-input operators; not CUDA validation",
+        "scope": "Reference repeatability or single-operator isolation; not CUDA validation",
         "gpu": torch.cuda.get_device_name(device),
         "torch": torch.__version__,
         "cuda": torch.version.cuda,
@@ -84,6 +112,7 @@ def main() -> None:
         "steps": steps,
         "dt_s": args.dt,
         "deterministic_reference": options.deterministic_reference,
+        "cuda_operator": options.cuda_operator,
         "torch_deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
         "cuda_deposit": "custom atomic kernel; unaffected by Torch deterministic selection",
     }
@@ -95,7 +124,8 @@ def main() -> None:
             simulation.advance(args.dt)
             simulation.time = (step + 1) * args.dt
         if step + 1 in (1, 64, 512, 2048, 8192):
-            name = f"reference-repeat-{step + 1}"
+            prefix = f"cuda-{options.cuda_operator}" if options.cuda_operator else "reference-repeat"
+            name = f"{prefix}-{step + 1}"
             comparison: dict[str, object] = {"step": step + 1}
             try:
                 compare_states(options.out, name, reference, repeated)
@@ -110,7 +140,7 @@ def main() -> None:
                     for key in expected:
                         torch.testing.assert_close(
                             observed[key], expected[key], rtol=0, atol=0, equal_nan=True,
-                            msg=f"{name}/{key}: deterministic reference state",
+                            msg=f"{name}/{key}: exact state comparison",
                         )
                 except AssertionError as error:
                     comparison["exact_state_passed"] = False
