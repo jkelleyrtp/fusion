@@ -2,6 +2,11 @@ import "./style.css";
 import { DataStore, parseChunk } from "./data";
 import { Chamber, COLORS } from "./scene";
 import { SweepPlot } from "./sweep";
+import { setupNavigation, setupSidebar } from "./navigation";
+import type { Page } from "./navigation";
+import { campaignHref, renderCampaignHome, renderCampaignReport, reportHref } from "./campaigns";
+import { renderSpaceCharge } from "./space-charge";
+import { renderReport } from "./reports";
 import type { Catalog, Meta, Run, TrajectoryChunk } from "./types";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
@@ -31,30 +36,56 @@ const metadata = new Map<string, Meta>();
 const comparisons = new Map<string, { run: Run; meta: Meta }>();
 
 $("app").innerHTML = `
-  <header class="topbar">
-    <a class="brand" href="./" aria-label="Fusion control room">
+  <div class="app-header"><header class="topbar">
+    <a class="brand" href="#campaigns" aria-label="Fusion control room">
       <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="11" rx="12" ry="5"/><ellipse cx="16" cy="21" rx="12" ry="5"/><path d="M16 3v26M4 11l24 10M28 11L4 21"/></svg>
       Fusion
     </a>
-    <div class="top-context">Fixed fields · no Poisson feedback</div>
   </header>
+  <nav class="top-nav" aria-label="Analysis pages">
+    <a href="#campaigns" data-page="campaigns">Campaigns</a>
+    <a href="#sweeps" data-page="sweeps">Sweeps</a>
+    <a href="#trajectories" data-page="trajectories">Trajectories</a>
+    <a href="#residence" data-page="residence">Residence & losses</a>
+    <a href="#space-charge" data-page="space-charge">Space charge</a>
+    <a href="#reports" data-page="reports">Run report</a>
+  </nav><div class="top-context" id="model-context">Fixed fields · no Poisson feedback</div></div>
   <div class="workspace">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-heading"><span>Campaigns · newest first</span><b id="run-count">—</b></div>
       <label class="search"><span>⌕</span><input id="search" placeholder="Find a run…" aria-label="Find a run"/></label>
       <select id="study" aria-label="Campaign"><option value="">All campaigns</option></select>
       <div class="filter-row"><select id="energy" aria-label="Energy"><option value="">All energies</option></select>
       <select id="radius" aria-label="Radius"><option value="">All sizes</option></select></div>
       <div class="run-list" id="run-list" aria-label="Simulation runs"></div>
+      <div id="sidebar-resizer" role="separator" tabindex="0" aria-label="Resize campaign sidebar"
+        aria-orientation="vertical" aria-controls="sidebar" aria-valuemin="180" aria-valuemax="440" aria-valuenow="240"
+        title="Drag to resize · arrow keys to adjust · double-click to reset"></div>
     </aside>
     <main>
+      <div id="error" class="error" role="alert" hidden></div>
+      <div id="campaigns-page" class="document-page" hidden></div>
+      <div id="campaign-page" class="document-page" hidden>
+        <div id="campaign-heading"></div><div id="campaign-widget" class="report-widget"></div>
+        <div id="campaign-sweep"></div><section id="campaign-details" class="campaign-details"></section>
+      </div>
+      <div id="sweep-page">
       <section id="sweep-explorer" class="panel sweep-panel" hidden></section>
+      <div id="sweep-empty" class="page-empty" hidden><h1>No sweep coordinates for this selection</h1>
+        <p>Choose a sweep campaign or clear your filters. Individual runs remain available in Trajectories and Residence & losses.</p>
+        <a href="#trajectories">View selected run →</a></div>
+      </div>
+      <div id="space-charge-page" hidden></div>
+      <div id="report-page" class="document-page" hidden>
+        <div id="report-heading"></div><div id="report-widget" class="report-widget"></div><div id="report-body"></div>
+      </div>
+      <div id="run-page" hidden>
       <section class="run-heading" id="selected-run"><div><div class="eyebrow" id="campaign-name">LOADING EXPERIMENTS</div>
         <h1 id="run-title">Electron residence study</h1><div id="run-subtitle" class="muted">Summary-first exploration</div></div>
         <div class="run-actions"><button id="back-sweep" class="secondary" hidden>↑ Sweep</button><button id="pin" class="secondary">+ Compare run</button></div></section>
-      <div id="error" class="error" role="alert" hidden></div>
       <div class="console-grid">
         <div class="primary-column">
+          <div id="trajectory-home">
           <section class="panel chamber-panel">
             <div class="panel-heading"><h2>Trajectories</h2>
               <div class="view-buttons"><button data-view="iso" class="active" title="Isometric view">ISO</button><button data-view="side">SIDE</button><button data-view="top">AXIAL</button></div></div>
@@ -78,7 +109,7 @@ $("app").innerHTML = `
             </div>
             <div class="sample-note"><span id="loaded">No trajectories loaded</span><span id="sample-note">Stored paths are a subset of the ensemble.</span></div>
           </section>
-          <div class="plots">
+          </div><div class="plots">
             <section class="panel survival-panel"><div class="panel-heading"><h2>Residence / survival</h2>
               <label class="inline-toggle"><input id="log-time" type="checkbox" checked/>Log-like time</label></div>
               <div id="survival-chart"></div><div id="chart-hover" class="chart-note">Fraction not yet lost by time t</div>
@@ -101,20 +132,42 @@ $("app").innerHTML = `
             <div class="inventory"><strong id="inventory">—</strong><small id="charge">—</small></div>
             <p class="caution">I⟨τ⟩/e · includes time outside the core.<br>Not a virtual-cathode prediction.</p>
           </section>
-          <section class="panel bandwidth-panel"><div class="panel-heading"><h2>Data</h2><span id="cache-hits" class="tag">0 cached</span></div>
+          <div id="bandwidth-home"><section class="panel bandwidth-panel"><div class="panel-heading"><h2>Data</h2><span id="cache-hits" class="tag">0 cached</span></div>
             <div class="download-total"><strong id="downloaded">0 KB</strong><span>this session</span></div><div class="budget-track"><i id="budget-fill"></i></div>
             <label class="budget-label">Limit<select id="budget"><option value="1">1 MiB</option><option value="5" selected>5 MiB</option><option value="20">20 MiB</option><option value="100">100 MiB</option></select></label>
             <label class="offline-label"><input id="offline" type="checkbox"/>Offline · cached data only</label>
             <div class="connection-actions"><button id="reload" class="text-button">Refresh</button><button id="clear-cache" class="text-button">Clear cache</button></div>
             <p id="cache-note">Result data only; excludes app shell.</p>
-          </section>
+          </section></div>
           <details class="panel"><summary>Source & geometry</summary><dl id="geometry" class="readouts"></dl></details>
           <details class="panel"><summary>Numerical quality <span class="tag">FP64</span></summary><dl id="quality" class="readouts"></dl>
             <p class="quality-note" id="quality-note"></p></details>
         </aside>
       </div>
+      </div>
     </main>
   </div>`;
+
+renderSpaceCharge($("space-charge-page"));
+setupNavigation(page => {
+  $("campaigns-page").hidden = page !== "campaigns";
+  $("campaign-page").hidden = page !== "campaign";
+  $("sweep-page").hidden = page !== "sweeps";
+  $("space-charge-page").hidden = page !== "space-charge";
+  $("report-page").hidden = page !== "reports";
+  $("run-page").hidden = page !== "trajectories" && page !== "residence";
+  $("model-context").textContent = page === "space-charge"
+    ? "Stationary Poisson feedback · reference pilot"
+    : "Fixed fields · no Poisson feedback";
+  const widgetTarget = page === "campaign" ? "campaign-widget" : page === "reports" ? "report-widget" : "trajectory-home";
+  $(widgetTarget).append(document.querySelector<HTMLElement>(".chamber-panel")!);
+  $(page === "campaign" ? "campaign-widget" : page === "reports" ? "report-widget" : "bandwidth-home")
+    .append(document.querySelector<HTMLElement>(".bandwidth-panel")!);
+  $(page === "campaign" ? "campaign-sweep" : "sweep-page").prepend($("sweep-explorer"));
+  if (!["trajectories", "campaign", "reports"].includes(page)) stop();
+  if (catalog) void resolveRoute(page).catch(showError);
+});
+setupSidebar($("sidebar"), $("sidebar-resizer"));
 
 function showError(error: unknown): void {
   $("error").textContent = error instanceof Error ? error.message : String(error);
@@ -127,15 +180,16 @@ function label(run: Run): string {
     `${fmt(run.energyEV)} eV · ${fmt(run.radiusM * 100)} cm · ${run.chargeC < 0 ? "negative proxy" : run.chargeC > 0 ? "positive proxy" : "neutral"}`;
 }
 const sweepPlot = new SweepPlot($("sweep-explorer"), id => {
-  void selectRun(id);
-  $("selected-run").scrollIntoView({ block: "start" });
+  location.hash = reportHref(id);
 });
 function renderSweep(): void {
-  const study = $<HTMLSelectElement>("study").value || selected?.study || catalog.studies[0]?.id;
-  sweepPlot.render(filteredRuns(), study, catalog.studies.find(s => s.id === study)?.label ?? study, selected?.id);
+  const isCampaign = document.body.dataset.page === "campaign";
+  const study = (isCampaign ? selected?.study : $<HTMLSelectElement>("study").value) || selected?.study || catalog.studies[0]?.id;
+  sweepPlot.render(isCampaign ? catalog.runs : filteredRuns(), study, catalog.studies.find(s => s.id === study)?.label ?? study, selected?.id);
   $("back-sweep").hidden = $("sweep-explorer").hidden;
+  $("sweep-empty").hidden = !$("sweep-explorer").hidden;
 }
-$("back-sweep").onclick = () => $("sweep-explorer").scrollIntoView({ block: "start" });
+$("back-sweep").onclick = () => { location.hash = "sweeps"; };
 function readouts(id: string, rows: [string, string][]): void {
   $(id).innerHTML = rows.map(([name, value]) => `<div><dt>${escape(name)}</dt><dd>${escape(value)}</dd></div>`).join("");
 }
@@ -185,6 +239,12 @@ function renderLibrary(): void {
 
 function renderMetrics(): void {
   if (!selected) return;
+  document.querySelector<HTMLAnchorElement>('a[data-page="reports"]')!.href = reportHref(selected.id);
+  renderReport($("report-body"), selected, meta, catalog.studies.find(s => s.id === selected?.study)?.label ?? selected.study);
+  renderCampaignReport($("campaign-heading"), $("campaign-details"), catalog, selected, id => { void selectRun(id); });
+  $("report-heading").innerHTML = `<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#campaigns">Campaigns</a><span>/</span>
+    <a href="${campaignHref(selected.study)}">${escape(catalog.studies.find(s => s.id === selected?.study)?.label ?? selected.study)}</a><span>/</span>Run report</nav>
+    <div class="page-title"><h1>${escape(label(selected))}</h1></div>`;
   $("campaign-name").textContent = catalog.studies.find(s => s.id === selected!.study)?.label ?? selected.study;
   $("run-title").textContent = label(selected);
   $("run-title").title = selected.tag;
@@ -351,7 +411,7 @@ async function selectRun(id: string): Promise<void> {
     chamber?.showSphere($<HTMLInputElement>("sphere").checked);
     $<HTMLSelectElement>("first").innerHTML = data.trajectory.levels[0].chunks.map(c => `<option value="${c.first}">${c.first}</option>`).join("");
     renderMetrics(); renderPlots(); updateStream();
-    await loadPaths();
+    if (["trajectories", "campaign", "reports"].includes(document.body.dataset.page ?? "")) await loadPaths();
   } catch (error) { if (request === revision) { showError(error); $("viewport-empty").textContent = "Could not load run data"; } }
 }
 
@@ -374,14 +434,13 @@ $("run-list").onclick = event => {
   if (campaign) {
     $<HTMLSelectElement>("study").value = "";
     for (const id of ["search", "energy", "radius"]) $<HTMLInputElement | HTMLSelectElement>(id).value = "";
-    const members = catalog.runs.filter(r => r.study === campaign);
-    const preferred = [...members].sort((a, b) => (b.meanDwellUs ?? -1) - (a.meanDwellUs ?? -1))[0];
-    if (preferred) void selectRun(preferred.id);
-    $("sweep-explorer").scrollIntoView({ block: "start" });
+    location.hash = campaignHref(campaign);
     return;
   }
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-run]");
-  if (button?.dataset.run) void selectRun(button.dataset.run);
+  if (button?.dataset.run) {
+    location.hash = reportHref(button.dataset.run);
+  }
 };
 $("load").onclick = () => { void loadPaths(); };
 for (const id of ["detail", "first", "amount"]) $(id).onchange = updateStream;
@@ -409,6 +468,7 @@ $("pin").onclick = () => {
   else if (comparisons.size < 3) comparisons.set(selected.id, { run: selected, meta });
   else { showError(new Error("Three comparisons are pinned. Clear them before adding another.")); return; }
   renderPlots();
+  location.hash = "residence";
 };
 $("clear-comparisons").onclick = () => { comparisons.clear(); renderPlots(); };
 $("budget").onchange = () => { store.budget = Number($<HTMLSelectElement>("budget").value) * 1024 * 1024; store.onChange(); };
@@ -423,11 +483,29 @@ async function initialize(): Promise<void> {
     $("study").innerHTML = '<option value="">All campaigns</option>' + catalog.studies.map(s => `<option value="${escape(s.id)}">${escape(s.label)} · ${finishedAgo(s)}</option>`).join("");
     $("energy").innerHTML = '<option value="">All energies</option>' + [...new Set(catalog.runs.map(r => r.energyEV))].sort((a, b) => a - b).map(e => `<option value="${e}">${fmt(e)} eV</option>`).join("");
     $("radius").innerHTML = '<option value="">All sizes</option>' + [...new Set(catalog.runs.map(r => r.radiusM))].sort((a, b) => a - b).map(r => `<option value="${r}">${fmt(r * 100)} cm</option>`).join("");
-    const latestRuns = catalog.runs.filter(r => r.study === catalog.studies[0]?.id);
-    const preferred = catalog.runs.find(r => r.id === selected?.id)?.id ??
-      latestRuns.find(r => r.energyEV === 5 && r.chargeC === 0)?.id ?? latestRuns[0]?.id ?? catalog.runs[0].id;
-    await selectRun(preferred);
+    renderCampaignHome($("campaigns-page"), catalog, finishedAgo);
+    renderLibrary();
+    await resolveRoute(document.body.dataset.page as Page);
   } catch (error) { showError(error); }
+}
+async function resolveRoute(page: Page): Promise<void> {
+  if (page === "campaigns" || page === "space-charge") return;
+  const id = decodeURIComponent(location.hash.split("/").slice(1).join("/"));
+  let run = selected ?? catalog.runs.find(r => r.study === catalog.studies[0]?.id) ?? catalog.runs[0];
+  if (page === "campaign") {
+    const study = catalog.studies.find(s => s.id === (id || run.study));
+    if (!study) throw new Error("Campaign not found.");
+    run = selected?.study === study.id ? selected : catalog.runs.find(r => r.study === study.id)!;
+  } else if (page === "reports" && id) {
+    const requested = catalog.runs.find(r => r.id === id);
+    if (!requested) throw new Error("Run not found.");
+    run = requested;
+  }
+  if (selected?.id !== run.id || (!meta && run.meta)) await selectRun(run.id);
+  else {
+    renderMetrics(); renderSweep();
+    if (!loaded.length && meta && ["trajectories", "campaign", "reports"].includes(page)) await loadPaths();
+  }
 }
 $("reload").onclick = () => { metadata.clear(); void initialize(); };
 try {

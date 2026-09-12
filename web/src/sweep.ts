@@ -44,7 +44,7 @@ export class SweepPlot {
     const caption = this.metric === "survival" ? "Present at window end" : "Mean residence through T";
     this.root.innerHTML = `
       <div class="sweep-heading"><div><h2>Sweep explorer</h2><p>${escape(title)}</p></div>
-        <span class="tiny-label">${filtered.length} cases · click a cell for trajectories</span></div>
+        <span class="tiny-label">${filtered.length} cases · click a cell for its run report</span></div>
       <div class="sweep-controls">
         <label>Color<select data-control="metric" aria-label="Heatmap color metric">
           <option value="transit" ${this.metric === "transit" ? "selected" : ""}>Dwell / transit time</option>
@@ -57,13 +57,15 @@ export class SweepPlot {
           `<option value="${key}" ${key === this.grid ? "selected" : ""}>${g.gridR} × ${g.gridZ} · gyro ${g.gyroFraction}</option>`).join("")}</select></label>
       </div>
       <div class="sweep-scale"><span>${caption} (${unit})</span><b>0</b><i></i><b>${format(maximum)} ${unit}</b><span>Shared linear scale</span></div>
-      <div class="sweep-facets">${energies.map(energy => {
+      <div class="grouped-heatmap-scroll"><div class="grouped-heatmap" style="--columns:${currents.length}" role="group" aria-label="Sweep heatmap grouped by energy and injection angle">
+        <span class="axis-corner">Energy / window</span><span class="axis-corner">Aim</span>
+        ${currents.map(c => `<span class="axis-tick">${format(c / 1000)} kA-turn</span>`).join("")}
+        ${energies.map((energy, energyIndex) => {
         const panelRuns = filtered.filter(r => r.energyEV === energy);
         const windows = unique(panelRuns.map(r => r.windowUs));
-        return `<section class="sweep-facet" aria-label="${energy} eV heatmap">
-          <div class="facet-heading"><h3>${format(energy)} eV</h3><span>${windows.length === 1 ? `T = ${format(windows[0])} µs` : panelRuns.length ? "Multiple observation windows" : "Not sampled at this resolution"}</span></div>
-          <div class="heat-grid" style="--columns:${currents.length}">
-            <span class="axis-corner">Aim ↑</span>${currents.map(c => `<span class="axis-tick">${format(c / 1000)}</span>`).join("")}
+        return `${energyIndex ? `<div class="heat-group-gap"></div>` : ""}
+          <div class="heat-energy" style="grid-row:span ${angles.length}"><strong>${format(energy)} eV</strong>
+            <small>${windows.length === 1 ? `T = ${format(windows[0])} µs` : panelRuns.length ? "Multiple windows" : "Not sampled"}</small></div>
             ${angles.map(angle => `<span class="axis-tick">${angle}°</span>${currents.map(current => {
               const candidates = panelRuns.filter(r => r.sweep!.aimDeg === angle && r.sweep!.coilCurrentA === current);
               const run = candidates.length === 1 ? candidates[0] : undefined;
@@ -79,8 +81,8 @@ export class SweepPlot {
                 data-sweep-run="${escape(run.id)}" aria-label="${escape(description)}" aria-pressed="${run.id === selected}" title="${escape(description)}">
                 ${format(v)}${censored ? "<sup>†</sup>" : ""}</button>`;
             }).join("")}`).join("")}
-          </div><div class="heat-axis">Coil current (kA-turn) · sampled settings</div></section>`;
-      }).join("")}</div>
+          `;
+      }).join("")}</div></div><div class="heat-axis">Coil current (kA-turn) · sampled settings</div>
       <p class="sweep-footnote">† Survivors are censored at T; dwell is a lower bound. a/v₀ normalizes the launch-speed scale, not a bounce count. — = no sample.</p>`;
     this.root.querySelectorAll<HTMLSelectElement>("select[data-control]").forEach(select => {
       select.onchange = () => {
