@@ -1,6 +1,7 @@
 import "./style.css";
 import { DataStore, parseChunk } from "./data";
 import { Chamber, COLORS } from "./scene";
+import { SweepPlot } from "./sweep";
 import type { Catalog, Meta, Run, TrajectoryChunk } from "./types";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
@@ -39,7 +40,7 @@ $("app").innerHTML = `
   </header>
   <div class="workspace">
     <aside class="sidebar">
-      <div class="sidebar-heading"><span>Runs · newest campaigns first</span><b id="run-count">—</b></div>
+      <div class="sidebar-heading"><span>Campaigns · newest first</span><b id="run-count">—</b></div>
       <label class="search"><span>⌕</span><input id="search" placeholder="Find a run…" aria-label="Find a run"/></label>
       <select id="study" aria-label="Campaign"><option value="">All campaigns</option></select>
       <div class="filter-row"><select id="energy" aria-label="Energy"><option value="">All energies</option></select>
@@ -47,9 +48,10 @@ $("app").innerHTML = `
       <div class="run-list" id="run-list" aria-label="Simulation runs"></div>
     </aside>
     <main>
-      <section class="run-heading"><div><div class="eyebrow" id="campaign-name">LOADING EXPERIMENTS</div>
+      <section id="sweep-explorer" class="panel sweep-panel" hidden></section>
+      <section class="run-heading" id="selected-run"><div><div class="eyebrow" id="campaign-name">LOADING EXPERIMENTS</div>
         <h1 id="run-title">Electron residence study</h1><div id="run-subtitle" class="muted">Summary-first exploration</div></div>
-        <button id="pin" class="secondary">+ Compare run</button></section>
+        <div class="run-actions"><button id="back-sweep" class="secondary" hidden>↑ Sweep</button><button id="pin" class="secondary">+ Compare run</button></div></section>
       <div id="error" class="error" role="alert" hidden></div>
       <div class="console-grid">
         <div class="primary-column">
@@ -120,7 +122,20 @@ function showError(error: unknown): void {
 }
 function clearError(): void { $("error").hidden = true; }
 function stop(): void { playing = false; $("play").textContent = "▶"; $("play").setAttribute("aria-label", "Play trajectories"); }
-function label(run: Run): string { return `${fmt(run.energyEV)} eV · ${fmt(run.radiusM * 100)} cm · ${run.chargeC < 0 ? "negative proxy" : run.chargeC > 0 ? "positive proxy" : "neutral"}`; }
+function label(run: Run): string {
+  return run.sweep ? `${fmt(run.energyEV)} eV · ${fmt(run.sweep.coilCurrentA / 1000)} kA-turn · ${run.sweep.aimDeg}° aim · ${run.sweep.coneDeg}° cone` :
+    `${fmt(run.energyEV)} eV · ${fmt(run.radiusM * 100)} cm · ${run.chargeC < 0 ? "negative proxy" : run.chargeC > 0 ? "positive proxy" : "neutral"}`;
+}
+const sweepPlot = new SweepPlot($("sweep-explorer"), id => {
+  void selectRun(id);
+  $("selected-run").scrollIntoView({ block: "start" });
+});
+function renderSweep(): void {
+  const study = $<HTMLSelectElement>("study").value || selected?.study || catalog.studies[0]?.id;
+  sweepPlot.render(filteredRuns(), study, catalog.studies.find(s => s.id === study)?.label ?? study, selected?.id);
+  $("back-sweep").hidden = $("sweep-explorer").hidden;
+}
+$("back-sweep").onclick = () => $("sweep-explorer").scrollIntoView({ block: "start" });
 function readouts(id: string, rows: [string, string][]): void {
   $(id).innerHTML = rows.map(([name, value]) => `<div><dt>${escape(name)}</dt><dd>${escape(value)}</dd></div>`).join("");
 }
@@ -138,25 +153,33 @@ function finishedAgo(study: Catalog["studies"][number]): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-function renderLibrary(): void {
+function filteredRuns(): Run[] {
   const query = $<HTMLInputElement>("search").value.toLowerCase();
   const study = $<HTMLSelectElement>("study").value;
   const energy = $<HTMLSelectElement>("energy").value;
   const radius = $<HTMLSelectElement>("radius").value;
-  const runs = catalog.runs.filter(run => (!study || run.study === study) &&
+  return catalog.runs.filter(run => (!study || run.study === study) &&
     (!energy || run.energyEV === Number(energy)) && (!radius || run.radiusM === Number(radius)) &&
     `${run.tag} ${label(run)} ${run.study}`.toLowerCase().includes(query));
+}
+function renderLibrary(): void {
+  const query = $<HTMLInputElement>("search").value;
+  const runs = filteredRuns();
   $("run-count").textContent = String(runs.length);
   $("run-list").innerHTML = catalog.studies.map(campaign => {
     const members = runs.filter(run => run.study === campaign.id);
     if (!members.length) return "";
-    return `<div class="campaign-heading"><h3>${escape(campaign.label)}</h3><time title="${escape(campaign.finishedAt ?? "Completion time unavailable")}" ${campaign.finishedAt ? `datetime="${escape(campaign.finishedAt)}"` : ""}>${finishedAgo(campaign)}</time></div>` +
+    const sweep = members.some(run => run.sweep);
+    return `<button class="campaign-card ${selected?.study === campaign.id ? "selected" : ""}" data-campaign="${escape(campaign.id)}">
+      <strong>${escape(campaign.label)}</strong><span>${members.length} runs · ${finishedAgo(campaign)}${sweep ? " · heatmaps" : ""}</span></button>
+      <details class="campaign-members" ${query || (!sweep && selected?.study === campaign.id) ? "open" : ""}><summary>Browse ${members.length} runs</summary>` +
     members.map(run => `<button class="run-card ${selected?.id === run.id ? "selected" : ""}" data-run="${escape(run.id)}" aria-pressed="${selected?.id === run.id}">
     <div class="run-card-top"><strong>${fmt(run.energyEV)} <span>eV</span></strong><span class="run-size">${fmt(run.radiusM * 100)} cm</span></div>
+    ${run.sweep ? `<div class="run-card-bottom">${fmt(run.sweep.coilCurrentA / 1000)} kA · ${run.sweep.aimDeg}° aim · ${run.sweep.coneDeg}° cone</div>` : ""}
     <div class="run-card-bottom"><span><i class="${run.chargeC === 0 ? "neutral" : "charged"}"></i>${run.chargeC === 0 ? "Neutral" : run.chargeC < 0 ? "Negative proxy" : "Positive proxy"}</span>
       <b>${run.meanDwellUs == null ? "Summary only" : `${run.dwellLowerBound ? "≥" : ""}${fmt(run.meanDwellUs)} µs`}</b></div>
     ${run.kind !== "external" ? `<span class="control-label">${run.kind === "control" ? "INSIDE-BORN CONTROL" : "LEGACY SOURCE"}</span>` : ""}
-    </button>`).join("");
+    </button>`).join("") + "</details>";
   }).join("") || '<p class="empty-list">No matching runs.</p>';
 }
 
@@ -314,7 +337,7 @@ async function selectRun(id: string): Promise<void> {
   $<HTMLButtonElement>("play").disabled = true;
   $<HTMLSelectElement>("detail").value = "0"; $<HTMLSelectElement>("amount").value = "16";
   chamber?.setRun(run);
-  renderLibrary(); renderMetrics(); renderPlots(); updateStream();
+  renderLibrary(); renderSweep(); renderMetrics(); renderPlots(); updateStream();
   if (!run.meta) {
     $("viewport-empty").textContent = "Summary-only archive · raw trajectories unavailable";
     return;
@@ -345,8 +368,18 @@ store.onChange = () => {
   $("cache-note").textContent = store.cacheNotice || "Result data only; excludes app shell.";
 };
 
-for (const id of ["search", "study", "energy", "radius"]) $(id).addEventListener("input", () => { if (catalog) renderLibrary(); });
+for (const id of ["search", "study", "energy", "radius"]) $(id).addEventListener("input", () => { if (catalog) { renderLibrary(); renderSweep(); } });
 $("run-list").onclick = event => {
+  const campaign = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-campaign]")?.dataset.campaign;
+  if (campaign) {
+    $<HTMLSelectElement>("study").value = "";
+    for (const id of ["search", "energy", "radius"]) $<HTMLInputElement | HTMLSelectElement>(id).value = "";
+    const members = catalog.runs.filter(r => r.study === campaign);
+    const preferred = [...members].sort((a, b) => (b.meanDwellUs ?? -1) - (a.meanDwellUs ?? -1))[0];
+    if (preferred) void selectRun(preferred.id);
+    $("sweep-explorer").scrollIntoView({ block: "start" });
+    return;
+  }
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-run]");
   if (button?.dataset.run) void selectRun(button.dataset.run);
 };

@@ -6,6 +6,10 @@ export interface Run {
   survivors: number; meanDwellUs: number | null; dwellLowerBound: boolean | null;
   medianEscapeUs: number | null; axisAngleDeg: number | null; tracked: number;
   trajectoryWindowUs: number; meta: FileRef | null;
+  sweep?: {
+    coilCurrentA: number; aimDeg: number; coneDeg: number;
+    gridR: number; gridZ: number; gyroFraction: number;
+  };
 }
 export interface Catalog {
   version: number; studies: { id: string; label: string; kind: string; finishedAt?: string | null }[]; runs: Run[];
