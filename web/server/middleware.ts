@@ -61,7 +61,7 @@ export function jobsMiddleware(service: JobService) {
         return;
       }
       const profile = value.profile === undefined ? "poisson-reference" : value.profile;
-      if (profile !== "poisson-reference" && profile !== "poisson-high-voltage" && profile !== "poisson-filament") {
+      if (typeof profile !== "string" || !["poisson-reference", "poisson-high-voltage", "poisson-filament", "transient-pic"].includes(profile)) {
         send(res, 400, { error: "Unknown profile" });
         return;
       }

@@ -6,6 +6,7 @@ export interface CaseProgress {
   exitCode: number | null;
   updatedAt: string | null;
   settings: Record<string, string>;
+  physicalTimeS?: number;
 }
 
 export interface RunProgress {
@@ -14,12 +15,13 @@ export interface RunProgress {
   purpose: string;
   done: boolean;
   statusText: string | null;
+  progressUnit?: "iterations" | "steps";
   cases: CaseProgress[];
 }
 
 export interface SimulationJob {
   id: string;
-  profile: "poisson-reference" | "poisson-high-voltage" | "poisson-filament";
+  profile: "poisson-reference" | "poisson-high-voltage" | "poisson-filament" | "transient-pic";
   title: string;
   purpose: string;
   createdAt: string;

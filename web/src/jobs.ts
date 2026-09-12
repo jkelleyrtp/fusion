@@ -25,6 +25,10 @@ const casePurpose: Record<string, string> = {
   broad_1A: "30 kA-turn · broad 3 cm / 0° · 1 A electron beam",
   compact_vacuum: "30 kA-turn · compact 50 µm / 10° vacuum control",
   compact_1A: "30 kA-turn · compact 50 µm / 10° · 1 A electron beam",
+  pic_vacuum: "Transient magnetic-only control",
+  pic_1mA: "Transient 1 mA beam",
+  pic_1A: "Transient 1 A beam",
+  pic_1A_dt: "Half timestep · matched macroparticle weight",
 };
 const caseLabel: Record<CaseProgress["status"], string> = {
   pending: "Awaiting snapshot",
@@ -45,12 +49,16 @@ function resultLabel(job: SimulationJob): string {
 function completed(job: SimulationJob): number {
   return job.progress?.cases.filter(item => item.status === "completed").length ?? 0;
 }
-function caseRow(item: CaseProgress): string {
+function caseRow(item: CaseProgress, progressUnit: "iterations" | "steps"): string {
   const fraction = item.target > 0 ? Math.min(1, item.iteration / item.target) : 0;
+  const unitLabel = progressUnit === "steps" ? "Steps" : "Iterations";
+  const physicalTime = progressUnit === "steps" && item.physicalTimeS !== undefined
+    ? ` · ${(item.physicalTimeS * 1e9).toLocaleString("en-US", { maximumSignificantDigits: 6 })} ns`
+    : "";
   return `<tr><th scope="row">${escape(item.name)}</th>
     <td>${escape(casePurpose[item.name] ?? "Recorded variant")}</td>
-    <td><div class="iteration-progress"><progress max="1" value="${fraction}" aria-label="${escape(item.name)} iterations"></progress>
-      <span>${item.iteration}/${item.target}</span></div></td>
+    <td><div class="iteration-progress"><progress max="1" value="${fraction}" aria-label="${escape(item.name)} ${unitLabel}"></progress>
+      <span>${item.iteration}/${item.target}${physicalTime}</span></div></td>
     <td><span class="case-status case-${item.status}">${caseLabel[item.status]}</span></td>
     <td class="muted" title="${escape(item.updatedAt ?? "No published snapshot")}">${escape(age(item.updatedAt))}</td></tr>`;
 }
@@ -74,9 +82,9 @@ function jobArticle(job: SimulationJob, open: boolean): string {
       ${job.restartCount || job.preemptedCount ? `<span>${job.restartCount} restarts · ${job.preemptedCount} preemptions</span>` : ""}
       ${job.campaignId ? `<a href="#campaign/${encodeURIComponent(job.campaignId)}">Open saved report →</a>` : ""}</div>
     ${errors.length ? `<p class="job-warning" role="status">${errors.map(escape).join("<br>")}<br>Previously saved state is retained; no automatic resubmission.</p>` : ""}
-    ${progress ? `<div class="table-scroll"><table class="job-cases"><thead><tr><th>Variant</th><th>What it tests</th><th>Iterations</th><th>Result</th><th>Last snapshot</th></tr></thead>
-      <tbody>${progress.cases.map(caseRow).join("")}</tbody></table></div>
-      <p class="job-footnote">Iterations are stationary field updates, not elapsed physical time. Completing them does not establish convergence.</p>`
+    ${progress ? `<div class="table-scroll"><table class="job-cases"><thead><tr><th>Variant</th><th>What it tests</th><th>${progress.progressUnit === "steps" ? "Steps" : "Iterations"}</th><th>Result</th><th>Last snapshot</th></tr></thead>
+      <tbody>${progress.cases.map(item => caseRow(item, progress.progressUnit ?? "iterations")).join("")}</tbody></table></div>
+      <p class="job-footnote">${progress.progressUnit === "steps" ? "Steps advance physical time. A completed startup run does not establish physical convergence." : "Iterations are stationary field updates, not elapsed physical time. Completing them does not establish convergence."}</p>`
       : `<p class="job-empty">Waiting for a published progress snapshot. Scheduler status is tracked separately.</p>`}
     <div class="job-timestamps"><span>Scheduler checked ${escape(age(job.brokerCheckedAt))}</span>
       <span>Progress checked ${escape(age(job.progressCheckedAt))}</span></div>

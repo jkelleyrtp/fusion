@@ -1,7 +1,8 @@
-"""Read published Poisson progress without loading particle or field arrays."""
+"""Read published Poisson or transient PIC progress without loading particle arrays."""
 
 import argparse
 import json
+import math
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,15 +29,27 @@ def read_progress(root: Path) -> dict[str, object] | None:
     commands = manifest["commands"]
     if not isinstance(commands, list):
         raise TypeError("Manifest commands must be a list")
+    progress_unit = manifest.get("progress_unit", "iterations")
+    if progress_unit not in {"iterations", "steps"}:
+        raise ValueError("Unknown progress unit")
+    step_targets: list[int] | None = None
+    if progress_unit == "steps":
+        targets = manifest.get("step_targets")
+        if (
+            not isinstance(targets, list) or len(targets) != len(commands)
+            or not all(type(target) is int and target > 0 for target in targets)
+        ):
+            raise ValueError("Step targets do not match manifest")
+        step_targets = cast(list[int], targets)
     codes: list[int] | None = None
     code_path = run / "exit_codes.json"
     if code_path.exists():
-        value: object = json.loads(code_path.read_text())
-        if not isinstance(value, list) or len(value) != len(commands) or not all(
-            type(code) is int for code in value
+        exit_value: object = json.loads(code_path.read_text())
+        if not isinstance(exit_value, list) or len(exit_value) != len(commands) or not all(
+            type(code) is int for code in exit_value
         ):
             raise ValueError("Exit codes do not match manifest")
-        codes = cast(list[int], value)
+        codes = cast(list[int], exit_value)
     cases = []
     for index, command in enumerate(commands):
         if not isinstance(command, list) or not all(isinstance(arg, str) for arg in command):
@@ -49,34 +62,88 @@ def read_progress(root: Path) -> dict[str, object] | None:
         name = Path(settings["out"]).name
         if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
             raise ValueError("Invalid case name")
-        target = int(settings["iterations"])
-        if target < 1:
-            raise ValueError("Invalid iteration target")
-        snapshots = sorted((run / name / "viewer").glob("iteration-*/summary.json"))
+        case_dir = run / name
         iteration = 0
         updated_at = None
-        if snapshots:
-            latest = snapshots[-1]
-            summary = read_object(latest)
-            diagnostics = summary["poisson"]
-            if not isinstance(diagnostics, dict):
-                raise ValueError("Missing Poisson diagnostics")
-            step = diagnostics["iteration"]
-            if type(step) is not int or not 0 <= step <= target:
-                raise ValueError("Invalid published iteration")
-            iteration = step
-            updated_at = datetime.fromtimestamp(
-                latest.stat().st_mtime, timezone.utc
-            ).isoformat()
+        physical_time = 0.0
+        history_exists = False
+        if step_targets is None:
+            target = int(settings["iterations"])
+            if target < 1:
+                raise ValueError("Invalid iteration target")
+            snapshots = sorted(case_dir.glob("viewer/iteration-*/summary.json"))
+            if snapshots:
+                latest_snapshot = snapshots[-1]
+                summary = read_object(latest_snapshot)
+                diagnostics = summary["poisson"]
+                if not isinstance(diagnostics, dict):
+                    raise ValueError("Missing Poisson diagnostics")
+                step = diagnostics["iteration"]
+                if type(step) is not int or not 0 <= step <= target:
+                    raise ValueError("Invalid published iteration")
+                iteration = step
+                updated_at = datetime.fromtimestamp(
+                    latest_snapshot.stat().st_mtime, timezone.utc
+                ).isoformat()
+        else:
+            target = step_targets[index]
+            history_path = case_dir / "history.json"
+            if history_path.exists():
+                history_exists = True
+                try:
+                    history_value: object = json.loads(history_path.read_text())
+                except json.JSONDecodeError as error:
+                    raise ValueError("Malformed PIC history") from error
+                if (
+                    not isinstance(history_value, list) or not history_value
+                    or not all(isinstance(record, dict) for record in history_value)
+                ):
+                    raise ValueError("Malformed PIC history")
+                latest_history = cast(list[dict[str, object]], history_value)[-1]
+                step = latest_history.get("step")
+                time = latest_history.get("time_s")
+                try:
+                    duration = float(settings["duration"])
+                except (KeyError, TypeError, ValueError) as error:
+                    raise ValueError("Invalid published PIC duration") from error
+                if not math.isfinite(duration):
+                    raise ValueError("Invalid published PIC duration")
+                if not isinstance(step, int) or isinstance(step, bool) or not 0 <= step <= target:
+                    raise ValueError("Invalid published PIC step")
+                if not isinstance(time, (int, float)) or isinstance(time, bool):
+                    raise ValueError("Invalid published PIC time")
+                published_time = float(time)
+                if (
+                    not math.isfinite(published_time) or published_time < 0
+                    or published_time > duration + 1e-18
+                ):
+                    raise ValueError("Invalid published PIC time")
+                iteration = step
+                physical_time = published_time
+                updated_at = datetime.fromtimestamp(
+                    history_path.stat().st_mtime, timezone.utc
+                ).isoformat()
         code = codes[index] if codes is not None else None
-        status = "running" if iteration else "pending"
-        if code == 124:
-            status = "timed_out"
-        elif code is not None and code != 0:
-            status = "failed"
-        elif code == 0 or ((run / name / "STATUS").exists() and iteration == target):
-            status = "completed"
-        cases.append({
+        if step_targets is None:
+            status = "running" if iteration else "pending"
+            if code == 124:
+                status = "timed_out"
+            elif code is not None and code != 0:
+                status = "failed"
+            elif code == 0 or (case_dir / "STATUS").exists() and iteration == target:
+                status = "completed"
+        else:
+            status = "running" if history_exists else "pending"
+            if code == 124:
+                status = "timed_out"
+            elif code is not None and code != 0:
+                status = "failed"
+            elif (
+                (case_dir / "DONE").exists() and iteration == target
+                and (code is None or code == 0)
+            ):
+                status = "completed"
+        case = {
             "name": name,
             "iteration": iteration,
             "target": target,
@@ -85,12 +152,16 @@ def read_progress(root: Path) -> dict[str, object] | None:
             "updatedAt": updated_at,
             "settings": {key: value for key, value in settings.items()
                          if key not in {"out", "device", "source-revision"}},
-        })
+        }
+        if step_targets is not None:
+            case["physicalTimeS"] = physical_time
+        cases.append(case)
     status_path = run / "STATUS"
     return {
         "attempt": run.name,
         "sourceRevision": manifest["source_revision"],
         "purpose": manifest["purpose"],
+        "progressUnit": progress_unit,
         "done": (run / "DONE").exists(),
         "statusText": status_path.read_text().strip() if status_path.exists() else None,
         "cases": cases,

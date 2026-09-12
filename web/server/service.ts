@@ -131,6 +131,9 @@ function parseRunProgress(value: unknown): RunProgress | null {
   const run = value as Record<string, unknown>;
   if (typeof run.attempt !== "string" || typeof run.sourceRevision !== "string" || typeof run.purpose !== "string") fail("Malformed progress identity");
   if (typeof run.done !== "boolean" || (run.statusText !== null && typeof run.statusText !== "string")) fail("Malformed progress status");
+  if (run.progressUnit !== undefined && !["iterations", "steps"].includes(String(run.progressUnit))) {
+    fail("Malformed progress unit");
+  }
   if (!Array.isArray(run.cases)) fail("Malformed progress cases");
   const cases: CaseProgress[] = run.cases.map((item) => {
     if (!item || typeof item !== "object") fail("Malformed progress case");
@@ -139,10 +142,11 @@ function parseRunProgress(value: unknown): RunProgress | null {
     if (!["pending", "running", "completed", "timed_out", "failed"].includes(String(row.status))) fail("Malformed progress case status");
     if (row.exitCode !== null && typeof row.exitCode !== "number") fail("Malformed progress exit code");
     if (row.updatedAt !== null && typeof row.updatedAt !== "string") fail("Malformed progress timestamp");
+    if (row.physicalTimeS !== undefined && (typeof row.physicalTimeS !== "number" || !Number.isFinite(row.physicalTimeS) || row.physicalTimeS < 0)) fail("Malformed progress physical time");
     if (!row.settings || typeof row.settings !== "object") fail("Malformed progress settings");
     return row as unknown as CaseProgress;
   });
-  return { attempt: run.attempt, sourceRevision: run.sourceRevision, purpose: run.purpose, done: run.done, statusText: run.statusText as string | null, cases };
+  return { attempt: run.attempt, sourceRevision: run.sourceRevision, purpose: run.purpose, done: run.done, statusText: run.statusText as string | null, progressUnit: run.progressUnit as RunProgress["progressUnit"], cases };
 }
 
 function responseJob(job: StoredJob): SimulationJob {
