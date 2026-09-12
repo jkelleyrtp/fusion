@@ -64,6 +64,7 @@ function caseRow(item: CaseProgress, progressUnit: "iterations" | "steps"): stri
 }
 function jobArticle(job: SimulationJob, open: boolean): string {
   const progress = job.progress;
+  const progressUnit = progress?.progressUnit ?? (job.profile === "transient-pic" ? "steps" : "iterations");
   const errors = [job.launchError, job.brokerError && `Scheduler: ${job.brokerError}`,
     job.progressError && `Results: ${job.progressError}`].filter((error): error is string => Boolean(error));
   const pending = progress?.cases.length ?? 0;
@@ -82,9 +83,9 @@ function jobArticle(job: SimulationJob, open: boolean): string {
       ${job.restartCount || job.preemptedCount ? `<span>${job.restartCount} restarts · ${job.preemptedCount} preemptions</span>` : ""}
       ${job.campaignId ? `<a href="#campaign/${encodeURIComponent(job.campaignId)}">Open saved report →</a>` : ""}</div>
     ${errors.length ? `<p class="job-warning" role="status">${errors.map(escape).join("<br>")}<br>Previously saved state is retained; no automatic resubmission.</p>` : ""}
-    ${progress ? `<div class="table-scroll"><table class="job-cases"><thead><tr><th>Variant</th><th>What it tests</th><th>${progress.progressUnit === "steps" ? "Steps" : "Iterations"}</th><th>Result</th><th>Last snapshot</th></tr></thead>
-      <tbody>${progress.cases.map(item => caseRow(item, progress.progressUnit ?? "iterations")).join("")}</tbody></table></div>
-      <p class="job-footnote">${progress.progressUnit === "steps" ? "Steps advance physical time. A completed startup run does not establish physical convergence." : "Iterations are stationary field updates, not elapsed physical time. Completing them does not establish convergence."}</p>`
+    ${progress ? `<div class="table-scroll"><table class="job-cases"><thead><tr><th>Variant</th><th>What it tests</th><th>${progressUnit === "steps" ? "Steps" : "Iterations"}</th><th>Result</th><th>Last snapshot</th></tr></thead>
+      <tbody>${progress.cases.map(item => caseRow(item, progressUnit)).join("")}</tbody></table></div>
+      <p class="job-footnote">${progressUnit === "steps" ? "Steps advance physical time. A completed startup run does not establish physical convergence." : "Iterations are stationary field updates, not elapsed physical time. Completing them does not establish convergence."}</p>`
       : `<p class="job-empty">Waiting for a published progress snapshot. Scheduler status is tracked separately.</p>`}
     <div class="job-timestamps"><span>Scheduler checked ${escape(age(job.brokerCheckedAt))}</span>
       <span>Progress checked ${escape(age(job.progressCheckedAt))}</span></div>
