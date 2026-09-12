@@ -1,4 +1,4 @@
-"""Eight reference and refinement cases on the broker's single allocated node."""
+"""Bounded Poisson studies on the broker's single allocated node."""
 
 import argparse
 import concurrent.futures
@@ -16,6 +16,7 @@ def main() -> None:
     parser.add_argument("--track", type=int, default=64)
     parser.add_argument("--trajectory-frames", type=int, default=1025)
     parser.add_argument("--case-timeout", type=float, default=1800)
+    parser.add_argument("--profile", choices=["reference", "high-voltage"], default="reference")
     args = parser.parse_args()
     revision = os.environ["CUSP_SOURCE_REVISION"]
     cases = [
@@ -28,6 +29,27 @@ def main() -> None:
         ("10uA_particles", 1e-5, 33, 4096, 1e-10, 2e-7),
         ("10uA_duration", 1e-5, 33, 1024, 1e-10, 4e-7),
     ]
+    coil_currents = {name: 1000 for name, *_ in cases}
+    radius, energy, sigma = 0.05, 5, 0.003
+    iterations = 12
+    max_steps = 50000
+    purpose = "small-geometry numerical reference; not a reactor well prediction"
+    if args.profile == "high-voltage":
+        cases = [
+            ("30kAt_vacuum", 0, 33, 1024, 1e-10, 1e-7),
+            ("30kAt_1A", 1, 33, 1024, 1e-10, 1e-7),
+            ("100kAt_vacuum", 0, 33, 1024, 1e-10, 1e-7),
+            ("100kAt_1A", 1, 33, 1024, 1e-10, 1e-7),
+        ]
+        coil_currents = dict(zip((case[0] for case in cases), [30000, 30000, 100000, 100000], strict=True))
+        radius, energy, sigma = 0.5, 5000, 0.03
+        iterations = 8
+        max_steps = 100000
+        purpose = (
+            "5 keV exploration: 50 cm coils, 30/100 kA-turn, vacuum versus 1 A beam; "
+            "scaled 3 cm RMS source, 30 degree aim, 100 ns orbit window. "
+            "Nonrelativistic FP64 stationary Poisson pilot; no convergence or well-depth claim."
+        )
     args.out.mkdir(parents=True, exist_ok=False)
     commands = []
     for device, (name, current, nodes, particles, dt, duration) in enumerate(cases):
@@ -36,16 +58,16 @@ def main() -> None:
             "--out", str(args.out / name), "--device", f"cuda:{device}",
             "--source-revision", revision, "--current-a", str(current),
             "--nodes", str(nodes), "--particles", str(particles), "--dt", str(dt),
-            "--duration", str(duration), "--radius", "0.05", "--coil-current", "1000",
-            "--energy-ev", "5", "--temperature-ev", "0.2", "--source-sigma", "0.003",
-            "--aim-deg", "30", "--relaxation", "0.5", "--iterations", "12",
-            "--time-refinement", "2" if name == "10uA_dt" else "1", "--max-steps", "50000",
+            "--duration", str(duration), "--radius", str(radius), "--coil-current", str(coil_currents[name]),
+            "--energy-ev", str(energy), "--temperature-ev", "0.2", "--source-sigma", str(sigma),
+            "--aim-deg", "30", "--relaxation", "0.5", "--iterations", str(iterations),
+            "--time-refinement", "2" if name == "10uA_dt" else "1", "--max-steps", str(max_steps),
             "--track", str(args.track), "--trajectory-frames", str(args.trajectory_frames),
         ]
         commands.append(command)
     (args.out / "manifest.json").write_text(json.dumps(
         {"source_revision": revision, "commands": commands,
-         "purpose": "small-geometry numerical reference; not a reactor well prediction"}, indent=2) + "\n")
+         "purpose": purpose}, indent=2) + "\n")
 
     def run(index: int) -> int:
         with (args.out / f"{cases[index][0]}.log").open("w") as log:
@@ -57,8 +79,8 @@ def main() -> None:
                 log.write("\nTIMEOUT: incomplete reference case\n")
                 return 124
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        codes = list(executor.map(run, range(8)))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(cases)) as executor:
+        codes = list(executor.map(run, range(len(cases))))
     (args.out / "exit_codes.json").write_text(json.dumps(codes) + "\n")
     if any(code not in (0, 124) for code in codes):
         raise SystemExit("Incomplete pilot: see exit_codes.json and case logs")
