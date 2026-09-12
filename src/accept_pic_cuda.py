@@ -20,6 +20,7 @@ METRICS = {
     "loss_fraction": ("particles", 2),
     "core_entry_events_per_injected_particle": ("particles", 2),
     "repeated_entry_particle_fraction": ("particles", 2),
+    "charge_balance_C": ("absolute", 1e-24),
 }
 FACES = ("xlo", "xhi", "ylo", "yhi", "zlo", "zhi")
 
@@ -84,13 +85,12 @@ def evaluate(
         1e-24, 10 * max(abs(value(item, "deposition_error_C")) for item in reference.values()),
     )
     for seed in sorted(cuda):
-        for key in ("deposition_error_C", "charge_balance_C"):
-            observed = abs(value(cuda[seed], key))
-            rows.append({
-                "metric": key, "seed": seed, "reference": None, "cuda": observed,
-                "difference": observed, "reference_seed_spread": None,
-                "bound": accounting_floor, "passed": observed <= accounting_floor,
-            })
+        observed = abs(value(cuda[seed], "deposition_error_C"))
+        rows.append({
+            "metric": "deposition_error_C", "seed": seed, "reference": None, "cuda": observed,
+            "difference": observed, "reference_seed_spread": None,
+            "bound": accounting_floor, "passed": observed <= accounting_floor,
+        })
     return rows
 
 
