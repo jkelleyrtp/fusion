@@ -81,8 +81,40 @@ Each member's `summary.json` records `kernel_setup_time_s`: wall time of the ext
 - Diagnostics per particle: escape time / channel, step count, minimum |B| seen (loss-cone proxy).
 - Energy drift is reported per member.
 - Loss channels: `-z` point cusp, `+z` point cusp, ring cusp / wall (`r > wall_fraction * a`).
-- Injection modes: `cusp` (beam through the -z point cusp, ring of radius `inject_r`, pitch band) and
-  `inside` (born in a ball around the null, pitch uniform in cos over the band; `0..180` = isotropic).
+- Injection modes: `cusp` (beam through the -z point cusp, ring of radius `inject_r`, pitch band),
+  `inside` (born in a ball around the null, pitch uniform in cos over the band; `0..180` = isotropic),
+  and `gun` (external point source; see below).
+
+## External gun mode
+
+`--inject-mode gun` launches all particles as a packet at t=0 from a finite source —
+an off-axis point with a Gaussian transverse width and an angular cone, i.e. the
+effective beam after gun optics (hardware optics like a wire + focus element are not
+simulated). This mirrors the historical `electron-optimization` point gun:
+
+- Default origin: `(0, member inject_r, -(d + inject_offset))` — i.e. off-axis, *below* the -z coil.
+  `--gun-position X Y Z` overrides it (and then requires member `inject_r == 0` so sweep values
+  are not silently ignored).
+- `--gun-direction DX DY DZ` (default `0 0 1`) sets the aim; the member pitch band is uniform in
+  cos around the *aim direction* in gun mode (around +z in other modes). `--inject-sigma` is the
+  RMS Gaussian transverse beam-plane width (0 = pencil beam).
+- The origin must be outside the between-coil region (`|z| > d`) and inside the loss boundaries;
+  sampled beam positions outside the domain are a `ValueError` (increase `--axial-margin` or
+  reduce `--inject-sigma`) — no clipping.
+- Summaries record `gun_position_m`, `gun_direction_unit`, `gun_B_T`,
+  `gun_axis_B_angle_deg` (local-B crossing angle; null where B=0), and p05/p50/p95 of the
+  per-particle velocity–B angle. This is launch geometry, not capture proof.
+
+Example matching the historical off-axis gun (origin below the first coil, aimed slightly
+inward toward the axis). These are starting guesses, not an optimum:
+
+```bash
+python3 cusp_sim.py --inject-mode gun \
+  --ring-radius 0.05 --ring-half-sep 0.025 --current 23000 \
+  --inject-offset 0.03 --members 100,0.0006,0,1 \
+  --gun-direction 0 -0.007142857 1 --inject-sigma 0.0001 \
+  --particles 20000 --sim-time 100e-6 --out out/gun_test
+```
 
 ## Runs so far (all 1 node x 8 B200, priority 1 on the broker)
 

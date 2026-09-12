@@ -22,6 +22,7 @@ Output per sweep member (`<out>/<tag>/results.npz`):
 """
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -428,6 +429,56 @@ class TorchPusher:
                 esc_where[d] = where[dead]
 
 
+# --------------------------------------------------------------------------- injection samplers
+
+
+def gun_beam_basis(direction):
+    """Orthonormal (e1, e2) spanning the plane perpendicular to a unit direction.
+
+    Picks the coordinate axis least aligned with the beam to avoid a degenerate cross."""
+    direction = np.asarray(direction, dtype=np.float64)
+    axis = np.eye(3)[int(np.argmin(np.abs(direction)))]
+    e1 = np.cross(direction, axis)
+    e1 /= np.linalg.norm(e1)
+    e2 = np.cross(direction, e1)
+    return e1, e2
+
+
+def sample_gun_beam(origin, direction, speed, n, sigma, pitch_lo_deg, pitch_hi_deg, f64):
+    """A launched packet of `n` electrons from a point gun — all born at t=0, not a
+    continuous current. `origin` (3,) m; `direction` is normalized here and must be
+    finite and nonzero; positions are `origin + sigma` RMS gaussian in the beam plane;
+    pitch is uniform in cos(theta) over [pitch_lo_deg, pitch_hi_deg] around the aim.
+    Returns (pos, vel) [n,3] float64 tensors. speed is exact from the member energy."""
+    origin = np.asarray(origin, dtype=np.float64)
+    direction = np.asarray(direction, dtype=np.float64)
+    if not np.all(np.isfinite(direction)) or np.linalg.norm(direction) == 0:
+        raise ValueError(f"gun direction must be finite and nonzero, got {direction.tolist()}")
+    direction = direction / np.linalg.norm(direction)
+    if not (np.isfinite(sigma) and sigma >= 0):
+        raise ValueError(f"gun --inject-sigma must be finite and >= 0, got {sigma}")
+    if not (np.isfinite(pitch_lo_deg) and np.isfinite(pitch_hi_deg)
+            and 0 <= pitch_lo_deg <= pitch_hi_deg <= 180):
+        raise ValueError(
+            f"gun pitch band must satisfy 0 <= lo <= hi <= 180, got [{pitch_lo_deg}, {pitch_hi_deg}]")
+    e1, e2 = gun_beam_basis(direction)
+    e1t = torch.as_tensor(e1, **f64)
+    e2t = torch.as_tensor(e2, **f64)
+    dirn = torch.as_tensor(direction, **f64)
+    pos = torch.as_tensor(origin, **f64).expand(n, 3).clone()
+    if sigma > 0:
+        pos += sigma * (torch.randn(n, **f64)[:, None] * e1t + torch.randn(n, **f64)[:, None] * e2t)
+    c_lo, c_hi = math.cos(math.radians(pitch_hi_deg)), math.cos(math.radians(pitch_lo_deg))
+    costh = c_lo + torch.rand(n, **f64) * (c_hi - c_lo)
+    sinth = torch.sqrt((1 - costh * costh).clamp_min(0))
+    phi = torch.rand(n, **f64) * 2 * math.pi
+    vel = speed * (
+        costh[:, None] * dirn
+        + sinth[:, None] * (torch.cos(phi)[:, None] * e1t + torch.sin(phi)[:, None] * e2t)
+    )
+    return pos, vel, direction
+
+
 # --------------------------------------------------------------------------- simulation
 
 
@@ -440,6 +491,9 @@ def run_member(args, member, tag, device, log):
 
     a, d, current = args.ring_radius, args.ring_half_sep, args.current
     ring_z, currents = [-d, d], [current, -current]  # opposite polarity -> cusp
+
+    if args.inject_mode == "gun" and not (math.isfinite(energy_ev) and energy_ev > 0):
+        raise ValueError(f"gun mode requires finite positive member energy, got {energy_ev}")
 
     # ---- field table
     z_lo, z_hi = -(d + args.axial_margin), d + args.axial_margin
@@ -475,21 +529,55 @@ def run_member(args, member, tag, device, log):
     # (gaussian-blurred by inject_sigma), pitch uniform in [pitch_lo, pitch_hi]
     n = args.particles
     pos = torch.zeros(n, 3, **f64)
-    ang = torch.rand(n, **f64) * 2 * math.pi
+    gun_origin = None
+    gun_dirn = None
     if args.inject_mode == "cusp":
+        ang = torch.rand(n, **f64) * 2 * math.pi
         pos[:, 0] = inject_r * torch.cos(ang) + torch.randn(n, **f64) * args.inject_sigma
         pos[:, 1] = inject_r * torch.sin(ang) + torch.randn(n, **f64) * args.inject_sigma
         pos[:, 2] = -(d + args.inject_offset)
-    else:  # "inside": born uniformly in a ball of radius inject_r about the field null; pitch relative to +z
+        c_lo, c_hi = math.cos(math.radians(pitch_hi_deg)), math.cos(math.radians(pitch_lo_deg))
+        pitch = torch.acos(c_lo + torch.rand(n, **f64) * (c_hi - c_lo))
+        az = torch.rand(n, **f64) * 2 * math.pi
+        vel = torch.stack([v0 * torch.sin(pitch) * torch.cos(az), v0 * torch.sin(pitch) * torch.sin(az), v0 * torch.cos(pitch)], 1)
+    elif args.inject_mode == "inside":
+        # born uniformly in a ball of radius inject_r about the field null; pitch relative to +z
+        ang = torch.rand(n, **f64) * 2 * math.pi
         u = torch.rand(n, **f64) ** (1 / 3) * inject_r
         cth = 2 * torch.rand(n, **f64) - 1
         sth = torch.sqrt(1 - cth**2)
         pos[:, 0], pos[:, 1], pos[:, 2] = u * sth * torch.cos(ang), u * sth * torch.sin(ang), u * cth
-    # pitch uniform in cos(pitch) over the band (isotropic if the band is 0..180)
-    c_lo, c_hi = math.cos(math.radians(pitch_hi_deg)), math.cos(math.radians(pitch_lo_deg))
-    pitch = torch.acos(c_lo + torch.rand(n, **f64) * (c_hi - c_lo))
-    az = torch.rand(n, **f64) * 2 * math.pi
-    vel = torch.stack([v0 * torch.sin(pitch) * torch.cos(az), v0 * torch.sin(pitch) * torch.sin(az), v0 * torch.cos(pitch)], 1)
+        c_lo, c_hi = math.cos(math.radians(pitch_hi_deg)), math.cos(math.radians(pitch_lo_deg))
+        pitch = torch.acos(c_lo + torch.rand(n, **f64) * (c_hi - c_lo))
+        az = torch.rand(n, **f64) * 2 * math.pi
+        vel = torch.stack([v0 * torch.sin(pitch) * torch.cos(az), v0 * torch.sin(pitch) * torch.sin(az), v0 * torch.cos(pitch)], 1)
+    else:  # "gun": external point source, pitch band around --gun-direction
+        if args.gun_position is not None:
+            if inject_r != 0:
+                raise ValueError(
+                    f"--gun-position is explicit; member inject_r ({inject_r}) must be 0 so it is not silently ignored")
+            gun_origin = list(args.gun_position)
+        else:
+            # same coordinates as the historical point gun: off-axis at inject_r,
+            # axially beyond the -z coil by inject_offset
+            gun_origin = [0.0, inject_r, -(d + args.inject_offset)]
+        gun_dirn = list(args.gun_direction)
+        if not (math.isfinite(gun_origin[2]) and abs(gun_origin[2]) > d):
+            raise ValueError(
+                f"gun origin z={gun_origin[2]} lies inside the between-coil region (|z| <= {d}); "
+                "the first axial external-gun design requires a source outside the coils")
+        r_src = math.hypot(gun_origin[0], gun_origin[1])
+        if not (r_src < r_max and z_lo < gun_origin[2] < z_hi):
+            raise ValueError(
+                f"gun origin {gun_origin} is outside the simulated domain "
+                f"(r < {r_max}, {z_lo} < z < {z_hi}); reduce the source radius or increase --axial-margin")
+        pos, vel, gun_dirn = sample_gun_beam(
+            gun_origin, gun_dirn, v0, n, args.inject_sigma, pitch_lo_deg, pitch_hi_deg, f64)
+        rr = pos[:, 0] ** 2 + pos[:, 1] ** 2
+        if (rr >= r_max * r_max).any() or (pos[:, 2] <= z_lo).any() or (pos[:, 2] >= z_hi).any():
+            raise ValueError(
+                f"some gun-sampled starting positions lie outside the loss boundaries "
+                f"(r < {r_max}, {z_lo} < z < {z_hi}); increase --axial-margin or reduce --inject-sigma")
 
     alive = torch.ones(n, dtype=torch.int32, device=dev)
     esc_time = torch.full((n,), float("nan"), **f64)
@@ -527,6 +615,41 @@ def run_member(args, member, tag, device, log):
             log(f"[{tag}] CUDA kernel build failed ({type(e).__name__}: {str(e)[:300]}); using torch pusher")
     sc_kq = K_COULOMB * space_charge
     pusher = TorchPusher(Brc, Bzc, r0, dr, z0, dz, QM, sc_kq, args.space_charge_radius, boris)
+
+    # ---- launch-geometry diagnostics (not capture proof)
+    gun_summary = {}
+    if args.inject_mode == "gun":
+        def _aim_b_angle_deg(bvec):
+            b = float(bvec.norm().item())
+            if b == 0:
+                return 0.0, None  # angle undefined at a field null — JSON null, not 0
+            c = float(torch.dot(torch.as_tensor(gun_dirn, **f64), bvec / b).clamp(-1, 1).item())
+            return b, math.degrees(math.acos(c))
+
+        b_origin, axis_angle = _aim_b_angle_deg(pusher.field(torch.as_tensor(gun_origin, **f64)[None])[0])
+        b_local = pusher.field(pos)
+        b_norm = b_local.norm(dim=1)
+        defined = b_norm > 0
+        undefined_count = int((~defined).sum().item())
+        if defined.any():
+            cosp = (vel[defined] * b_local[defined] / b_norm[defined, None]).sum(1) / v0
+            launch_angles = np.degrees(np.arccos(cosp.clamp(-1, 1).cpu().numpy()))
+            angle_p05, angle_p50, angle_p95 = np.percentile(launch_angles, [5, 50, 95]).tolist()
+        else:
+            angle_p05 = angle_p50 = angle_p95 = None
+        gun_summary = {
+            "gun_position_m": np.asarray(gun_origin, dtype=np.float64).tolist(),
+            "gun_direction_unit": np.asarray(gun_dirn, dtype=np.float64).tolist(),
+            "gun_B_T": b_origin,
+            "gun_axis_B_angle_deg": axis_angle,
+            "launch_angle_to_local_B_deg_p05": angle_p05,
+            "launch_angle_to_local_B_deg_p50": angle_p50,
+            "launch_angle_to_local_B_deg_p95": angle_p95,
+            "launch_angle_undefined_count": undefined_count,
+        }
+        log(f"[{tag}] gun at {gun_origin} aim {gun_dirn}: B(origin)={b_origin:.4f} T, "
+            f"aim-vs-B angle {axis_angle if axis_angle is not None else 'undefined'} deg, "
+            f"{undefined_count} particles at zero field")
 
     def potential_ev(p):  # electron potential energy in the sphere's field, eV
         rr = p.norm(dim=1)
@@ -576,8 +699,11 @@ def run_member(args, member, tag, device, log):
     summary = {
         "tag": tag,
         "energy_eV": energy_ev,
+        "inject_mode": args.inject_mode,
+        "pitch_reference": "gun_direction" if args.inject_mode == "gun" else "+z",
         "inject_r_m": inject_r,
         "pitch_deg": [pitch_lo_deg, pitch_hi_deg],
+        **gun_summary,
         "particles": n,
         "integrator": args.integrator,
         "adaptive": bool(args.adaptive),
@@ -660,6 +786,10 @@ def _worker(rank, args, members, devices, log_path):
     member = members[rank]
     device = devices[rank]
     tag = member_tag(member)
+    if args.inject_mode == "gun":
+        # launch-geometry hash only; dt/grid/seed stay out so convergence runs share seeds
+        geo = f"{args.gun_position}|{args.gun_direction}|{args.inject_offset}|{args.inject_sigma}|{args.ring_half_sep}"
+        tag += "_gun" + hashlib.sha256(geo.encode()).hexdigest()[:8]
 
     def log(msg):
         line = f"{time.strftime('%H:%M:%S')} {msg}"
@@ -692,7 +822,9 @@ def parse_args(argv=None):
     p.add_argument("--axial-margin", type=float, default=0.03, help="domain extends this far beyond the rings, m")
     p.add_argument("--inject-offset", type=float, default=0.02, help="injection plane this far outside the -z ring, m")
     p.add_argument("--inject-sigma", type=float, default=1e-3, help="transverse gaussian blur of injection, m")
-    p.add_argument("--inject-mode", choices=["cusp", "inside"], default="cusp", help="cusp: beam through the -z point cusp; inside: born in a ball of radius inject_r at the center")
+    p.add_argument("--inject-mode", choices=["cusp", "inside", "gun"], default="cusp", help="cusp: beam through the -z point cusp; inside: born in a ball of radius inject_r at the center; gun: external point source launched as a packet at t=0")
+    p.add_argument("--gun-position", type=float, nargs=3, default=None, metavar=("X", "Y", "Z"), help="gun mode: source position in m; default (0, member inject_r, -(d+inject_offset)) — member inject_r must be 0 when given")
+    p.add_argument("--gun-direction", type=float, nargs=3, default=[0.0, 0.0, 1.0], metavar=("DX", "DY", "DZ"), help="gun mode: aim vector, normalized; pitch band is around this direction")
     p.add_argument("--inject-r", type=float, nargs="+", default=[0.0], help="injection ring radii (cusp) / birth ball radii (inside) to sweep, m")
     p.add_argument("--pitch-lo-deg", type=float, nargs="+", default=[0.0], help="pitch band lower edges to sweep (paired with --pitch-hi-deg)")
     p.add_argument("--pitch-hi-deg", type=float, nargs="+", default=[20.0])
