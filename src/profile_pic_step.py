@@ -128,6 +128,16 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
     simulation.mesh.potential = inner_potential  # type: ignore[method-assign]
     simulation.magnetic_field = inner_magnetic
 
+    first = args.warm_steps + args.timed_steps
+    synchronize(device)
+    start = time.perf_counter()
+    for step in range(first, first + args.timed_steps):
+        inject_packet(simulation, args, step)
+        simulation.advance(h)
+        simulation.time = (step + 1) * args.dt
+    synchronize(device)
+    plain_seconds_per_step = (time.perf_counter() - start) / args.timed_steps
+
     p = simulation.particles
     charge = inner_kernels.deposit(p.position, -E_CHARGE * p.weight)
     potential = inner_potential(charge)
@@ -170,6 +180,7 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
         "live_particles_start": live_start,
         "live_particles_end": live_end,
         "seconds_per_step": totals["step_total"] / args.timed_steps,
+        "plain_seconds_per_step": plain_seconds_per_step,
         "stage_totals_s": {stage: totals[stage] for stage in STAGES},
         "stage_fraction_of_step": {
             stage: totals[stage] / totals["step_total"] for stage in STAGES
@@ -187,7 +198,7 @@ def main() -> None:
     arguments.add_argument("--warm-steps", type=int, default=7000)
     arguments.add_argument("--timed-steps", type=int, default=500)
     arguments.set_defaults(
-        kernels="both", nodes=33, current_a=1, dt=4e-12, duration=3e-8,
+        kernels="both", nodes=33, current_a=1, dt=4e-12, duration=3.2e-8,
         inject_per_step=8, inject_every=1, coil_current=30000, radius=0.5,
         energy_ev=5000, temperature_ev=0.2, source_sigma=5e-5,
         divergence_deg=10, aim_deg=30, seed=1234, max_live_particles=150000,
@@ -214,6 +225,8 @@ def main() -> None:
         summary = {
             "reference_seconds_per_step": reference["seconds_per_step"],
             "cuda_seconds_per_step": cuda["seconds_per_step"],
+            "reference_plain_seconds_per_step": reference["plain_seconds_per_step"],
+            "cuda_plain_seconds_per_step": cuda["plain_seconds_per_step"],
             "cuda_reference_step_ratio": (
                 cast(float, cuda["seconds_per_step"])
                 / cast(float, reference["seconds_per_step"])
