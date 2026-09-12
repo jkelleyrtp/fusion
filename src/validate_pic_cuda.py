@@ -222,6 +222,10 @@ def main() -> None:
     arguments = argparse.ArgumentParser(description=__doc__)
     arguments.add_argument("--out", type=Path, required=True)
     arguments.add_argument("--device", default="cuda:0")
+    arguments.add_argument(
+        "--controls-only", action="store_true",
+        help="Stop after operator and closed controls; long runs use accept_pic_cuda.py",
+    )
     args = arguments.parse_args()
     device = torch.device(args.device)
     if device.type != "cuda" or not torch.cuda.is_available():
@@ -231,6 +235,9 @@ def main() -> None:
     print("Local operators passed", flush=True)
     closed_controls(args.out, device)
     print("Closed controls passed", flush=True)
+    if args.controls_only:
+        (args.out / "PASSED").write_text("CUDA operator and closed controls passed\n")
+        return
     external_controls(args.out, device)
     timings = benchmark(args.out, device)
     report = {
