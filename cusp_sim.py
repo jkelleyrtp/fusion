@@ -4,10 +4,10 @@
 Two coaxial current rings of radius `a` at z = +-d carry opposite currents, giving a
 spindle/biconic cusp: point cusps on the axis beyond each ring and a ring (line) cusp at
 the midplane. Electrons are injected along the axis through one point cusp and pushed
-with RK4 in the static field  m dv/dt = q v x B.
+with a fused Boris (or reference RK4) pusher in the static field  m dv/dt = q v x B + q E.
 
-The field is axisymmetric, so B(r,z) is tabulated once on a (r,z) grid via Biot-Savart
-over a polygonal approximation of each ring, and the pusher does bilinear lookups.
+The field is axisymmetric and exact: each ring's closed-form loop field (elliptic
+integrals) is tabulated once on a (r,z) grid, and the pusher does bilinear lookups.
 
 Each GPU runs one member of a parameter sweep (injection energy); a fused CUDA kernel
 advances every electron for a block of steps in registers. A pure-torch pusher is used
@@ -29,6 +29,8 @@ import time
 
 import numpy as np
 import torch
+
+import cuda_build_cache
 
 E_CHARGE = 1.602176634e-19
 M_E = 9.1093837015e-31
@@ -311,18 +313,8 @@ void push(torch::Tensor pos, torch::Tensor vel, torch::Tensor t, torch::Tensor n
 
 
 def try_build_kernel(device_index):
-    from torch.utils.cpp_extension import load_inline
-
-    build_dir = os.path.join(os.environ.get("CUSP_BUILD_DIR", "/tmp/cusp_build"), f"gpu{device_index}")
-    os.makedirs(build_dir, exist_ok=True)
-    return load_inline(
-        name=f"cusp_push_{device_index}",
-        cpp_sources=CPP_SRC,
-        cuda_sources=CUDA_SRC,
-        functions=["push"],
-        build_directory=build_dir,
-        extra_cuda_cflags=["-O3", "--use_fast_math"],
-        verbose=False,
+    return cuda_build_cache.load_cached_extension(
+        CPP_SRC, CUDA_SRC, device_index, ["-O3", "--use_fast_math"]
     )
 
 
@@ -523,12 +515,15 @@ def run_member(args, member, tag, device, log):
     Brc, Bzc = Br.contiguous(), Bz.contiguous()
 
     kernel = None
+    kernel_setup_time_s = None  # set whenever a build/load is attempted (success or failure)
     if dev.type == "cuda" and not args.no_kernel:
+        t_kernel = time.perf_counter()
         try:
             kernel = try_build_kernel(dev.index or 0)
-            log(f"[{tag}] fused CUDA kernel compiled")
+            log(f"[{tag}] fused CUDA extension ready")
         except Exception as e:  # noqa: BLE001 - fall back to torch ops on any build failure
             log(f"[{tag}] CUDA kernel build failed ({type(e).__name__}: {str(e)[:300]}); using torch pusher")
+        kernel_setup_time_s = time.perf_counter() - t_kernel
     sc_kq = K_COULOMB * space_charge
     pusher = TorchPusher(Brc, Bzc, r0, dr, z0, dz, QM, sc_kq, args.space_charge_radius, boris)
 
@@ -611,6 +606,7 @@ def run_member(args, member, tag, device, log):
         "ring_half_sep_m": d,
         "current_A": current,
         "kernel": "cuda" if kernel is not None else "torch",
+        "kernel_setup_time_s": kernel_setup_time_s,
         "device": str(dev),
         "device_name": torch.cuda.get_device_name(dev) if dev.type == "cuda" else "cpu",
         "wall_time_s": time.time() - t_start,
@@ -681,7 +677,7 @@ def parse_args(argv=None):
     p.add_argument("--steps", type=int, default=400_000, help="reference steps; simulated time = steps * dt_ref (see --sim-time)")
     p.add_argument("--traj-dt", type=float, default=None, help="trajectory sample spacing (s); default sim_time/traj_samples. Set small for beam runs so short-lived electrons are drawn (buffer fills after traj_samples samples)")
     p.add_argument("--sim-time", type=float, default=None, help="simulated time (s); overrides --steps")
-    p.add_argument("--integrator", choices=["boris", "rk4"], default="boris", help="boris: symplectic leapfrog (energy/mu conserving); rk4: classic 4th order")
+    p.add_argument("--integrator", choices=["boris", "rk4"], default="boris", help="boris: rotation with electric kicks; rk4: classic 4th-order reference")
     p.add_argument("--adaptive", type=int, default=1, help="1: per-particle dt = steps-per-gyro-inv * local gyroperiod (capped); 0: fixed dt from the max field")
     p.add_argument("--block-steps", type=int, default=2000, help="steps per kernel launch")
     p.add_argument("--steps-per-gyro-inv", type=float, default=1 / 40, help="dt as a fraction of the shortest gyroperiod")

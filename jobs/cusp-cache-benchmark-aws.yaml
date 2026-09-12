@@ -1,13 +1,8 @@
-# Biconic-cusp electron-trap kinetic sim: Jonathan's 2015 geometry (10 cm rings, 23 kA-turn, ~0.1 T
-# on axis, beam 14 mm off axis) with a fixed central space-charge sphere, Boris + adaptive dt.
-# 8 members: beam energy x central charge (negative = virtual cathode, positive = well), one per B200.
-# Single node, priority 1, broker-managed placement. Not a SLIME job; the entrypoint only
-# carries --actor-num-nodes/--actor-num-gpus-per-node/--rollout-num-gpus because the broker
-# parses those to size the placement (cusp_sim.py ignores them and --training-clique-ids).
+# Submit through the broker only, one node, --priority 1.
 apiVersion: ray.io/v1
 kind: RayJob
 metadata:
-  name: jonathan-cusp-sc
+  name: jonathan-cusp-cache
   namespace: default
   annotations:
     slime.ai/owner: jonathan.kelley
@@ -15,15 +10,12 @@ spec:
   entrypoint: >-
     bash -c 'set -euo pipefail;
     nvidia-smi -L;
-    export CUSP_BUILD_DIR=/public/jonathan/cusp/build_cache TORCH_CUDA_ARCH_LIST=10.0;
-    OUT=/public/jonathan/cusp/runs/$(date +%Y%m%d-%H%M%S);
-    python3 /public/jonathan/cusp/cusp_sim.py --out $OUT
-    --members 1000,0.014,0,10,0 1000,0.014,0,10,-3e-10 1000,0.014,0,10,-1e-9 1000,0.014,0,10,-1.4e-9 1000,0.014,0,10,1e-9 300,0.014,0,10,-4e-10 300,0.014,0,10,4e-10 100,0.014,0,10,-1.3e-10
-    --ring-radius 0.10 --ring-half-sep 0.05 --current 23000 --space-charge-radius 0.02 --inject-offset 0.03 --inject-sigma 1e-3
-    --wall-fraction 0.98 --axial-margin 0.06 --integrator boris --adaptive 1 --steps-per-gyro-inv 0.025
-    --particles 200000 --sim-time 100e-6 --block-steps 20000 --traj-samples 6000 --traj-dt 2e-11 --hist-every 400 "$@"
-    && python3 /public/jonathan/cusp/cusp_viz.py --out $OUT
-    && du -sh $OUT && echo CUSP_DEMO_DONE $OUT' --
+    export CUSP_BUILD_DIR=/public/jonathan/cusp/build_cache TORCH_CUDA_ARCH_LIST=10.0 CUSP_BUILD_VERBOSE=1;
+    OUT=/public/jonathan/cusp/build-bench/$(date +%Y%m%d-%H%M%S);
+    python3 /public/jonathan/cusp/benchmark_build_cache.py --out "$OUT/first" --workers 8;
+    python3 /public/jonathan/cusp/benchmark_build_cache.py --out "$OUT/second" --workers 8;
+    touch "$OUT/DONE";
+    echo CUSP_CACHE_BENCH_DONE "$OUT"' --
     --actor-num-nodes 1
     --actor-num-gpus-per-node 8
     --rollout-num-gpus 0

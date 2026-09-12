@@ -1,6 +1,6 @@
 # Biconic cusp electron trap — GPU kinetic simulation
 
-Single-particle (non-PIC) RK4 tracking of electrons in the static field of two coaxial
+Full-orbit test-particle (non-PIC) tracking of electrons in the static field of two coaxial
 current rings with opposite polarity (a spindle / biconic cusp). Runs one sweep member
 per GPU on a single node, writes compact results (subsampled tracked trajectories, per-electron
 escape time + channel, survival curve, (r,z) density) and renders a report.
@@ -9,10 +9,13 @@ escape time + channel, survival curve, (r,z) density) and renders a report.
 
 | path | what |
 |---|---|
-| `cusp_sim.py` | simulator: exact loop field (elliptic integrals), fused CUDA RK4 kernel (torch `load_inline`), torch fallback |
+| `cusp_sim.py` | simulator: exact loop field (elliptic integrals), fused CUDA Boris/RK4 kernel (torch `load_inline`), torch fallback |
+| `cuda_build_cache.py` | persistent fingerprint-keyed build cache for the fused kernel (see below) |
+| `benchmark_build_cache.py` | measures extension startup in fresh worker processes on the GPUs |
 | `cusp_viz.py` | `report.png` + `traj_<member>.png` + markdown summary table from a run directory |
 | `jobs/*.yaml` | broker-submittable single-node RayJobs (`uv run train job submit jobs/<x>.yaml --cluster aws-usw2 --priority 1`) |
 | `results/` | reports and summaries pulled back from the runs |
+| `docs/` | [reassessment](docs/reassessment.md) and [precision notes](docs/precision-notes.md) |
 
 ## GPU dispatch (shared B200 cluster)
 
@@ -38,6 +41,23 @@ uv run train job submit jobs/<name>.yaml --cluster aws-usw2 --priority 1
 
 See `AGENTS.md` for the full binding policy.
 
+## Build cache
+
+The fused kernel compiles once per fingerprint instead of once per worker/job: `cuda_build_cache.load_cached_extension`
+hashes sources, bindings, flags, toolchain (compiler `PATH`s + `--version` output), Python/Torch/CUDA identity,
+the compile environment, and the architecture request into a 24-hex key shared by identical workers. Job YAMLs
+set `CUSP_BUILD_DIR=/public/jonathan/cusp/build_cache` (FSx, persists across jobs; mounted with cluster-wide
+`flock`); unset, it defaults to `~/.cache/cusp_build`. Locking is a POSIX `flock` on `<keydir>/build.flock`
+around the whole `load_inline` call; a stale torch `FileBaton` `lock` left by a killed build is removed while
+holding it. `CUSP_BUILD_VERBOSE=1` turns on verbose ninja output.
+
+`cuda_build_cache.py` must be staged next to `cusp_sim.py` on `/public/jonathan/cusp/` before running — the job
+pods import it via the script's directory. Benchmark on the GPUs (one node, priority 1, broker only):
+
+```bash
+uv run train job submit jobs/cusp-cache-benchmark-aws.yaml --cluster aws-usw2 --priority 1
+```
+
 ## Physics model
 
 - Field: Smythe's closed form for a circular filament, `B_r, B_z` in `K(k), E(k)` (AGM), tabulated on an
@@ -51,9 +71,10 @@ See `AGENTS.md` for the full binding policy.
   `--adaptive 0` recovers a fixed `dt` from the reference field. Adaptive runs take ~8x fewer steps here (most of
   the volume is far weaker than the field at the coils).
 - Electrostatics: `--space-charge Q [Q2 ...]` (C) puts a uniformly charged sphere of radius
-  `--space-charge-radius` at the null (linear E inside, Coulomb outside) - the fixed `c_sphere` from the 2015
-  OpenCL code. Negative = trapped electron cloud / virtual cathode (decelerates and repels incoming electrons);
-  positive = attractive well. It is a sweep axis like energy.
+  `--space-charge-radius` at the null (linear E inside, Coulomb outside) - a prescribed proxy
+  field; the charge is not computed from these particles. Negative = trapped electron cloud /
+  virtual cathode (decelerates and repels incoming electrons); positive = attractive well. It
+  is a sweep axis like energy.
 - Diagnostics per particle: escape time / channel, step count, minimum |B| seen (loss-cone proxy).
 - Energy drift is reported per member.
 - Loss channels: `-z` point cusp, `+z` point cusp, ring cusp / wall (`r > wall_fraction * a`).
@@ -69,28 +90,16 @@ See `AGENTS.md` for the full binding policy.
 | `run3_1T_sweep` | a=25 cm, coils z=±10 cm, 300 kA-turn (0.44 T point / 1.05 T ring cusp), beam, r_inj x pitch sweep | 0% confined; pitch 20-60° reflects at the ring cusp, then exits the point cusp it came in |
 | `run4_1T_inside` | same field, isotropic electrons born in a 5 cm ball at the null, 10 eV - 30 keV | see `results/run4_1T_inside/report.png` |
 | `run5_23kA_spacecharge` | 2015 geometry: a=10 cm, coils z=±5 cm, 23 kA-turn (99 mT axis), beam at r=14 mm, 100 eV-1 keV, central charge -1.4e-9..+1e-9 C (−940..+670 V); Boris + adaptive | 0% confined in every member: the beam rides its field line from the point cusp straight out the ring cusp in one transit (8 ns at 1 keV), regardless of the central charge - it never comes within a few cm of the sphere. See `traj_*.png`. |
+| `run7_corrected_well` | inside-born controls, 16 members, 200k each, 100 µs; prescribed charge well -3e-9..+1e-8 C at 30-1000 eV | see corrected interpretation in `docs/reassessment.md`; summaries + report in `results/run7_corrected_well/` |
 
 ## What the runs say
 
-1. **An injected beam cannot be trapped by a static B field alone.** Motion is time-reversible and μ is
-   (nearly) conserved: whatever mirror ratio a particle sees on the way in, it sees on the way out, so a beam
-   that enters through the point cusp leaves through either the ring cusp (if its pitch is inside the ring-cusp
-   loss cone) or back through the point cusp. Run 2 also had the wrong aspect ratio (coils too far apart:
-   ring-cusp B < point-cusp B, so the ring cusp is the *weaker* mirror). Trapping a beam needs
-   non-adiabatic scattering at the null (large r_L / L_B, i.e. weak field or high energy - opposite of what
-   helps confinement), collisions, or a time-dependent / electrostatic field.
-2. **Electrons that start inside** are confined until they diffuse into a loss cone. With B ~ 1 T the loss
-   cones are geometric (fraction ~ 1/mirror ratio) and the remaining population is held for the whole run at
-   low energy; at high energy the null region scatters pitch angle each pass and the trap leaks.
-3. Field strength and size help through `r_L / L_B` (adiabaticity), not by themselves: what matters is
-   `d/a` (ring-cusp vs point-cusp mirror ratio), the ring-cusp aperture in gyroradii, and the energy.
-4. **Run 5, the 2015 configuration with the space-charge sphere, does not trap a 14 mm beam either.** At
-   sep = a the ring-cusp field at the wall is only ~2x the axis field, so a 0-10° beam is deep inside the loss
-   cone and exits at z=0 on its first pass; the central sphere is irrelevant because the field line from
-   r=14 mm never approaches the centre. The old code's "long confinement" almost certainly came from members
-   with much smaller `inject_r` (0.5-1 mm, lines that pass close to the null and see the sphere) and/or the
-   different E-field formula in `trajectory_conf.cl`. Next sweep: `inject_r` 0.5-5 mm x charge, and
-   `--inject-mode inside` with a positive well.
+The tested beam configurations lost their particles; this does not prove a general impossibility of capture
+in static fields. The production target is an external electron gun crossing field lines, with its origin
+and aim explicitly specified. Inside-born populations are numerical controls. Strong positive-charge cases
+can be energetically bound even without B and are not evidence of a self-generated negative ion well. See
+[the reassessment](docs/reassessment.md) for the corrected interpretation, measured performance, and staged
+simulation plan.
 
 ## Convergence (CPU, inside-born 100 eV, 400 electrons, seed 7, 0.5 µs)
 
@@ -102,9 +111,10 @@ See `AGENTS.md` for the full binding policy.
 | RK4 | yes | 1/40 | 55.8% | 22k |
 | Boris | fixed | 1/40 (of B_ref) | 55.3% | 174k |
 
-The ~1-2% spread is at the level of counting noise for 400 particles (±2.5%); adaptive Boris at 1/40 is the
-default. On a B200 the adaptive kernel does ~20 Gparticle-steps/s (per-particle step counts diverge, so
-warps are less uniform than fixed-step RK4's 50-100 G/s, but 8x fewer steps).
+This small ensemble is a preliminary comparison, not a completed convergence study. Separate timestep/grid
+bias from sampling uncertainty. The original 50–100 Gparticle-steps/s values credited steps skipped after
+escape and are invalid as executed-throughput measurements. Run 7 measures actual particle steps and reports
+4.56–32.04 Gparticle-steps/s per B200 across different workloads; this is not a controlled kernel comparison.
 
 ## Still to do
 

@@ -11,7 +11,7 @@ spec:
   entrypoint: >-
     bash -c 'set -euo pipefail;
     nvidia-smi -L;
-    export CUSP_BUILD_DIR=/tmp/cusp_build TORCH_CUDA_ARCH_LIST=10.0;
+    export CUSP_BUILD_DIR=/public/jonathan/cusp/build_cache TORCH_CUDA_ARCH_LIST=10.0;
     OUT=/public/jonathan/cusp/runs/$(date +%Y%m%d-%H%M%S);
     python3 /public/jonathan/cusp/cusp_sim.py --out $OUT
     --members 100,0.03,0,180,0 100,0.03,0,180,3e-10 100,0.03,0,180,1e-9 100,0.03,0,180,3e-9 100,0.03,0,180,-3e-10 100,0.03,0,180,-1e-9 1000,0.03,0,180,0 1000,0.03,0,180,3e-9 1000,0.03,0,180,1e-8 1000,0.03,0,180,-3e-9 30,0.03,0,180,0 30,0.03,0,180,3e-10 30,0.03,0,180,1e-9 300,0.03,0,180,0 300,0.03,0,180,1e-9 300,0.03,0,180,-1e-9
