@@ -67,7 +67,7 @@ main { min-width: 0; padding: 10px 12px; width: 100%; max-width: 1920px; }
 .eyebrow { color: #91baa9; font-size: 11px; }
 .secondary { white-space: nowrap; font-size: 12px; }
 .error { padding: 8px 10px; margin-bottom: 8px; border: 1px solid #a16b50; background: #33251d; border-radius: 4px; color: #ffd0ad; }
-.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
 .metric { padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); min-width: 0; }
 .metric > div { font-size: 11px; color: var(--muted); }
 .metric > strong { display: block; font-size: 24px; line-height: 1.25; font-weight: 500; font-variant-numeric: tabular-nums; margin: 2px 0; }

@@ -51,12 +51,6 @@ $("app").innerHTML = `
         <h1 id="run-title">Electron residence study</h1><div id="run-subtitle" class="muted">Summary-first exploration</div></div>
         <button id="pin" class="secondary">+ Compare run</button></section>
       <div id="error" class="error" role="alert" hidden></div>
-      <section class="metrics" aria-label="Run metrics">
-        <article class="metric primary"><div>Mean dwell <span id="dwell-badge"></span></div><strong id="dwell">—</strong><small id="dwell-note">All simulated particles</small></article>
-        <article class="metric"><div>Observation window</div><strong id="window">—</strong><small id="survivors">—</small></article>
-        <article class="metric"><div>Coil radius</div><strong id="coil">—</strong><small id="coil-note">Opposed circular coils</small></article>
-        <article class="metric"><div>Prescribed φ(0)</div><strong id="potential">—</strong><small>Fixed charge proxy</small></article>
-      </section>
       <div class="console-grid">
         <div class="primary-column">
           <section class="panel chamber-panel">
@@ -91,6 +85,12 @@ $("app").innerHTML = `
               <div class="heatmap-wrap"><canvas id="heatmap" width="220" height="175" aria-label="Axisymmetric occupancy sample histogram"></canvas><div id="heatmap-empty" hidden>Not recorded</div></div>
               <div id="core-share" class="chart-note">—</div><div class="plot-note">Sample counts, not charge density</div></section>
           </div>
+          <section class="metrics" aria-label="Run metrics">
+            <article class="metric primary"><div>Mean dwell <span id="dwell-badge"></span></div><strong id="dwell">—</strong><small id="dwell-note">All simulated particles</small></article>
+            <article class="metric"><div>Observation window</div><strong id="window">—</strong><small id="survivors">—</small></article>
+            <article class="metric"><div>Coil radius</div><strong id="coil">—</strong><small id="coil-note">Opposed circular coils</small></article>
+            <article class="metric"><div>Prescribed φ(0)</div><strong id="potential">—</strong><small>Fixed charge proxy</small></article>
+          </section>
           <section class="panel compare-panel" id="compare-panel" hidden><div class="panel-heading"><h2>Pinned comparisons</h2><button id="clear-comparisons" class="text-button">Clear</button></div><div id="comparison-table"></div></section>
         </div>
         <aside class="instrument-column">
