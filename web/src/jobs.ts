@@ -77,7 +77,7 @@ function jobArticle(job: SimulationJob, open: boolean): string {
   return `<article class="job-record" id="job-${escape(job.id)}">
     <div class="job-heading"><div><h2>${escape(job.title)}</h2><p>${escape(setup)}</p></div>
       <span class="job-result">${escape(resultLabel(job))}</span></div>
-    <p class="job-purpose">${escape(job.purpose)}</p>
+    <p class="job-purpose">${escape(progress?.purpose ?? job.purpose)}</p>
     <div class="job-facts">${caseless ? "" : `<span><b>${completed(job)}${pending ? `/${pending}` : ""}</b> cases completed</span>`}
       <span>${job.nodes} node · ${job.gpus} GPUs · priority ${job.priority}</span>
       <span>Scheduler: <b>${escape(job.phase)}</b>${stale ? " · last known" : ""}</span>
