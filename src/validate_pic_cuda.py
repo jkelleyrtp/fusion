@@ -92,14 +92,26 @@ def operator_controls(out: Path, device: torch.device) -> None:
     )
     r = torch.linspace(0, 2.2, 256, dtype=torch.float64, device=device)
     z = torch.linspace(-2.1, 2.1, 512, dtype=torch.float64, device=device)
-    br = torch.randn((512, 256), generator=generator, dtype=torch.float64).to(device)
-    bz = torch.randn((512, 256), generator=generator, dtype=torch.float64).to(device)
-    pusher = TorchPusher(br, bz, 0, float(r[1]), float(z[0]), float(z[1] - z[0]), QM)
     samples = torch.cat((position, position.new_tensor([[0, 0, 0], [0, 0, -2.5], [2, 2, 2.5]])))
-    np.testing.assert_array_equal(
-        actual.magnetic_field(pusher)(samples).cpu().numpy(), pusher.field(samples).cpu().numpy(),
-    )
-    assert actual.magnetic_field(pusher)(position[:0]).shape == (0, 3)
+    tables = {
+        "random": (
+            torch.randn((512, 256), generator=generator, dtype=torch.float64).to(device),
+            torch.randn((512, 256), generator=generator, dtype=torch.float64).to(device),
+            1e-12,
+        ),
+        "smooth": (r[None] * torch.sin(z)[:, None], torch.cos(z)[:, None] * torch.exp(-r)[None], 1e-14),
+    }
+    differences = {}
+    for name, (br, bz, atol) in tables.items():
+        pusher = TorchPusher(br, bz, 0, float(r[1]), float(z[0]), float(z[1] - z[0]), QM)
+        observed_field, expected_field = actual.magnetic_field(pusher)(samples), pusher.field(samples)
+        differences[name] = {
+            "max_abs": float((observed_field - expected_field).abs().max()),
+            "unequal_fraction": float((observed_field != expected_field).double().mean()),
+        }
+        (out / "magnetic.json").write_text(json.dumps(differences, indent=2) + "\n")
+        torch.testing.assert_close(observed_field, expected_field, rtol=1e-12, atol=atol)
+        assert actual.magnetic_field(pusher)(position[:0]).shape == (0, 3)
     empty = position[:0]
     torch.testing.assert_close(actual.deposit(empty, charge[:0]), torch.zeros_like(expected_charge))
     assert actual.gather(potential, empty).shape == (0, 3)
