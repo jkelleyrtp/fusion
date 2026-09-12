@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "predev": "node scripts/prepare-data.mjs",
-    "dev": "vite --host 0.0.0.0",
+    "dev": "vite --host 0.0.0.0 --port 4173 --strictPort --experimental-bundle",
     "prebuild": "node scripts/prepare-data.mjs",
     "build": "tsc --noEmit && vite build && node scripts/compress.mjs",
     "typecheck": "tsc --noEmit",
@@ -13,12 +13,14 @@
     "lint": "eslint src",
     "preview": "vite preview --host 0.0.0.0"
   },
-  "dependencies": { "three": "0.180.0" },
+  "dependencies": {
+    "three": "0.180.0"
+  },
   "devDependencies": {
     "@types/three": "0.180.0",
-    "typescript": "5.9.3",
-    "vite": "7.3.1",
     "eslint": "9.39.1",
-    "typescript-eslint": "8.48.1"
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.48.1",
+    "vite": "8.2.2"
   }
 }

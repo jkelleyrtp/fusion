@@ -30,7 +30,9 @@ cd ..
 python3 src/serve_viewer.py
 ```
 
-Open `http://127.0.0.1:4173`. Development: `cd web && npm run dev`.
+Open `http://127.0.0.1:4173`. For development, run only `cd web && npm run dev`:
+it starts the single bundled Vite server on port 4173; a second Python server is not
+required during development.
 The bundled 25/50 cm studies occupy about 6 MB **on disk**; the browser initially
 fetches only the catalog, selected summary, and a small 16-particle preview.
 Full trajectories arrive only when requested. No GPU simulation is launched by
