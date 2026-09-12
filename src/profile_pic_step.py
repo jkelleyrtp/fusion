@@ -191,7 +191,7 @@ def main() -> None:
         inject_per_step=8, inject_every=1, coil_current=30000, radius=0.5,
         energy_ev=5000, temperature_ev=0.2, source_sigma=5e-5,
         divergence_deg=10, aim_deg=30, seed=1234, max_live_particles=150000,
-        track=64, max_steps=20000, device="cuda:0",
+        track=64, max_steps=20000, device="cuda:0", save_every=625,
     )
     # The kernels choice widens to include "both"; per-run parsing maps it back.
     for action in arguments._actions:
