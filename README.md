@@ -13,7 +13,7 @@ escape time + channel, survival curve, (r,z) density) and renders a report.
 | `cuda_build_cache.py` | persistent fingerprint-keyed build cache for the fused kernel (see below) |
 | `benchmark_build_cache.py` | measures extension startup in fresh worker processes on the GPUs |
 | `cusp_viz.py` | `report.png` + `traj_<member>.png` + markdown summary table from a run directory |
-| `jobs/*.yaml` | broker-submittable single-node RayJobs (`uv run train job submit jobs/<x>.yaml --cluster aws-usw2 --priority 1`) |
+| `jobs/*.yaml` | broker-submittable single-node RayJobs (`uv run train job submit /home/ubuntu/repos/fusion/jobs/<x>.yaml --cluster aws-usw2 --priority 1`) |
 | `results/` | reports and summaries pulled back from the runs |
 | `docs/` | [reassessment](docs/reassessment.md) and [precision notes](docs/precision-notes.md) |
 
@@ -25,7 +25,7 @@ Submit GPU work only through the slime job broker, from the research checkout:
 cd /home/ubuntu/repos/research
 uv run train gpus --cluster aws-usw2                       # check free capacity first
 uv run train job list --cluster aws-usw2
-uv run train job submit jobs/<name>.yaml --cluster aws-usw2 --priority 1
+uv run train job submit /home/ubuntu/repos/fusion/jobs/<name>.yaml --cluster aws-usw2 --priority 1
 ```
 
 - **Priority 1, exactly one node** (`--actor-num-nodes 1 --actor-num-gpus-per-node 8
@@ -55,8 +55,11 @@ holding it. `CUSP_BUILD_VERBOSE=1` turns on verbose ninja output.
 pods import it via the script's directory. Benchmark on the GPUs (one node, priority 1, broker only):
 
 ```bash
-uv run train job submit jobs/cusp-cache-benchmark-aws.yaml --cluster aws-usw2 --priority 1
+uv run train job submit /home/ubuntu/repos/fusion/jobs/cusp-cache-benchmark-aws.yaml --cluster aws-usw2 --priority 1
 ```
+
+Each member's `summary.json` records `kernel_setup_time_s`: wall time of the extension build/load attempt
+(including failed attempts; `null` on CPU or with `--no-kernel`).
 
 ## Physics model
 
@@ -97,7 +100,7 @@ uv run train job submit jobs/cusp-cache-benchmark-aws.yaml --cluster aws-usw2 --
 The tested beam configurations lost their particles; this does not prove a general impossibility of capture
 in static fields. The production target is an external electron gun crossing field lines, with its origin
 and aim explicitly specified. Inside-born populations are numerical controls. Strong positive-charge cases
-can be energetically bound even without B and are not evidence of a self-generated negative ion well. See
+can be energetically bound even without B and are not evidence of a self-generated negative potential well for positive ions. See
 [the reassessment](docs/reassessment.md) for the corrected interpretation, measured performance, and staged
 simulation plan.
 

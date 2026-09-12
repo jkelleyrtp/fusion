@@ -1,21 +1,4 @@
-"""Persistent, fingerprint-keyed build cache for the fused cusp CUDA kernel.
-
-Workers on different GPUs (or different broker jobs) share one build directory per
-fingerprint instead of each compiling under ``/tmp``. The fingerprint covers
-everything that changes the compiled artifact: sources, bindings, flags, platform,
-Python SOABI, Torch build identity, CUDA toolkit/compiler identity, the compile
-environment, and the target architecture request. GPU ordinal is deliberately NOT
-part of the key — identical workers share one directory and one extension module.
-
-Locking: GPU-image torch (2.11) uses the existence-based ``FileBaton`` whose
-stale ``lock`` file deadlocks later callers forever. All callers here first take a
-kernel-released POSIX advisory ``flock`` on ``<keydir>/build.flock`` covering the
-whole ``load_inline`` call (source generation included); once it is held, any
-leftover ``<keydir>/lock`` is by definition stale and is removed before calling
-``load_inline``, which then uses ninja for artifact freshness. This is safe only
-because every caller for a ``cusp_push_<key>`` name goes through this module —
-never point another ``load_inline`` at the same directory.
-"""
+"""Fingerprint-keyed persistent build cache for the fused cusp CUDA kernel."""
 
 import fcntl
 import hashlib
@@ -23,19 +6,22 @@ import json
 import os
 import platform
 import shlex
+import shutil
 import subprocess
 import sys
 import sysconfig
+import time
 import types
 from pathlib import Path
 
 import torch
 from torch.utils.cpp_extension import CUDA_HOME, load_inline
 
-CACHE_FORMAT_VERSION = 2
+CACHE_FORMAT_VERSION = 3
 
 _FUNCTIONS = ["push"]
 _COMPILE_ENV_VARS = (
+    "PATH",
     "CC",
     "CXX",
     "PYTORCH_NVCC",
@@ -47,32 +33,42 @@ _COMPILE_ENV_VARS = (
 )
 
 
-def _run_compiler_version(command: str) -> str:
-    """Return ``<cmd> --version`` output. Raises on failure — compiler identity is
-    key material, never silently omitted."""
+def _resolve_executable(command: str) -> str:
+    """Realpath of the executable a command resolves to. Raises if not found —
+    toolchain identity is key material, never silently omitted."""
+    exe = shlex.split(command)[0]
+    found = shutil.which(exe)
+    if found is None:
+        raise RuntimeError(f"compiler executable {exe!r} not found on PATH")
+    return str(Path(found).resolve())
+
+
+def _compiler_metadata(command: str) -> dict[str, str]:
     argv = shlex.split(command) + ["--version"]
     proc = subprocess.run(argv, capture_output=True, text=True, timeout=120, check=False)
     if proc.returncode != 0:
         raise RuntimeError(
             f"compiler version probe failed for {argv!r}: rc={proc.returncode} {proc.stderr.strip()[:500]}"
         )
-    return proc.stdout.strip()
+    return {
+        "command": command,
+        "path": _resolve_executable(command),
+        "version": proc.stdout.strip(),
+    }
 
 
-def _toolchain_metadata() -> dict[str, str]:
-    meta: dict[str, str] = {}
+def _toolchain_metadata() -> dict[str, object]:
     cxx = os.environ.get("CXX") or "c++"
-    meta["cxx"] = cxx
-    meta["cxx_version"] = _run_compiler_version(cxx)
     nvcc = os.environ.get("PYTORCH_NVCC")
     if not nvcc:
         if CUDA_HOME is None:
             raise RuntimeError("CUDA_HOME is unset and PYTORCH_NVCC is not defined")
         nvcc = os.path.join(CUDA_HOME, "bin", "nvcc")
-    meta["nvcc"] = nvcc
-    meta["nvcc_version"] = _run_compiler_version(nvcc)
-    meta["cuda_home"] = str(CUDA_HOME)
-    return meta
+    return {
+        "cxx": _compiler_metadata(cxx),
+        "nvcc": _compiler_metadata(nvcc),
+        "cuda_home": str(CUDA_HOME),
+    }
 
 
 def _arch_request() -> str:
@@ -93,7 +89,7 @@ def fingerprint(
     cpp_source: str,
     cuda_source: str,
     extra_cuda_cflags: list[str],
-    toolchain: dict[str, str] | None = None,
+    toolchain: dict[str, object] | None = None,
     arch: str | None = None,
 ) -> str:
     """Deterministic 24-hex-char key for the extension build inputs. ``toolchain``
@@ -139,6 +135,14 @@ def cache_root() -> Path:
     return Path(os.environ.get("CUSP_BUILD_DIR") or Path.home() / ".cache" / "cusp_build")
 
 
+def _artifact_sig(path: Path) -> tuple[int, int] | None:
+    try:
+        st = path.stat()
+    except FileNotFoundError:
+        return None
+    return (st.st_size, st.st_mtime_ns)
+
+
 def load_cached_extension(
     cpp_source: str,
     cuda_source: str,
@@ -160,15 +164,19 @@ def load_cached_extension(
 
     fd = os.open(flock_path, os.O_CREAT | os.O_RDWR)
     try:
-        # Kernel releases this flock if the holder dies; a stale FileBaton 'lock'
-        # left by a killed build is removed only while we hold the flock, which
-        # every caller of these module names must pass through first.
+        # Every caller for a cusp_push_<key> name must pass through this flock,
+        # whose kernel release survives holder death; a FileBaton 'lock' file
+        # still present at this point is therefore stale and safe to remove.
+        t_wait = time.perf_counter()
         fcntl.flock(fd, fcntl.LOCK_EX)
+        wait_s = time.perf_counter() - t_wait
         try:
             stale = keydir / "lock"
             if stale.exists():
                 stale.unlink()
-            return load_inline(
+            before = _artifact_sig(keydir / f"{name}.so")
+            t_build = time.perf_counter()
+            module = load_inline(
                 name=name,
                 cpp_sources=cpp_source,
                 cuda_sources=cuda_source,
@@ -177,6 +185,24 @@ def load_cached_extension(
                 extra_cuda_cflags=list(extra_cuda_cflags),
                 verbose=verbose,
             )
+            elapsed_s = time.perf_counter() - t_build
+            module_file = module.__dict__.get("__file__") if isinstance(module, types.ModuleType) else None
+            if not isinstance(module_file, str) or not module_file:
+                raise RuntimeError(f"load_inline returned invalid module for {name}: {module!r}")
+            module_path = Path(module_file)
+            after = _artifact_sig(module_path)
+            if before is None:
+                outcome = "cold-build"
+            elif after != before or module_path != keydir / f"{name}.so":
+                outcome = "rebuilt"
+            else:
+                outcome = "cache-hit"
+            print(
+                f"[cuda-build-cache] {outcome} {name} key={key} "
+                f"build={elapsed_s:.1f}s lock-wait={wait_s:.1f}s",
+                flush=True,
+            )
+            return module
         finally:
             fcntl.flock(fd, fcntl.LOCK_UN)
     finally:

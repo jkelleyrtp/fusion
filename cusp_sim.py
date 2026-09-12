@@ -6,8 +6,8 @@ spindle/biconic cusp: point cusps on the axis beyond each ring and a ring (line)
 the midplane. Electrons are injected along the axis through one point cusp and pushed
 with a fused Boris (or reference RK4) pusher in the static field  m dv/dt = q v x B + q E.
 
-The field is axisymmetric and exact: each ring's closed-form loop field (elliptic
-integrals) is tabulated once on a (r,z) grid, and the pusher does bilinear lookups.
+The field is axisymmetric; exact closed-form loop values (elliptic integrals) are
+tabulated once on a (r,z) grid, and the pusher does bilinear lookups on it.
 
 Each GPU runs one member of a parameter sweep (injection energy); a fused CUDA kernel
 advances every electron for a block of steps in registers. A pure-torch pusher is used
@@ -520,10 +520,11 @@ def run_member(args, member, tag, device, log):
         t_kernel = time.perf_counter()
         try:
             kernel = try_build_kernel(dev.index or 0)
-            log(f"[{tag}] fused CUDA extension ready")
+            kernel_setup_time_s = time.perf_counter() - t_kernel
+            log(f"[{tag}] fused CUDA extension ready in {kernel_setup_time_s:.1f}s")
         except Exception as e:  # noqa: BLE001 - fall back to torch ops on any build failure
+            kernel_setup_time_s = time.perf_counter() - t_kernel
             log(f"[{tag}] CUDA kernel build failed ({type(e).__name__}: {str(e)[:300]}); using torch pusher")
-        kernel_setup_time_s = time.perf_counter() - t_kernel
     sc_kq = K_COULOMB * space_charge
     pusher = TorchPusher(Brc, Bzc, r0, dr, z0, dz, QM, sc_kq, args.space_charge_radius, boris)
 

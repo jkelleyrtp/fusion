@@ -10,7 +10,7 @@ can always reclaim capacity.
 
   ```bash
   cd /home/ubuntu/repos/research
-  uv run train job submit jobs/<name>.yaml --cluster aws-usw2 --priority 1
+  uv run train job submit /home/ubuntu/repos/fusion/jobs/<name>.yaml --cluster aws-usw2 --priority 1
   ```
 
   An equivalent authorized cluster is acceptable only after inspecting its
@@ -59,8 +59,8 @@ can always reclaim capacity.
   explicit, reviewed design.
 - A **prescribed charge sphere** (`--space-charge`) is a fixed proxy field; the
   charge is not computed from the tracked particles. Confinement by a
-  prescribed positive charge is not evidence of a self-consistent negative-ion
-  well — distinguish the two in all claims.
+  prescribed positive charge is not evidence of a self-consistent negative
+  potential well for positive ions — distinguish the two in all claims.
 
 ## Checks
 
