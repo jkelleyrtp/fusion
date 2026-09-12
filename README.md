@@ -207,7 +207,7 @@ escape and are invalid as executed-throughput measurements. Run 7 measures actua
 ## Still to do
 
 - Loss-cone diagnostic: pitch angle at each null crossing (min |B| per particle is recorded now).
-- Transient self-consistent PIC, explicit electrode geometry, and ion loading.
+- Physical convergence studies for transient PIC, explicit electrode geometry, and ion loading.
 
 ## Space-charge reference
 
@@ -224,3 +224,10 @@ python3 -m unittest discover -s tests -p test_electrostatic.py -v
 ruff check src/electrostatic.py src/steady_space_charge.py
 mypy --follow-imports=silent src/electrostatic.py src/steady_space_charge.py
 ```
+
+## Time-dependent PIC reference
+
+`src/run_transient_pic.py` continuously injects electrons, retains live particles,
+and solves instantaneous electrostatic feedback at each physical timestep.
+See [the transient PIC guide](docs/transient-pic.md) for the bounded CPU example,
+output format, numerical checks and remaining physical convergence work.
