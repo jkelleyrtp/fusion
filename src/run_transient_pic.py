@@ -1,4 +1,4 @@
-"""Run a bounded external-gun electrostatic PIC reference."""
+"""Run bounded FP64 external-gun electrostatic PIC."""
 
 import argparse
 import json
@@ -10,6 +10,8 @@ import torch
 
 from cusp_sim import E_CHARGE, QM, TorchPusher, ring_field_on_grid
 from electrostatic import ElectrostaticMesh
+from pic_cuda import CUDAKernels
+from pic_kernels import ReferenceKernels
 from steady_space_charge import thermal_source
 from transient_pic import PIC
 
@@ -18,8 +20,10 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--out", type=Path, required=True)
     result.add_argument("--device", default="cpu")
+    result.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
     result.add_argument("--nodes", type=int, default=17)
     result.add_argument("--inject-per-step", type=int, default=8)
+    result.add_argument("--inject-every", type=int, default=1)
     result.add_argument("--current-a", type=float, default=1e-8)
     result.add_argument("--coil-current", type=float, default=1000)
     result.add_argument("--radius", type=float, default=0.5)
@@ -52,7 +56,7 @@ def validate(args: argparse.Namespace) -> int:
         raise ValueError("Invalid source sigma or divergence")
     if not 0 <= args.aim_deg < 90:
         raise ValueError("Aim must point into the box")
-    if args.nodes < 3 or args.inject_per_step < 1 or args.max_live_particles < 1:
+    if args.nodes < 3 or args.inject_per_step < 1 or args.inject_every < 1 or args.max_live_particles < 1:
         raise ValueError("Invalid mesh size or particle limits")
     if args.save_every < 1 or args.max_snapshots < 2 or args.max_steps < 1:
         raise ValueError("Invalid output or step limits")
@@ -105,8 +109,12 @@ def save_snapshot(
     return record
 
 
-def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | str]]:
-    steps = validate(args)
+def source_geometry(args: argparse.Namespace) -> tuple[list[float], list[float]]:
+    angle = math.radians(args.aim_deg)
+    return [0.0, 0.008 * args.radius, -1.3 * args.radius], [0.0, -math.sin(angle), math.cos(angle)]
+
+
+def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]:
     device = torch.device(args.device)
     a = args.radius
     lower = torch.tensor(
@@ -131,19 +139,17 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
     pusher = TorchPusher(
         br, bz, 0, float(r[1]), float(z[0]), float(z[1] - z[0]), QM,
     )
-    simulation = PIC(mesh, pusher.field, 0.25 * a, args.max_live_particles, args.track)
-    angle = math.radians(args.aim_deg)
-    origin = [0.0, 0.008 * a, -1.3 * a]
-    direction = [0.0, -math.sin(angle), math.cos(angle)]
+    kernels = CUDAKernels(mesh) if args.kernels == "cuda" else ReferenceKernels(mesh)
+    simulation = PIC(
+        mesh, pusher.field, 0.25 * a, args.max_live_particles, args.track, kernels=kernels,
+    )
+    origin, direction = source_geometry(args)
     source_field = pusher.field(lower.new_tensor([origin]))[0]
     source_norm = float(source_field.norm())
     pitch = math.degrees(math.acos(max(-1, min(1, float(
         source_field.dot(lower.new_tensor(direction)),
     ) / source_norm)))) if source_norm else None
-    args.out.mkdir(parents=True, exist_ok=False)
-    snapshots = args.out / "snapshots"
-    snapshots.mkdir()
-    configuration = {
+    configuration: dict[str, object] = {
         key: str(value) if isinstance(value, Path) else value
         for key, value in vars(args).items()
     }
@@ -151,7 +157,8 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
         "model": "transient-electrostatic-pic-v1",
         "precision": "float64",
         "time_semantics": "physical seconds; synchronized end-of-step states",
-        "source_interpretation": "post-extraction grounded-wall inlet, pulsed each step",
+        "source_interpretation": "post-extraction grounded-wall inlet, discrete charge packets",
+        "source_pulse_interval_s": args.dt * args.inject_every,
         "source_origin_m": origin, "source_direction": direction,
         "source_nominal_pitch_deg": pitch,
         "source_B_T": source_field.cpu().tolist(),
@@ -162,8 +169,37 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
         "charge_deposition": "instantaneous CIC; no residence weighting",
         "energy_balance": "K + U + lost kinetic - injected kinetic; not a power budget",
         "tracking": "first stable particle IDs; includes terminal wall positions",
-        "validation_scope": "numerical reference; physical source/mesh convergence pending",
+        "validation_scope": "numerical model; physical source/mesh convergence pending",
     })
+    return simulation, configuration
+
+
+def inject_packet(simulation: PIC, args: argparse.Namespace, step: int) -> None:
+    if step % args.inject_every:
+        return
+    if len(simulation.particles.ids) + args.inject_per_step > args.max_live_particles:
+        raise ValueError("Injection exceeds max-live-particles")
+    origin, direction = source_geometry(args)
+    position, velocity = thermal_source(
+        origin, direction, args.energy_ev, args.temperature_ev,
+        args.source_sigma, args.inject_per_step, simulation.mesh.lower.device,
+        args.seed + step // args.inject_every, args.divergence_deg,
+    )
+    if (velocity[:, 2] <= 0).any():
+        raise ValueError("Sampled inlet velocity points backwards")
+    pulse_duration = min(args.dt * args.inject_every, args.duration - step * args.dt)
+    weight = position.new_full(
+        (args.inject_per_step,), args.current_a * pulse_duration / (E_CHARGE * args.inject_per_step),
+    )
+    simulation.inject(position, velocity, weight)
+
+
+def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | str]]:
+    steps = validate(args)
+    simulation, configuration = create_simulation(args)
+    args.out.mkdir(parents=True, exist_ok=False)
+    snapshots = args.out / "snapshots"
+    snapshots.mkdir()
     (args.out / "configuration.json").write_text(
         json.dumps(configuration, indent=2, allow_nan=False) + "\n",
     )
@@ -180,19 +216,7 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
     publish(0, 0)
     for step in range(steps):
         h = args.duration - step * args.dt if step + 1 == steps else args.dt
-        if len(simulation.particles.ids) + args.inject_per_step > args.max_live_particles:
-            raise ValueError("Injection exceeds max-live-particles")
-        position, velocity = thermal_source(
-            origin, direction, args.energy_ev, args.temperature_ev,
-            args.source_sigma, args.inject_per_step, device,
-            args.seed + step, args.divergence_deg,
-        )
-        if (velocity[:, 2] <= 0).any():
-            raise ValueError("Sampled inlet velocity points backwards")
-        weight = position.new_full(
-            (args.inject_per_step,), args.current_a * h / (E_CHARGE * args.inject_per_step),
-        )
-        simulation.inject(position, velocity, weight)
+        inject_packet(simulation, args, step)
         simulation.advance(h)
         simulation.time = args.duration if step + 1 == steps else (step + 1) * args.dt
         if (step + 1) % args.save_every == 0 or step + 1 == steps:

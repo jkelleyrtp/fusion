@@ -10,9 +10,8 @@ from cusp_sim import E_CHARGE, M_E, QM
 from electrostatic import (
     EPSILON_0,
     ElectrostaticMesh,
-    clip_segment,
-    sphere_segment_fraction,
 )
+from pic_kernels import ReferenceKernels
 
 MagneticField = Callable[[torch.Tensor], torch.Tensor]
 
@@ -40,12 +39,16 @@ class PIC:
     def __init__(
         self, mesh: ElectrostaticMesh, magnetic_field: MagneticField,
         core_radius: float, max_live: int, track: int = 0,
+        *, kernels: ReferenceKernels | None = None,
     ) -> None:
         if not math.isfinite(core_radius) or core_radius <= 0 or max_live < 1:
             raise ValueError("Positive core radius and live-particle limit required")
         if not 0 <= track <= 256:
             raise ValueError("Track count must be between 0 and 256")
         self.mesh = mesh
+        self.kernels = ReferenceKernels(mesh) if kernels is None else kernels
+        if self.kernels.mesh is not mesh:
+            raise ValueError("Particle operators must use the PIC mesh")
         self.magnetic_field = magnetic_field
         self.core_radius = core_radius
         self.max_live = max_live
@@ -117,7 +120,7 @@ class PIC:
 
     def fields(self) -> tuple[torch.Tensor, torch.Tensor]:
         p = self.particles
-        charge = self.mesh.deposit(p.position, -E_CHARGE * p.weight)
+        charge = self.kernels.deposit(p.position, -E_CHARGE * p.weight)
         return charge, self.mesh.potential(charge)
 
     def kinetic_energy(self) -> torch.Tensor:
@@ -128,11 +131,10 @@ class PIC:
         p = self.particles
         if len(p.ids) == 0:
             return
-        end, fraction, hit = clip_segment(
-            p.position, p.position + h * p.velocity, self.mesh,
+        end, fraction, hit, inside, entered = self.kernels.drift(
+            p.position, p.velocity, h, self.core_radius,
         )
         elapsed = h * fraction
-        inside, entered = sphere_segment_fraction(p.position, end, self.core_radius)
         p.dwell += elapsed
         p.core_dwell += elapsed * inside
         p.entries += entered.long()
@@ -187,7 +189,7 @@ class PIC:
             raise ValueError("Timestep exceeds omega_p * dt <= 0.1")
         p = self.particles
         if len(p.ids):
-            electric = self.mesh.gather(potential, p.position)[1]
+            electric = self.kernels.gather(potential, p.position)
             magnetic = self.magnetic_field(p.position)
             if (magnetic.shape != p.position.shape or magnetic.dtype != torch.float64
                     or magnetic.device != p.position.device
@@ -195,11 +197,7 @@ class PIC:
                 raise ValueError("Magnetic field must be finite FP64, N by 3 on the mesh device")
             if abs(QM) * magnetic.norm(dim=1).max() * h > 2 * math.pi / 80:
                 raise ValueError("Timestep requires at least 80 steps per gyration")
-            minus = p.velocity + 0.5 * h * QM * electric
-            t = 0.5 * h * QM * magnetic
-            s = 2 * t / (1 + t.square().sum(dim=1, keepdim=True))
-            prime = minus + torch.linalg.cross(minus, t)
-            p.velocity = minus + torch.linalg.cross(prime, s) + 0.5 * h * QM * electric
+            p.velocity = self.kernels.boris(p.velocity, electric, magnetic, h)
         self._check_speed(h)
         self._drift(h / 2, self.time + h / 2)
         self.time += h
