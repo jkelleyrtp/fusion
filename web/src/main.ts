@@ -8,6 +8,7 @@ import { campaignHref, renderCampaignHome, renderCampaignReport, reportHref } fr
 import { renderSpaceCharge } from "./space-charge";
 import { renderReport } from "./reports";
 import { JobMonitor } from "./jobs";
+import { FieldView } from "./fields";
 import type { Catalog, Meta, Run, TrajectoryChunk } from "./types";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
@@ -90,8 +91,9 @@ $("app").innerHTML = `
         <div class="primary-column">
           <div id="trajectory-home">
           <section class="panel chamber-panel">
-            <div class="panel-heading"><h2>Trajectories</h2>
-              <div class="view-buttons"><button data-view="iso" class="active" title="Isometric view">ISO</button><button data-view="side">SIDE</button><button data-view="top">AXIAL</button></div></div>
+            <div class="panel-heading"><div class="view-buttons"><button id="show-trajectories" class="active">Trajectories</button><button id="show-fields">Fields</button></div>
+              <div class="view-buttons" id="camera-controls"><label>Camera <select id="projection" aria-label="Camera projection"><option value="orthographic">Orthographic</option><option value="perspective">Perspective</option></select></label><button data-view="iso" class="active" title="Isometric view">ISO</button><button data-view="side">SIDE</button><button data-view="top">AXIAL</button></div></div>
+            <div id="trajectory-content">
             <div id="viewport">
               <div class="view-info"><span id="view-mode">PRESCRIBED-FIELD MODEL</span><small id="view-scale">Coordinates scaled by coil radius</small></div>
               <div id="render-status" class="render-status">Connecting renderer…</div>
@@ -107,10 +109,11 @@ $("app").innerHTML = `
             <div class="stream-controls">
               <label>Detail<select id="detail"><option value="0">Preview · stride 24</option><option value="1">Standard · stride 6</option><option value="2" selected>Full stored samples</option></select></label>
               <label>Start<select id="first"><option>0</option></select></label>
-              <label>Paths<select id="amount"><option value="16" selected>16</option><option value="32">32</option><option value="64">64</option><option value="128">128</option></select></label>
+              <label>Paths<select id="amount"><option value="all" selected>All stored</option><option value="16">16</option><option value="32">32</option><option value="64">64</option><option value="128">128</option></select></label>
               <button id="load" class="accent">Load selection</button>
             </div>
             <div class="sample-note"><span id="loaded">No trajectories loaded</span><span id="sample-note">Stored paths are a subset of the ensemble.</span></div>
+            </div><div id="field-content" hidden></div>
           </section>
           </div><div class="plots">
             <section class="panel survival-panel"><div class="panel-heading"><h2>Residence / survival</h2>
@@ -173,6 +176,18 @@ setupNavigation(page => {
   if (catalog) void resolveRoute(page).catch(showError);
 });
 setupSidebar($("sidebar"), $("sidebar-resizer"));
+const fieldView = new FieldView($("field-content"), store);
+$("show-fields").onclick = () => {
+  stop(); $("trajectory-content").hidden = true; $("camera-controls").hidden = true;
+  $("field-content").hidden = false; $("show-fields").classList.add("active");
+  $("show-trajectories").classList.remove("active"); void fieldView.show();
+};
+$("show-trajectories").onclick = () => {
+  $("trajectory-content").hidden = false; $("camera-controls").hidden = false;
+  $("field-content").hidden = true; $("show-trajectories").classList.add("active");
+  $("show-fields").classList.remove("active"); fieldView.hide();
+};
+$("projection").onchange = () => chamber?.setProjection($<HTMLSelectElement>("projection").value === "perspective");
 
 function showError(error: unknown): void {
   $("error").textContent = error instanceof Error ? error.message : String(error);
@@ -259,9 +274,9 @@ function renderMetrics(): void {
   document.querySelector<HTMLAnchorElement>('a[data-page="reports"]')!.href = reportHref(selected.id);
   renderReport($("report-body"), selected, meta, catalog.studies.find(s => s.id === selected?.study)?.label ?? selected.study);
   renderCampaignReport($("campaign-heading"), $("campaign-details"), catalog, selected, id => { void selectRun(id); });
-  $("report-heading").innerHTML = `<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#campaigns">Campaigns</a><span>/</span>
-    <a href="${campaignHref(selected.study)}">${escape(catalog.studies.find(s => s.id === selected?.study)?.label ?? selected.study)}</a><span>/</span>Run report</nav>
-    <div class="page-title"><h1>${escape(label(selected))}</h1></div>`;
+  $("report-heading").innerHTML = `<div class="compact-report-title"><h1>${escape(label(selected))}</h1></div>
+    <nav class="compact-report-meta" aria-label="Breadcrumb"><a href="${campaignHref(selected.study)}">← ${escape(catalog.studies.find(s => s.id === selected?.study)?.label ?? selected.study)}</a>
+    <span>${fmt(selected.particles, 7)} particles · ${poisson ? `solver iteration ${poisson.iteration}/${poisson.requestedIterations}` : "fixed fields"}</span></nav>`;
   $("campaign-name").textContent = catalog.studies.find(s => s.id === selected!.study)?.label ?? selected.study;
   $("run-title").textContent = label(selected);
   $("run-title").title = selected.tag;
@@ -371,8 +386,10 @@ function renderPlots(): void {
 
 function updateStream(): void {
   const level = meta?.trajectory.levels[Number($<HTMLSelectElement>("detail").value)];
-  const first = Number($<HTMLSelectElement>("first").value);
-  const count = Number($<HTMLSelectElement>("amount").value);
+  const all = $<HTMLSelectElement>("amount").value === "all";
+  $<HTMLSelectElement>("first").disabled = all;
+  const first = all ? 0 : Number($<HTMLSelectElement>("first").value);
+  const count = all ? meta?.trajectory.count ?? 0 : Number($<HTMLSelectElement>("amount").value);
   const refs = level?.chunks.filter(c => c.first >= first && c.first < first + count) ?? [];
   $<HTMLButtonElement>("load").disabled = !refs.length;
   $("load").textContent = `Load · ${bytes(refs.reduce((n, c) => n + c.bytes, 0))}`;
@@ -383,8 +400,9 @@ async function loadPaths(): Promise<void> {
   const currentRevision = revision;
   const currentMeta = meta;
   const level = currentMeta.trajectory.levels[Number($<HTMLSelectElement>("detail").value)];
-  const first = Number($<HTMLSelectElement>("first").value);
-  const count = Number($<HTMLSelectElement>("amount").value);
+  const all = $<HTMLSelectElement>("amount").value === "all";
+  const first = all ? 0 : Number($<HTMLSelectElement>("first").value);
+  const count = all ? currentMeta.trajectory.count : Number($<HTMLSelectElement>("amount").value);
   const refs = level.chunks.filter(c => c.first >= first && c.first < first + count);
   clearError(); $<HTMLButtonElement>("load").disabled = true;
   $("loaded").textContent = "Fetching compressed chunks…";
@@ -418,7 +436,8 @@ async function selectRun(id: string): Promise<void> {
   $("loaded").textContent = loadedName;
   $("viewport-empty").hidden = false; $("viewport-empty").textContent = "Loading compact summary…";
   $<HTMLButtonElement>("play").disabled = true;
-  $<HTMLSelectElement>("detail").value = "2"; $<HTMLSelectElement>("amount").value = "16";
+  $<HTMLSelectElement>("detail").value = "2"; $<HTMLSelectElement>("amount").value = "all";
+  fieldView.setRun(run);
   chamber?.setRun(run);
   renderLibrary(); renderSweep(); renderMetrics(); renderPlots(); updateStream();
   if (!run.meta) {
@@ -431,6 +450,7 @@ async function selectRun(id: string): Promise<void> {
     metadata.set(id, data);
     if (request !== revision) return;
     meta = data; chamber?.setRun(run, data);
+    $<HTMLSelectElement>("amount").options[0].text = `All ${data.trajectory.count} stored`;
     chamber?.showSphere($<HTMLInputElement>("sphere").checked);
     $<HTMLSelectElement>("first").innerHTML = data.trajectory.levels[0].chunks.map(c => `<option value="${c.first}">${c.first}</option>`).join("");
     renderMetrics(); renderPlots(); updateStream();

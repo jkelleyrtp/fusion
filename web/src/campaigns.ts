@@ -32,11 +32,12 @@ export function renderCampaignHome(host: HTMLElement, catalog: Catalog, age: (st
 export function renderCampaignReport(heading: HTMLElement, details: HTMLElement, catalog: Catalog, run: Run, onPreview: (id: string) => void): void {
   const study = catalog.studies.find(s => s.id === run.study);
   const members = catalog.runs.filter(r => r.study === run.study);
-  heading.innerHTML = `<nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#campaigns">Campaigns</a><span>/</span>${escape(study?.label ?? run.study)}</nav>
-    <div class="page-title"><div><h1>${escape(study?.label ?? run.study)}</h1><p>${members.length} runs · campaign report</p></div></div>
-    <div class="preview-picker"><label>Trajectory preview <select aria-label="Campaign trajectory preview">${members.map(r =>
+  heading.innerHTML = `<div class="compact-report-title"><h1>${escape(study?.label ?? run.study)}</h1>
+    <label>Run <select aria-label="Campaign trajectory preview">${members.map(r =>
       `<option value="${escape(r.id)}" ${r.id === run.id ? "selected" : ""}>${escape(runLabel(r))}${r.sweep ? ` · ${r.sweep.gridR}×${r.sweep.gridZ} · gyro ${r.sweep.gyroFraction}` : ""}</option>`).join("")}</select></label>
-      <a href="${reportHref(run.id)}">Open this run’s report →</a></div>`;
+    </div><nav class="compact-report-meta" aria-label="Breadcrumb"><a href="#campaigns">← Campaigns</a>
+      <span>${members.length} runs · ${range(members.map(r => r.energyEV))} eV · ${range(members.map(r => r.radiusM * 100))} cm coils</span>
+      <a href="${reportHref(run.id)}">Run report →</a></nav>`;
   heading.querySelector<HTMLSelectElement>("select")!.onchange = event => onPreview((event.target as HTMLSelectElement).value);
   details.innerHTML = `${run.poisson ? '<p class="muted">Trajectories replay the latest saved orbit iteration in its frozen Poisson field. Solver iterations are not physical time. These reference cases require convergence checks.</p>' : ""}
     <h2>Individual runs</h2><p class="muted">Mean dwell is measured through each run’s observation window. † marks a censored lower bound.</p>

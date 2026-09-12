@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -286,10 +287,13 @@ def main() -> None:
             lower_m=mesh.lower.cpu().numpy(), upper_m=mesh.upper.cpu().numpy(),
             exit_codes=packet.exit_codes.cpu().numpy(),
             final_kinetic_energy_J=packet.final_kinetic_energy.cpu().numpy(),
+            initial_position_m=pos.cpu().numpy(),
+            initial_velocity_m_s=vel.cpu().numpy(),
         )
+        snapshot = args.out / "viewer" / f"iteration-{iteration + 1:04d}"
+        snapshot.mkdir(parents=True)
+        shutil.copyfile(args.out / "state.npz", snapshot / "state.npz")
         if packet.trajectory is not None:
-            snapshot = args.out / "viewer" / f"iteration-{iteration + 1:04d}"
-            snapshot.mkdir(parents=True)
             np.savez_compressed(
                 snapshot / "results.npz", traj=packet.trajectory.cpu().numpy(),
                 traj_dt=packet.trajectory_dt, esc_where=packet.exit_codes.cpu().numpy(),

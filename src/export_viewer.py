@@ -12,6 +12,8 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
+from field_diagnostics import build_field_data
+
 
 def completed_at(directory: Path) -> str | None:
     marker = directory / "DONE"
@@ -115,6 +117,11 @@ def export_member(root: Path, study: str, kind: str, path: Path,
     if summary.get("model") == "stationary-poisson":
         card["model"] = summary["model"]
         card["poisson"] = summary["poisson"]
+        case = path.parent.parent.parent
+        if (case / "state.npz").exists():
+            fields = build_field_data(case, summary["poisson"]["iteration"])
+            if fields["snapshots"]:
+                card["fields"] = write_blob(root, json.dumps(fields, separators=(",", ":"), allow_nan=False).encode(), "json")
     archive = path.with_name("results.npz")
     if not archive.exists():
         return card

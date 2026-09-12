@@ -2,14 +2,15 @@
 
 The viewer uses Three.js/WebGL2 buffers for trajectories and particle markers,
 with GPU time clipping. Orbit by dragging; zoom with the wheel; use ISO, SIDE,
-or AXIAL to reset the camera. The gun enters from below in the default view.
+or AXIAL to reset the camera. Orthographic projection is the default; the camera
+menu also offers perspective. The gun enters from below in the default view.
 Renderer status identifies software rendering when the browser exposes that
 information. WebGL2 failure leaves metrics and data controls available.
 
 ## Exploring runs
 
 Filter by campaign, energy, or radius. Selecting a run loads its summary and
-a 16-particle Preview page. Choose a detail level, start particle, and path count,
+all stored paths at Full detail. Choose a detail level, start particle, and path count,
 then press Load. The button shows the compressed size before downloading.
 The scrubber and playback use the stored trajectory window, which can be much
 shorter than the ensemble observation window. Paths are the first tracked
@@ -33,6 +34,38 @@ residence measurement. Do not multiply its core fraction by inventory to infer
 core charge. The model has no particle charge deposition or Poisson feedback.
 
 ## Bandwidth and cache
+
+### Poisson field maps and offline plots
+
+The viewer's **Fields** tab loads compressed, checksum-verified central XY/XZ/YZ
+slices on demand. Available quantities are deposited, orbit and relaxed potential,
+deposited and relaxed electron density, imposed magnetic magnitude, and a
+finite-difference electric magnitude derived from the orbit potential. Density
+uses every simulated particle's residence-weighted nodal charge divided by
+`-e * cell_volume`. It is not the trajectory occupancy histogram.
+
+The colour range is fixed across all planes and saved field snapshots for the
+selected quantity. Axes use metres and equal spatial scale. Solver iterations
+are not physical time; the trajectory replay belongs to the latest exported
+iteration. Changing the field iteration does not change its trajectories.
+
+Future Poisson runs retain `viewer/iteration-NNNN/state.npz` alongside trajectories.
+Older archives only retain the last field grid; their scalar history and
+per-iteration trajectories remain available.
+
+Generate static field, trajectory-overlay and solver-history figures:
+
+```bash
+OMP_NUM_THREADS=1 python3 src/field_diagnostics.py /path/to/poisson-campaign \
+  --out /path/to/diagnostics
+```
+
+The directory may also be one case. Outputs per case are `fields.png`,
+`trajectories.png`, `source-loss.png`, `profiles.png`, `evolution.png` and
+reusable `fields.json`. The field JSON
+contains all retained snapshots. Magnetic plots reconstruct the same imposed
+coil table as the solver. An imposed B null, an electric-field minimum, and a
+negative potential well are separate diagnostics.
 
 The default data budget is 5 MiB. It counts bytes read by the data loader;
 the app shell is separate. Network/HTTP overhead is not included. Responses are

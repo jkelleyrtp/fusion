@@ -13,6 +13,7 @@ export interface Run {
   medianEscapeUs: number | null; axisAngleDeg: number | null; tracked: number;
   trajectoryWindowUs: number; meta: FileRef | null;
   model?: string; poisson?: PoissonDiagnostics;
+  fields?: FileRef;
   sweep?: {
     coilCurrentA: number; aimDeg: number; coneDeg: number;
     gridR: number; gridZ: number; gyroFraction: number;

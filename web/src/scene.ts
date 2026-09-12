@@ -7,7 +7,7 @@ const RGB = COLORS.map(c => new THREE.Color(c));
 
 export class Chamber {
   readonly renderer: THREE.WebGLRenderer;
-  readonly camera = new THREE.PerspectiveCamera(38, 1, 0.01, 100);
+  camera: THREE.PerspectiveCamera | THREE.OrthographicCamera = new THREE.OrthographicCamera(-2, 2, 2, -2, 0.01, 100);
   readonly scene = new THREE.Scene();
   readonly controls: OrbitControls;
   private chamber = new THREE.Group();
@@ -37,6 +37,8 @@ export class Chamber {
     this.controls.enableDamping = true;
     this.controls.minDistance = 0.4;
     this.controls.maxDistance = 15;
+    this.controls.minZoom = 0.2;
+    this.controls.maxZoom = 30;
     this.controls.addEventListener("change", () => { this.dirty = true; });
     this.scene.add(this.chamber, this.paths);
     this.scene.add(new THREE.AmbientLight(0xffffff, 2));
@@ -57,7 +59,28 @@ export class Chamber {
     const w = this.host.clientWidth, h = this.host.clientHeight;
     if (!w || !h) return;
     this.renderer.setSize(w, h);
-    this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); this.dirty = true;
+    if (this.camera instanceof THREE.PerspectiveCamera) this.camera.aspect = w / h;
+    else {
+      this.camera.left = -2 * w / h; this.camera.right = 2 * w / h;
+      this.camera.top = 2; this.camera.bottom = -2;
+    }
+    this.camera.updateProjectionMatrix(); this.dirty = true;
+  }
+
+  setProjection(perspective: boolean): void {
+    const old = this.camera;
+    if (perspective === (old instanceof THREE.PerspectiveCamera)) return;
+    const distance = old.position.distanceTo(this.controls.target);
+    const direction = old.position.clone().sub(this.controls.target).normalize();
+    const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(19));
+    this.camera = perspective ? new THREE.PerspectiveCamera(38, 1, 0.01, 100) :
+      new THREE.OrthographicCamera(-2, 2, 2, -2, 0.01, 100);
+    this.camera.up.copy(old.up);
+    this.camera.position.copy(old.position);
+    if (this.camera instanceof THREE.OrthographicCamera) this.camera.zoom = 2 / (distance * tanHalfFov);
+    else this.camera.position.copy(this.controls.target).addScaledVector(direction, 2 / old.zoom / tanHalfFov);
+    this.controls.object = this.camera;
+    this.controls.update(); this.resize();
   }
 
   private clear(group: THREE.Group): void {
@@ -202,6 +225,9 @@ export class Chamber {
   }
 
   resetView(view: string): void {
+    if (this.camera instanceof THREE.OrthographicCamera) {
+      this.camera.zoom = 1; this.camera.updateProjectionMatrix();
+    }
     this.camera.position.set(...(view === "top" ? [0.001, 0, 4.8] :
       view === "side" ? [3.9, 0, 0.1] : [2.4, -3.2, 2.1]) as [number, number, number]);
     this.controls.target.set(0, 0, -0.05); this.controls.update(); this.dirty = true;
