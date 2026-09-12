@@ -20,9 +20,21 @@ export const HIGH_VOLTAGE_PROFILE = {
   gpus: 4,
 } as const;
 
+export const FILAMENT_PROFILE = {
+  id: "poisson-filament",
+  title: "5 keV compact-source comparison",
+  purpose: "Compare a broad 3 cm / 0 degree source with an assumed 50 um / 10 degree post-extraction source, each with vacuum and 1 A cases; 30 kA-turn, FP64, no convergence claim.",
+  description: "5 keV · 0.2 eV temperature · 50 cm coils · 30 kA-turn · broad versus compact post-extraction source · FP64 · 8 stationary iterations · 100 ns orbit window",
+  cluster: "aws-usw2",
+  priority: 1,
+  nodes: 1,
+  gpus: 4,
+} as const;
+
 export const PROFILES = {
   [POISSON_PROFILE.id]: POISSON_PROFILE,
   [HIGH_VOLTAGE_PROFILE.id]: HIGH_VOLTAGE_PROFILE,
+  [FILAMENT_PROFILE.id]: FILAMENT_PROFILE,
 } as const;
 
 export function poissonEntrypoint(id: string, revision: string): string {

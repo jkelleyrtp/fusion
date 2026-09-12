@@ -19,7 +19,7 @@ export interface RunProgress {
 
 export interface SimulationJob {
   id: string;
-  profile: "poisson-reference" | "poisson-high-voltage";
+  profile: "poisson-reference" | "poisson-high-voltage" | "poisson-filament";
   title: string;
   purpose: string;
   createdAt: string;

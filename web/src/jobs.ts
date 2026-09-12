@@ -21,6 +21,10 @@ const casePurpose: Record<string, string> = {
   "30kAt_1A": "30 kA-turn · 1 A electron beam",
   "100kAt_vacuum": "100 kA-turn · magnetic-only control",
   "100kAt_1A": "100 kA-turn · 1 A electron beam",
+  broad_vacuum: "30 kA-turn · broad 3 cm / 0° vacuum control",
+  broad_1A: "30 kA-turn · broad 3 cm / 0° · 1 A electron beam",
+  compact_vacuum: "30 kA-turn · compact 50 µm / 10° vacuum control",
+  compact_1A: "30 kA-turn · compact 50 µm / 10° · 1 A electron beam",
 };
 const caseLabel: Record<CaseProgress["status"], string> = {
   pending: "Awaiting snapshot",

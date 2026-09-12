@@ -46,27 +46,46 @@ class PacketResult:
 
 def thermal_source(origin: list[float], direction: list[float], energy_ev: float,
                    temperature_ev: float, sigma: float, count: int,
-                   device: torch.device, seed: int) -> tuple[torch.Tensor, torch.Tensor]:
+                   device: torch.device, seed: int,
+                   divergence_deg: float = 0) -> tuple[torch.Tensor, torch.Tensor]:
     if (not math.isfinite(energy_ev) or not math.isfinite(temperature_ev)
             or energy_ev <= 0 or temperature_ev < 0 or count < 1):
         raise ValueError("Positive acceleration energy/count and nonnegative temperature required")
+    if not math.isfinite(sigma) or sigma < 0:
+        raise ValueError("Source sigma must be finite and nonnegative")
+    if not math.isfinite(divergence_deg) or not 0 <= divergence_deg < 90:
+        raise ValueError("Source divergence must be finite in [0, 90) degrees")
     torch.manual_seed(seed)
     properties = {"device": device, "dtype": torch.float64}  # legacy untyped sampler dict
     speed = math.sqrt(2 * energy_ev * E_CHARGE / M_E)
     positions, velocity, unit = sample_gun_beam(origin, direction, speed, count, 0, 0, 0, properties)
     positions[:, :2] += sigma * torch.randn(count, 2, device=device, dtype=torch.float64)
-    if temperature_ev == 0:
-        return positions, velocity
-    e1, e2 = gun_beam_basis(unit)
-    thermal_speed = math.sqrt(temperature_ev * E_CHARGE / M_E)
-    parallel = torch.sqrt(speed * speed - 2 * thermal_speed ** 2
-                          * torch.log1p(-torch.rand(count, device=device, dtype=torch.float64)))
-    velocity = parallel[:, None] * torch.as_tensor(unit, device=device, dtype=torch.float64)
-    velocity += thermal_speed * (
-        torch.randn(count, device=device, dtype=torch.float64)[:, None]
-        * torch.as_tensor(e1, device=device, dtype=torch.float64)
-        + torch.randn(count, device=device, dtype=torch.float64)[:, None]
-        * torch.as_tensor(e2, device=device, dtype=torch.float64))
+    if temperature_ev > 0:
+        e1, e2 = gun_beam_basis(unit)
+        thermal_speed = math.sqrt(temperature_ev * E_CHARGE / M_E)
+        parallel = torch.sqrt(speed * speed - 2 * thermal_speed ** 2
+                              * torch.log1p(-torch.rand(count, device=device, dtype=torch.float64)))
+        velocity = parallel[:, None] * torch.as_tensor(unit, device=device, dtype=torch.float64)
+        velocity += thermal_speed * (
+            torch.randn(count, device=device, dtype=torch.float64)[:, None]
+            * torch.as_tensor(e1, device=device, dtype=torch.float64)
+            + torch.randn(count, device=device, dtype=torch.float64)[:, None]
+            * torch.as_tensor(e2, device=device, dtype=torch.float64))
+    if divergence_deg > 0:
+        e1, e2 = gun_beam_basis(unit)
+        cosine = 1 - torch.rand(count, device=device, dtype=torch.float64) * (
+            1 - math.cos(math.radians(divergence_deg)))
+        sine = (1 - cosine.square()).clamp_min(0).sqrt()
+        azimuth = 2 * math.pi * torch.rand(count, device=device, dtype=torch.float64)
+        axis = (
+            azimuth.cos()[:, None] * torch.as_tensor(e1, device=device, dtype=torch.float64)
+            + azimuth.sin()[:, None] * torch.as_tensor(e2, device=device, dtype=torch.float64)
+        )
+        velocity = (
+            cosine[:, None] * velocity
+            + sine[:, None] * torch.linalg.cross(axis, velocity)
+            + (1 - cosine)[:, None] * axis * (axis * velocity).sum(dim=1, keepdim=True)
+        )
     return positions, velocity
 
 
@@ -166,6 +185,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--temperature-ev", type=float, default=0.2)
     result.add_argument("--aim-deg", type=float, default=30)
     result.add_argument("--source-sigma", type=float, default=5e-5)
+    result.add_argument("--divergence-deg", type=float, default=0)
     result.add_argument("--duration", type=float, default=1e-7)
     result.add_argument("--dt", type=float, default=1e-10)
     result.add_argument("--time-refinement", type=float, default=1)
@@ -200,7 +220,7 @@ def main() -> None:
     angle = math.radians(args.aim_deg)
     pos, vel = thermal_source([0, 0.008 * a, -1.3 * a], [0, -math.sin(angle), math.cos(angle)],
                               args.energy_ev, args.temperature_ev, args.source_sigma,
-                              args.particles, device, args.seed)
+                              args.particles, device, args.seed, args.divergence_deg)
     bmax = float(torch.sqrt(br * br + bz * bz).max())
     source_b = pusher.field(pos)
     source_b_norm = source_b.norm(dim=1)
@@ -216,6 +236,7 @@ def main() -> None:
         "box_lower_m": lower.tolist(), "box_upper_m": (-lower).tolist(),
         "macroparticle_rate_per_s": args.current_a / (E_CHARGE * args.particles),
         "source": "flux-weighted half-Maxwellian accelerated along aim; finite Gaussian source",
+        "source_interpretation": "post-extraction inlet; cone rotates the thermal velocity",
         "source_mean_energy_ev": args.energy_ev + 2 * args.temperature_ev,
         "source_position_m": [0, 0.008 * a, -1.3 * a],
         "source_aim": [0, -math.sin(angle), math.cos(angle)],
@@ -307,7 +328,9 @@ def main() -> None:
                 "inject_mode": "gun", "gun_position_m": configuration["source_position_m"],
                 "gun_direction_unit": configuration["source_aim"],
                 "gun_axis_B_angle_deg": configuration["source_mean_local_B_angle_deg"],
-                "gun_source_sigma_m": args.source_sigma, "integrator": "FP64 drift–Boris–drift",
+                "gun_source_sigma_m": args.source_sigma,
+                "gun_divergence_half_angle_deg": args.divergence_deg,
+                "integrator": "FP64 drift–Boris–drift",
                 "dt_s": dt, "adaptive": False, "rng_seed": args.seed,
                 "energy_drift_rel_max": record["orbit_energy_error_max_rel_initial_ke"],
                 "model": "stationary-poisson", "source_revision": args.source_revision,

@@ -76,6 +76,17 @@ The expected total energy is `E_acceleration + 2 T_source` when both are in eV.
 This captures a thermal floor in divergence and energy spread; it does not model
 filament geometry, work function, emission-current limits, or focusing electrodes.
 
+The optional `--divergence-deg` parameter describes a post-extraction inlet cone,
+not the thermal source temperature. It rotates each sampled thermal velocity by a
+uniform solid-angle offset up to the requested half-angle; it does not replace the
+thermal draws. The default is zero and preserves the legacy source and random
+stream exactly. The `filament` pilot profile compares four complete cases at 5 keV,
+0.2 eV source temperature, 30 kA-turn, 33³ nodes, 1024 particles, eight iterations,
+100 ns duration, and relaxation 0.5: broad 3 cm / 0° vacuum and 1 A cases versus
+assumed 50 µm / 10° compact-source vacuum and 1 A cases. The source size and cone
+are modeling assumptions; this coarse mesh does not resolve the emitter or
+extraction field, and the comparison makes no convergence claim.
+
 The source lies on the grounded bottom boundary, outside the central trapping
 region. Its injection energy is therefore referenced to that specified boundary
 potential. The boundary supplies a post-optics beam flux; its current is not
