@@ -320,3 +320,36 @@ Exit fractions count all lost ions, so the `gun_none` row is gas ions only. The 
   well. Trapping injected ions needs a time-varying well (for example lowering the barrier during
   injection, then deepening it) or dissipation; the pulsed electron-gun campaign tests the first
   of these in a limited way.
+
+## Phase-gated D+ capture campaign (job `jonathan-pic-7acf9e969fe4`, source `65d4592`)
+
+This tests the time-varying well idea above. `--ion-gun-phase electron-off` injects gun ions only
+in cycles where the pulsed electron gun is off, so ions enter while the well is decaying, and the
+well rebuilds around them when the gun switches back on. `electron-on` and `always` are the
+controls. Gun state switches at cycle boundaries; each switch-on is followed by `--gun-settle`
+of electron-only advance against frozen ions before the next electron window.
+
+Setup: six coils at 30 kA-turn, D2 at 1e-5 Pa, 1 A / 5 keV electron gun pulsed 10 µs on and 2 µs
+off (12-cycle period, 1 µs cycles, 48 cycles), and an atomic D+ gun at 10 mA from the top cusp
+(`0, 0, 0.7` m, aimed at the centre, 5 mm spot, 5° divergence).
+
+| case | electron gun | ion gun | purpose |
+|---|---|---|---|
+| `capture_off_1keV` | 10 on / 2 off | off-phase, 1 keV | main case |
+| `capture_on_1keV` | 10 on / 2 off | on-phase | control: same pulse, ions into a live well |
+| `capture_always_1keV` | 10 on / 2 off | always | control: pulse without gating |
+| `capture_continuous_1keV` | continuous | always | control: no time-varying well |
+| `capture_off_300eV` | 10 on / 2 off | off-phase, 300 eV | lower injection energy |
+| `capture_off_1keV_on4_off2` | 4 on / 2 off | off-phase | shorter period |
+| `capture_off_1keV_s2345` | 10 on / 2 off | off-phase | seed |
+| `capture_off_1keV_idt2` | 10 on / 2 off | off-phase, 0.2 ns ion step | timestep |
+
+New per-cycle records: `electron_gun_on`, `ion_gun_on`, and `ion_bound_charge_C` /
+`atomic_ion_bound_charge_C`, the charge of ions whose kinetic energy plus the potential at their
+position is below zero on the end-of-cycle potential. That is a diagnostic of being energetically
+below the grounded walls on a frozen field, not a confinement measurement: the potential keeps
+changing with the pulse, and ions can still leave through lower paths between casings. The
+capture figure plots alive and bound D+ per unit injected gun charge.
+
+Limits: cycle-boundary switching only, frozen-ion electron windows, no induced fields, no gas
+depletion, and no plasma magnetic field.
