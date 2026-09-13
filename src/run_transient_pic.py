@@ -178,17 +178,11 @@ def coil_casings(args: argparse.Namespace) -> tuple[Torus, ...]:
     ) if args.casing_radius else ()
 
 
-def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]:
-    device = torch.device(args.device)
+def magnetic_table(
+    args: argparse.Namespace, device: torch.device,
+) -> tuple[TorchPusher, float, list[int]]:
+    """Two-coil field table covering the box, and its maximum outside any coil casing."""
     a = args.radius
-    width = args.box_half_width * a
-    lower = torch.tensor(
-        [-width, -width, -args.box_bottom * a], device=device, dtype=torch.float64,
-    )
-    upper = torch.tensor(
-        [width, width, args.box_top * a], device=device, dtype=torch.float64,
-    )
-    mesh = ElectrostaticMesh(lower, upper, mesh_shape(args))
     radial = math.ceil(255 * args.box_half_width / 0.6 - 1e-9)
     below = math.ceil(511 * (args.box_bottom - 1.3) / 2.6 - 1e-9)
     above = math.ceil(511 * (args.box_top - 1.3) / 2.6 - 1e-9)
@@ -211,11 +205,26 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
     bmax = float(magnitude[~windings].max())
     if not math.isfinite(bmax):
         raise ValueError("Nonfinite magnetic field table")
-    if abs(QM) * bmax * min(args.dt, args.duration) > 2 * math.pi / 80:
-        raise ValueError("Timestep requires at least 80 steps per gyration")
     pusher = TorchPusher(
         br, bz, 0, float(r[1]), float(z[0]), float(z[1] - z[0]), QM,
     )
+    return pusher, bmax, [len(z), len(r)]
+
+
+def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]:
+    device = torch.device(args.device)
+    a = args.radius
+    width = args.box_half_width * a
+    lower = torch.tensor(
+        [-width, -width, -args.box_bottom * a], device=device, dtype=torch.float64,
+    )
+    upper = torch.tensor(
+        [width, width, args.box_top * a], device=device, dtype=torch.float64,
+    )
+    mesh = ElectrostaticMesh(lower, upper, mesh_shape(args))
+    pusher, bmax, table_shape = magnetic_table(args, device)
+    if abs(QM) * bmax * min(args.dt, args.duration) > 2 * math.pi / 80:
+        raise ValueError("Timestep requires at least 80 steps per gyration")
     kernels: ReferenceKernels
     magnetic_field: MagneticField
     if args.kernels == "cuda":
@@ -257,7 +266,7 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         "source_nominal_pitch_deg": pitch,
         "source_B_T": source_field.cpu().tolist(),
         "magnetic_table_max_T": bmax,
-        "magnetic_table_shape_z_r": [len(z), len(r)],
+        "magnetic_table_shape_z_r": table_shape,
         "box_lower_m": lower.cpu().tolist(), "box_upper_m": upper.cpu().tolist(),
         "mesh_shape": list(mesh.shape),
         "core_radius_m": simulation.core_radius,
