@@ -223,11 +223,10 @@ class CoilSuperposition:
         return result
 
 
-def six_coil_field(
+def six_coil_table(
     args: argparse.Namespace, device: torch.device, lower: torch.Tensor, upper: torch.Tensor,
-) -> tuple[TorchPusher, CoilSuperposition, float, list[int]]:
-    """Single-loop table with the two-coil table spacing, its six-coil superposition, and the
-    maximum |B| outside the casings on a 4x refined mesh."""
+) -> tuple[TorchPusher, CoilSuperposition, list[int]]:
+    """Single-loop table with the two-coil table spacing and its six-coil superposition."""
     a = args.radius
     extent = float(torch.maximum(lower.abs(), upper.abs()).max())
     dr, dz = math.sqrt(2) * 0.6 * a / 255, 2.6 * a / 511
@@ -237,7 +236,14 @@ def six_coil_field(
     z = torch.arange(-half, half + 1, device=device, dtype=torch.float64) * dz
     br, bz = ring_field_on_grid(r, z, a, [0.0], [args.coil_current], 720, device)
     pusher = TorchPusher(br, bz, 0, dr, float(z[0]), dz, QM)
-    field = CoilSuperposition(pusher.field, coils(args), args.coil_current)
+    return pusher, CoilSuperposition(pusher.field, coils(args), args.coil_current), [len(z), len(r)]
+
+
+def six_coil_field(
+    args: argparse.Namespace, device: torch.device, lower: torch.Tensor, upper: torch.Tensor,
+) -> tuple[TorchPusher, CoilSuperposition, float, list[int]]:
+    """Six-coil table and the maximum |B| outside the casings on a 4x refined mesh."""
+    pusher, field, table_shape = six_coil_table(args, device, lower, upper)
     shape = [4 * (count - 1) + 1 for count in mesh_shape(args)]
     axes = [
         torch.linspace(float(lower[axis]), float(upper[axis]), count, device=device, dtype=torch.float64)
@@ -253,7 +259,7 @@ def six_coil_field(
         bmax = max(bmax, float(field(points[~windings]).norm(dim=1).max()))
     if not math.isfinite(bmax):
         raise ValueError("Nonfinite magnetic field table")
-    return pusher, field, bmax, [len(z), len(r)]
+    return pusher, field, bmax, table_shape
 
 
 def magnetic_table(

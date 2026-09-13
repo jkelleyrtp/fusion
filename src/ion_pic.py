@@ -416,8 +416,11 @@ class CoupledPIC:
 
     def save(self, directory: Path, cycle: int, electron_charge: torch.Tensor, potential: torch.Tensor) -> str:
         ions = self.ions
+        electrons = self.electrons.particles
         arrays = {
             "potential_V": potential, "electron_charge_C": electron_charge, "ion_charge_C": self.ion_charge(),
+            "electron_position_m": electrons.position, "electron_velocity_m_s": electrons.velocity,
+            "electron_count": electrons.weight,
             "ion_position_m": ions.position, "ion_velocity_m_s": ions.velocity, "ion_count": ions.weight,
             "ion_birth_s": ions.birth, "ion_birth_potential_V": ions.birth_potential,
             "ion_core_time_s": ions.core_time, "ion_core_entries": ions.entries, "ion_exchanges": ions.exchanges,

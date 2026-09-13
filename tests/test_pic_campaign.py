@@ -169,6 +169,18 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(sorted({item.casing_voltage for item in configurations}), [1000, 2500, 5000, 10000])
         self.assertEqual(sorted({item.energy_ev for item in configurations}), [2000, 5000])
 
+    def test_six_coil_feed_study_scales_current_energy_and_field_at_matched_packet_timing(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-feed")
+        configurations = [ion_parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        for item in configurations:
+            validate_coupled(item)
+            self.assertEqual((item.coils, item.coil_offset, item.casing_radius, item.gas_pa), (6, 1.2, 0.1, 1e-2))
+            self.assertEqual(item.dt * item.inject_every, 4e-12)
+        self.assertEqual(sorted({item.current_a for item in configurations}), [1, 10, 30, 100])
+        self.assertEqual(sorted({item.coil_current for item in configurations}), [10000, 30000, 60000])
+        self.assertEqual(sorted({item.energy_ev for item in configurations}), [5000, 10000])
+
 
 if __name__ == "__main__":
     unittest.main()

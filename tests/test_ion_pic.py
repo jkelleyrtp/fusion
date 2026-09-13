@@ -51,6 +51,8 @@ class IonPICTests(unittest.TestCase):
             with np.load(root / final["snapshot"]) as state:
                 self.assertEqual(len(state["ion_count"]), final["ion_count"])
                 np.testing.assert_allclose(state["ion_charge_C"].sum(), final["ion_alive_charge_C"], rtol=1e-9)
+                self.assertEqual(state["electron_position_m"].shape, state["electron_velocity_m_s"].shape)
+                self.assertEqual(len(state["electron_count"]), final["electrons"]["alive_count"])
 
     def test_charge_exchange_thermalizes(self):
         with tempfile.TemporaryDirectory() as directory:

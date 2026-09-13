@@ -104,7 +104,17 @@ SIX_COIL_IONS = {
     "ions6_p1e-3_window80": (1, 1234, ("--electron-window", "8e-8")),
     "ions6_p1e-3_ions2x": (1, 1234, ("--ions-per-cycle", "16384")),
 }
-COUPLED = ("ions", "six-coil-ions")
+SIX_COIL_FEED = {
+    "feed_1A_5keV": (1, 30000, 5000, 2e-12, 2),
+    "feed_10A_5keV": (10, 30000, 5000, 2e-12, 2),
+    "feed_10A_10keV": (10, 30000, 10000, 2e-12, 2),
+    "feed_30A_10keV": (30, 30000, 10000, 2e-12, 2),
+    "feed_100A_10keV": (100, 30000, 10000, 2e-12, 2),
+    "feed_30A_10keV_60kAt": (30, 60000, 10000, 1e-12, 4),
+    "feed_30A_10keV_10kAt": (30, 10000, 10000, 2e-12, 2),
+    "feed_100A_10keV_10kAt": (100, 10000, 10000, 2e-12, 2),
+}
+COUPLED = ("ions", "six-coil-ions", "six-coil-feed")
 
 
 def case_specs(
@@ -154,6 +164,10 @@ def case_specs(
         "six-coil-ions": tuple(
             (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
             for name, (current, seed, _) in SIX_COIL_IONS.items()
+        ),
+        "six-coil-feed": tuple(
+            (name, current, dt, 8, interval, 15000, 65, 1234, "cuda")
+            for name, (current, _, _, dt, interval) in SIX_COIL_FEED.items()
         ),
         **{
             long: tuple(
@@ -226,13 +240,20 @@ def commands(
                 "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
                 "--casing-voltage", str(voltage), "--coils", str(count), "--coil-offset", str(offset),
             ]
-        if study == "six-coil-ions":
+        if study in ("six-coil-ions", "six-coil-feed"):
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
             result[-1] += [
                 "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
                 "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
                 "--coils", "6", "--coil-offset", "1.2", "--electron-startup", "5e-7",
-                "--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_IONS[name][2],
+            ]
+        if study == "six-coil-ions":
+            result[-1] += ["--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_IONS[name][2]]
+        if study == "six-coil-feed":
+            _, coil_current, energy, _, _ = SIX_COIL_FEED[name]
+            result[-1] += [
+                "--coil-current", str(coil_current), "--energy-ev", str(energy), "--gas-pa", "1e-2",
+                "--cycle-duration", "1e-6", "--cycles", "32", "--save-every-cycles", "4",
             ]
         if study in LONG:
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
@@ -256,7 +277,7 @@ def main() -> None:
         "--study",
         choices=(
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
-            "six-coil-long", "six-coil-ions", "six-coil-bias",
+            "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed",
         ),
         default="startup",
     )
@@ -344,6 +365,14 @@ def main() -> None:
             "fast ions neutralize the six-coil well, where they go, and whether the operator split is "
             "converged. No Coulomb collisions, gas depletion or plasma magnetic feedback."
         ) if args.study == "six-coil-ions" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (imposed vacuum field, coil planes 1.2a, 0.10a "
+            "casings, grounded 0.06a barrel) at 1e-2 Pa over 32 x 1 us cycles after a 500 ns electron startup: "
+            "feed scaling 1, 10, 30 and 100 A with 5 and 10 keV guns at 30 kA-turn, and 30 A at 10 and 60 kA-turn "
+            "plus 100 A at 10 kA-turn. Tests whether ions relieve the gun-mouth space-charge limit, how the "
+            "electron inventory and well scale with feed, and how close electron pressure comes to the imposed "
+            "magnetic pressure. Non-relativistic pusher (10 keV: gamma 1.02). No Coulomb collisions, gas "
+            "depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-feed" else (
             "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel and box), 1 us "
             "at 2 ps: casing (magrid) bias +1, +2.5, +5 and +10 kV at 1 A with a second +5 kV seed, a +5 kV 1 mA "
             "vacuum-potential control, +5 kV at 3 A, and +5 kV with a 2 keV gun. Tests whether a positive magrid "
