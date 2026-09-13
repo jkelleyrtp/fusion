@@ -89,7 +89,7 @@ def validate(args: argparse.Namespace) -> int:
         raise ValueError("Invalid output or step limits")
     if not 0 <= args.track <= 256 or args.seed < 0:
         raise ValueError("Invalid tracking count or seed")
-    if args.track_after < 0 or args.track_every < 0 or not 1 <= args.track_samples <= 16384:
+    if args.track_after < 0 or args.track_every < 0 or not 1 <= args.track_samples <= 65536:
         raise ValueError("Invalid tracking start, cadence or sample limit")
     if args.box_half_width <= 0.25 or args.box_top <= 0.25 or args.box_bottom < 1.3:
         raise ValueError("Box must contain the core and the gun")

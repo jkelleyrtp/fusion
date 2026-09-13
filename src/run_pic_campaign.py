@@ -79,7 +79,7 @@ SIX_COIL_TRACKS = {
     "track_p5kV_2keV": (1.0, 30000, 5000.0, 1234, 2e-12, 2, 8e-7, 2000),
     "track_60kAt": (1.0, 60000, 0.0, 1234, 1e-12, 4, 8e-7, 5000),
 }
-TRACK_AFTER, TRACK_SAMPLE_INTERVAL = 5e-7, 2e-10
+TRACK_AFTER, TRACK_SAMPLE_INTERVAL = 5e-7, 2e-12
 LONG = {"six-coil-long": SIX_COIL_LONG, "six-coil-bias": SIX_COIL_BIAS, "six-coil-tracks": SIX_COIL_TRACKS}
 
 COIL_CASINGS = {
@@ -333,8 +333,8 @@ def commands(
             ]
         if study == "six-coil-tracks":
             result[-1] += [
-                "--track", "256", "--track-after", str(TRACK_AFTER),
-                "--track-every", str(round(TRACK_SAMPLE_INTERVAL / dt)), "--track-samples", "2048",
+                "--track", "64", "--track-after", str(TRACK_AFTER),
+                "--track-every", str(round(TRACK_SAMPLE_INTERVAL / dt)), "--track-samples", "65536",
             ]
         if study == "ions":
             result[-1] += ["--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *ION_CASES[name]]
@@ -471,8 +471,8 @@ def main() -> None:
             "atoms, extraction optics, gas depletion and plasma magnetic feedback are not modelled."
         ) if args.study == "six-coil-deuteron" else (
             "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel), 800 ns at 2 ps, "
-            "recording paths of the first 256 electrons injected after 500 ns, once the trap has saturated, every "
-            "200 ps into tracks.npz (float32, at most 2048 samples): 1 A at 0 V with a second seed, casings at +5 kV, "
+            "recording paths of the first 64 electrons injected after 500 ns, once the trap has saturated, every "
+            "2 ps into tracks.npz (float32, at most 65536 samples = 131 ns): 1 A at 0 V with a second seed, casings at +5 kV, "
             "+10 kV and -1 kV, 3 A, +5 kV with a 2 keV gun, and 60 kA-turn at 1 ps. Shows how settled electrons "
             "bounce, where they leave and how many core passes they make. No plasma magnetic feedback, no ions."
         ) if args.study == "six-coil-tracks" else (
