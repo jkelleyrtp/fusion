@@ -1,0 +1,292 @@
+{
+  "pic_1A_casing_r015-density": {
+    "run": "/home/ubuntu/cusp/space-charge-checks/pic-casing-results/pic_1A_casing_r015",
+    "birth": "density",
+    "ions": 4096,
+    "temperature_ev": 0.1,
+    "dt_s": 1e-09,
+    "duration_s": 2e-05,
+    "seed": 1234,
+    "window_snapshot_times_s": [
+      2.1e-07,
+      2.4e-07,
+      2.7e-07,
+      3e-07
+    ],
+    "core_radius_m": 0.125,
+    "potential_min_V": -4411.757714847972,
+    "potential_origin_V": -3907.46423046,
+    "boundary_min_V": 0.0,
+    "magnetic_table_max_T": 0.09916880983564756,
+    "energetically_confined_fraction": 1.0,
+    "lost_fraction": 0.008056640625,
+    "exit_fractions": {
+      "x_lower": 0.0,
+      "x_upper": 0.0,
+      "y_lower": 0.0,
+      "y_upper": 0.0,
+      "z_lower": 0.0,
+      "z_upper": 0.0,
+      "gun_barrel": 0.008056640625,
+      "casing_lower": 0.0,
+      "casing_upper": 0.0
+    },
+    "median_exit_time_s": 2.8330000000000002e-06,
+    "entered_core_fraction": 0.446533203125,
+    "mean_core_entries": 3.69287109375,
+    "mean_core_entries_entering": 8.270092946965555,
+    "core_time_weighted_kinetic_eV": 564.7406062443185,
+    "max_kinetic_eV_percentiles": {
+      "p10": 454.01219130155016,
+      "p50": 1177.2830070419413,
+      "p90": 3188.5809278894185
+    },
+    "birth_potential_V_percentiles": {
+      "p10": -3821.0889641474387,
+      "p50": -3093.0389516485056,
+      "p90": -823.9751783713041
+    },
+    "surviving_max_energy_drift_eV": 451.93366930034017,
+    "validation_scope": "test ions in a frozen, window-averaged electron potential; no ion space charge, collisions, charge exchange or field fluctuations"
+  },
+  "pic_1A_casing_r015-uniform": {
+    "run": "/home/ubuntu/cusp/space-charge-checks/pic-casing-results/pic_1A_casing_r015",
+    "birth": "uniform",
+    "ions": 4096,
+    "temperature_ev": 0.1,
+    "dt_s": 1e-09,
+    "duration_s": 2e-05,
+    "seed": 1234,
+    "window_snapshot_times_s": [
+      2.1e-07,
+      2.4e-07,
+      2.7e-07,
+      3e-07
+    ],
+    "core_radius_m": 0.125,
+    "potential_min_V": -4411.757714847972,
+    "potential_origin_V": -3907.46423046,
+    "boundary_min_V": 0.0,
+    "magnetic_table_max_T": 0.09916880983564756,
+    "energetically_confined_fraction": 0.987548828125,
+    "lost_fraction": 0.027587890625,
+    "exit_fractions": {
+      "x_lower": 0.001220703125,
+      "x_upper": 0.0009765625,
+      "y_lower": 0.0009765625,
+      "y_upper": 0.0009765625,
+      "z_lower": 0.00048828125,
+      "z_upper": 0.00048828125,
+      "gun_barrel": 0.000732421875,
+      "casing_lower": 0.0126953125,
+      "casing_upper": 0.009033203125
+    },
+    "median_exit_time_s": 5.791e-06,
+    "entered_core_fraction": 0.228271484375,
+    "mean_core_entries": 1.09716796875,
+    "mean_core_entries_entering": 4.806417112299465,
+    "core_time_weighted_kinetic_eV": 1469.9424708223237,
+    "max_kinetic_eV_percentiles": {
+      "p10": 71.39411839650958,
+      "p50": 590.082564018047,
+      "p90": 2694.1717739689175
+    },
+    "birth_potential_V_percentiles": {
+      "p10": -513.8479183207176,
+      "p50": -51.34944694563963,
+      "p90": -2.2160786697782315
+    },
+    "surviving_max_energy_drift_eV": 255.59575436361092,
+    "validation_scope": "test ions in a frozen, window-averaged electron potential; no ion space charge, collisions, charge exchange or field fluctuations"
+  },
+  "pic_1A_gun_b195-density": {
+    "run": "/home/ubuntu/cusp/space-charge-checks/pic-gun-results/pic_1A_gun_b195",
+    "birth": "density",
+    "ions": 4096,
+    "temperature_ev": 0.1,
+    "dt_s": 1e-09,
+    "duration_s": 2e-05,
+    "seed": 1234,
+    "window_snapshot_times_s": [
+      2.1e-07,
+      2.4e-07,
+      2.7e-07,
+      3e-07
+    ],
+    "core_radius_m": 0.125,
+    "potential_min_V": -4268.094839798182,
+    "potential_origin_V": -3333.650223912886,
+    "boundary_min_V": 0.0,
+    "magnetic_table_max_T": 0.0980132288050055,
+    "energetically_confined_fraction": 1.0,
+    "lost_fraction": 0.0078125,
+    "exit_fractions": {
+      "x_lower": 0.0,
+      "x_upper": 0.0,
+      "y_lower": 0.0,
+      "y_upper": 0.0,
+      "z_lower": 0.0,
+      "z_upper": 0.0,
+      "gun_barrel": 0.0078125
+    },
+    "median_exit_time_s": 3.04e-06,
+    "entered_core_fraction": 0.4208984375,
+    "mean_core_entries": 3.2177734375,
+    "mean_core_entries_entering": 7.645011600928075,
+    "core_time_weighted_kinetic_eV": 483.33946881400294,
+    "max_kinetic_eV_percentiles": {
+      "p10": 420.0073509421077,
+      "p50": 1180.7181003069816,
+      "p90": 2872.6856596867237
+    },
+    "birth_potential_V_percentiles": {
+      "p10": -3524.9442734658714,
+      "p50": -2776.9780987287927,
+      "p90": -876.6256220655428
+    },
+    "surviving_max_energy_drift_eV": 366.09211759489926,
+    "validation_scope": "test ions in a frozen, window-averaged electron potential; no ion space charge, collisions, charge exchange or field fluctuations"
+  },
+  "pic_1A_gun_b195-uniform": {
+    "run": "/home/ubuntu/cusp/space-charge-checks/pic-gun-results/pic_1A_gun_b195",
+    "birth": "uniform",
+    "ions": 4096,
+    "temperature_ev": 0.1,
+    "dt_s": 1e-09,
+    "duration_s": 2e-05,
+    "seed": 1234,
+    "window_snapshot_times_s": [
+      2.1e-07,
+      2.4e-07,
+      2.7e-07,
+      3e-07
+    ],
+    "core_radius_m": 0.125,
+    "potential_min_V": -4268.094839798182,
+    "potential_origin_V": -3333.650223912886,
+    "boundary_min_V": 0.0,
+    "magnetic_table_max_T": 0.0980132288050055,
+    "energetically_confined_fraction": 0.993408203125,
+    "lost_fraction": 0.008056640625,
+    "exit_fractions": {
+      "x_lower": 0.000244140625,
+      "x_upper": 0.0,
+      "y_lower": 0.0,
+      "y_upper": 0.000244140625,
+      "z_lower": 0.001953125,
+      "z_upper": 0.0,
+      "gun_barrel": 0.005615234375
+    },
+    "median_exit_time_s": 1.0538000000000001e-05,
+    "entered_core_fraction": 0.657958984375,
+    "mean_core_entries": 3.388671875,
+    "mean_core_entries_entering": 5.150278293135436,
+    "core_time_weighted_kinetic_eV": 1297.214517105301,
+    "max_kinetic_eV_percentiles": {
+      "p10": 238.82459371668847,
+      "p50": 1899.5867546630018,
+      "p90": 3238.070816842518
+    },
+    "birth_potential_V_percentiles": {
+      "p10": -766.4169013699618,
+      "p50": -117.66801346654965,
+      "p90": -6.780755590312753
+    },
+    "surviving_max_energy_drift_eV": 262.4683458404686,
+    "validation_scope": "test ions in a frozen, window-averaged electron potential; no ion space charge, collisions, charge exchange or field fluctuations"
+  },
+  "pic_1A_gun_wall-density": {
+    "run": "/home/ubuntu/cusp/space-charge-checks/pic-gun-results/pic_1A_gun_wall",
+    "birth": "density",
+    "ions": 4096,
+    "temperature_ev": 0.1,
+    "dt_s": 1e-09,
+    "duration_s": 2e-05,
+    "seed": 1234,
+    "window_snapshot_times_s": [
+      2.1e-07,
+      2.4e-07,
+      2.7e-07,
+      3e-07
+    ],
+    "core_radius_m": 0.125,
+    "potential_min_V": -3689.8976196040076,
+    "potential_origin_V": -2721.955565490415,
+    "boundary_min_V": 0.0,
+    "magnetic_table_max_T": 0.0980132288050055,
+    "energetically_confined_fraction": 1.0,
+    "lost_fraction": 0.0,
+    "exit_fractions": {
+      "x_lower": 0.0,
+      "x_upper": 0.0,
+      "y_lower": 0.0,
+      "y_upper": 0.0,
+      "z_lower": 0.0,
+      "z_upper": 0.0
+    },
+    "median_exit_time_s": null,
+    "entered_core_fraction": 0.3916015625,
+    "mean_core_entries": 2.68505859375,
+    "mean_core_entries_entering": 6.856608478802992,
+    "core_time_weighted_kinetic_eV": 403.7767156992909,
+    "max_kinetic_eV_percentiles": {
+      "p10": 327.3235406890818,
+      "p50": 1069.0576423772945,
+      "p90": 2422.681851327515
+    },
+    "birth_potential_V_percentiles": {
+      "p10": -3080.7151330405495,
+      "p50": -2317.731227133712,
+      "p90": -786.8305984908823
+    },
+    "surviving_max_energy_drift_eV": 377.1981799928735,
+    "validation_scope": "test ions in a frozen, window-averaged electron potential; no ion space charge, collisions, charge exchange or field fluctuations"
+  },
+  "pic_1A_gun_wall-uniform": {
+    "run": "/home/ubuntu/cusp/space-charge-checks/pic-gun-results/pic_1A_gun_wall",
+    "birth": "uniform",
+    "ions": 4096,
+    "temperature_ev": 0.1,
+    "dt_s": 1e-09,
+    "duration_s": 2e-05,
+    "seed": 1234,
+    "window_snapshot_times_s": [
+      2.1e-07,
+      2.4e-07,
+      2.7e-07,
+      3e-07
+    ],
+    "core_radius_m": 0.125,
+    "potential_min_V": -3689.8976196040076,
+    "potential_origin_V": -2721.955565490415,
+    "boundary_min_V": 0.0,
+    "magnetic_table_max_T": 0.0980132288050055,
+    "energetically_confined_fraction": 0.994873046875,
+    "lost_fraction": 0.001953125,
+    "exit_fractions": {
+      "x_lower": 0.000244140625,
+      "x_upper": 0.0,
+      "y_lower": 0.000244140625,
+      "y_upper": 0.0,
+      "z_lower": 0.000244140625,
+      "z_upper": 0.001220703125
+    },
+    "median_exit_time_s": 6.420000000000001e-07,
+    "entered_core_fraction": 0.52880859375,
+    "mean_core_entries": 2.86279296875,
+    "mean_core_entries_entering": 5.413665743305632,
+    "core_time_weighted_kinetic_eV": 992.0116373027764,
+    "max_kinetic_eV_percentiles": {
+      "p10": 127.34212211854943,
+      "p50": 1185.1646106290923,
+      "p90": 2376.790786188554
+    },
+    "birth_potential_V_percentiles": {
+      "p10": -721.3803643173426,
+      "p50": -132.48846559262228,
+      "p90": -9.157437744612736
+    },
+    "surviving_max_energy_drift_eV": 158.82659362833556,
+    "validation_scope": "test ions in a frozen, window-averaged electron potential; no ion space charge, collisions, charge exchange or field fluctuations"
+  }
+}

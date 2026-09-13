@@ -1,0 +1,1077 @@
+{
+  "scope": "Absorbing coil casings inside a wider grounded box, with the gun barrel, 1 A external-gun CUDA PIC.",
+  "cases": [
+    {
+      "case": "pic_1A_casing_r015",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4407.646937279074,
+        "field_energy_J": 9.150362927348433e-05,
+        "alive_electrons": 413170906521.4265,
+        "core_electron_count": 138025565933.7392,
+        "residence_s": 6.619727722766888e-08,
+        "core_residence_s": 2.2114133663348325e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.003174053493608031,
+        "field_energy_J": 0.017077279946596777,
+        "alive_electrons": 0.011291353153688255,
+        "core_electron_count": 0.018178888409677907,
+        "residence_s": 0.01129135315365087,
+        "core_residence_s": 0.018178888409641342
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.0018056309709715672,
+        "field_energy_J": 0.05732379289943001,
+        "alive_electrons": 0.03770551349201787,
+        "core_electron_count": 0.05942451754798073,
+        "residence_s": 0.037705513491888776,
+        "core_residence_s": 0.05942451754785202
+      },
+      "final_loss_fraction": 0.7762483333333333,
+      "final_core_entries_per_injected_particle": 0.9893166666666666,
+      "final_repeated_entry_particle_fraction": 0.21212333333333333,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.08109149312526452,
+        0.03015225341566376,
+        0.06454763480884221,
+        0.06426548307632204,
+        0.04251266969798913,
+        0.7174304658759183
+      ],
+      "max_abs_charge_balance_C": 4.336941038840026e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.005173553154012188
+    },
+    {
+      "case": "pic_1A_casing_none",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4260.463493382969,
+        "field_energy_J": 8.038306357227664e-05,
+        "alive_electrons": 396550169537.4144,
+        "core_electron_count": 132986072631.62827,
+        "residence_s": 6.353434158410669e-08,
+        "core_residence_s": 2.1306717821764822e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.003031848298242602,
+        "field_energy_J": 0.00981908200714729,
+        "alive_electrons": 0.006293982627325983,
+        "core_electron_count": 0.011665604965099274,
+        "residence_s": 0.006293982627289209,
+        "core_residence_s": 0.011665604965062987
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.00416800889830115,
+        "field_energy_J": 0.03175163595200536,
+        "alive_electrons": 0.020460476827043394,
+        "core_electron_count": 0.037539463171708615,
+        "residence_s": 0.02046047682691437,
+        "core_residence_s": 0.03753946317157973
+      },
+      "final_loss_fraction": 0.7866033333333333,
+      "final_core_entries_per_injected_particle": 1.0326616666666666,
+      "final_repeated_entry_particle_fraction": 0.22497166666666665,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.09007078172644864,
+        0.04408335594607895,
+        0.07975477052279135,
+        0.08509904382580061,
+        0.044078756743580666,
+        0.6569132912352998
+      ],
+      "max_abs_charge_balance_C": 4.36632249419791e-19,
+      "max_abs_deposition_error_C": 3.970466940254533e-23,
+      "wall_s_per_step": 0.003410461568227038
+    },
+    {
+      "case": "pic_1A_casing_r015_w1275",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4407.060757479392,
+        "field_energy_J": 9.166083109080804e-05,
+        "alive_electrons": 414634355008.0289,
+        "core_electron_count": 138259529828.35214,
+        "residence_s": 6.643174752469839e-08,
+        "core_residence_s": 2.2151618811863146e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.003593560572057522,
+        "field_energy_J": 0.01547372752507141,
+        "alive_electrons": 0.010545224236478567,
+        "core_electron_count": 0.015891137948243986,
+        "residence_s": 0.01054522423644184,
+        "core_residence_s": 0.015891137948207047
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.006280994972405328,
+        "field_energy_J": 0.049665555539094984,
+        "alive_electrons": 0.03429810149162742,
+        "core_electron_count": 0.05243878428302535,
+        "residence_s": 0.034298101491498645,
+        "core_residence_s": 0.05243878428289669
+      },
+      "final_loss_fraction": 0.775875,
+      "final_core_entries_per_injected_particle": 0.9896516666666667,
+      "final_repeated_entry_particle_fraction": 0.21213,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.0807850172605942,
+        0.03081899480823072,
+        0.06361140558319063,
+        0.06422571964445895,
+        0.04218108673788361,
+        0.7183777759656419
+      ],
+      "max_abs_charge_balance_C": 4.346073112802612e-19,
+      "max_abs_deposition_error_C": 5.293955920339377e-23,
+      "wall_s_per_step": 0.0049694549086286375
+    },
+    {
+      "case": "pic_1A_casing_r020",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4394.809280829255,
+        "field_energy_J": 9.141497295078769e-05,
+        "alive_electrons": 417771794767.5374,
+        "core_electron_count": 139509222078.43414,
+        "residence_s": 6.693442079202472e-08,
+        "core_residence_s": 2.2351841584140214e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0034471423847062307,
+        "field_energy_J": 0.01477715574833628,
+        "alive_electrons": 0.010387194033205229,
+        "core_electron_count": 0.015808201394888085,
+        "residence_s": 0.010387194033168085,
+        "core_residence_s": 0.015808201394850632
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.0028331993769139625,
+        "field_energy_J": 0.04867776033815605,
+        "alive_electrons": 0.03440018118378289,
+        "core_electron_count": 0.05345718934792839,
+        "residence_s": 0.034400181183653976,
+        "core_residence_s": 0.053457189347799534
+      },
+      "final_loss_fraction": 0.7738583333333333,
+      "final_core_entries_per_injected_particle": 1.0005916666666668,
+      "final_repeated_entry_particle_fraction": 0.21435666666666667,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.0821381586041797,
+        0.030754631526732374,
+        0.06307826687083486,
+        0.06336403045269265,
+        0.04316647615761209,
+        0.7174984363879483
+      ],
+      "max_abs_charge_balance_C": 4.357190420235324e-19,
+      "max_abs_deposition_error_C": 5.293955920339377e-23,
+      "wall_s_per_step": 0.005904264697547381
+    },
+    {
+      "case": "pic_1A_casing_r015_p1kV",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4206.43184892469,
+        "field_energy_J": 0.00024132835511830105,
+        "alive_electrons": 449440717434.395,
+        "core_electron_count": 152388297966.546,
+        "residence_s": 7.200834158409978e-08,
+        "core_residence_s": 2.4415297029683084e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.004976854773890508,
+        "field_energy_J": 0.010813180080000885,
+        "alive_electrons": 0.014825235115831042,
+        "core_electron_count": 0.023663283489167193,
+        "residence_s": 0.014825235115793697,
+        "core_residence_s": 0.02366328348913004
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.01232322281767256,
+        "field_energy_J": 0.03617895889365122,
+        "alive_electrons": 0.049530354959321024,
+        "core_electron_count": 0.07908708903268567,
+        "residence_s": 0.04953035495919227,
+        "core_residence_s": 0.0790870890325572
+      },
+      "final_loss_fraction": 0.7555133333333334,
+      "final_core_entries_per_injected_particle": 1.178575,
+      "final_repeated_entry_particle_fraction": 0.253205,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.08008354258090254,
+        0.03203247835167672,
+        0.06244103911951752,
+        0.06178865604393025,
+        0.051744772721939315,
+        0.7119095111820336
+      ],
+      "max_abs_charge_balance_C": 4.2640167960373513e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.004972711128440375
+    },
+    {
+      "case": "pic_1A_casing_r015_m1kV",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4566.147361046795,
+        "field_energy_J": 0.00021504721497824842,
+        "alive_electrons": 375455599185.0846,
+        "core_electron_count": 123067604045.4353,
+        "residence_s": 6.01546188118322e-08,
+        "core_residence_s": 1.9717603960379972e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.003518097048417909,
+        "field_energy_J": 0.007993874624699653,
+        "alive_electrons": 0.012640209668985387,
+        "core_electron_count": 0.02054362722756689,
+        "residence_s": 0.012640209668948106,
+        "core_residence_s": 0.020543627227529636
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.004825225812780876,
+        "field_energy_J": 0.026864209063081942,
+        "alive_electrons": 0.042110381623291046,
+        "core_electron_count": 0.06885816936554884,
+        "residence_s": 0.042110381623162225,
+        "core_residence_s": 0.06885816936542019
+      },
+      "final_loss_fraction": 0.796325,
+      "final_core_entries_per_injected_particle": 0.8105466666666666,
+      "final_repeated_entry_particle_fraction": 0.17218166666666668,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.08035447446042698,
+        0.03145830896971114,
+        0.062474824257071945,
+        0.06594420405670552,
+        0.036116633532140494,
+        0.7236515547239439
+      ],
+      "max_abs_charge_balance_C": 4.490068713835843e-19,
+      "max_abs_deposition_error_C": 3.970466940254533e-23,
+      "wall_s_per_step": 0.005212544316211715
+    },
+    {
+      "case": "pic_1A_casing_r015_s2345",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4408.7353382674,
+        "field_energy_J": 9.197599158638024e-05,
+        "alive_electrons": 414412966827.2442,
+        "core_electron_count": 138750477044.61008,
+        "residence_s": 6.63962772276687e-08,
+        "core_residence_s": 2.2230277227704655e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.003340496764149633,
+        "field_energy_J": 0.01798645494272683,
+        "alive_electrons": 0.01213928192079546,
+        "core_electron_count": 0.01856128727837658,
+        "residence_s": 0.012139281920758244,
+        "core_residence_s": 0.018561287278339545
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.004923026626856132,
+        "field_energy_J": 0.059705705046990826,
+        "alive_electrons": 0.040273158089783705,
+        "core_electron_count": 0.061642463936936356,
+        "residence_s": 0.04027315808965492,
+        "core_residence_s": 0.06164246393680761
+      },
+      "final_loss_fraction": 0.7756533333333333,
+      "final_core_entries_per_injected_particle": 0.991295,
+      "final_repeated_entry_particle_fraction": 0.212605,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.08077361254272229,
+        0.03121032930071068,
+        0.06472630608148429,
+        0.06499755872619759,
+        0.04280366733575652,
+        0.7154885260131286
+      ],
+      "max_abs_charge_balance_C": 4.34885243966079e-19,
+      "max_abs_deposition_error_C": 3.970466940254533e-23,
+      "wall_s_per_step": 0.00491879347869195
+    },
+    {
+      "case": "pic_1A_casing_r015_t195",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4408.471378891421,
+        "field_energy_J": 9.27091277966967e-05,
+        "alive_electrons": 426717236807.8699,
+        "core_electron_count": 138824448196.7104,
+        "residence_s": 6.836763861380571e-08,
+        "core_residence_s": 2.2242128712853167e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0038007898467048674,
+        "field_energy_J": 0.015887967212087916,
+        "alive_electrons": 0.009763376896629435,
+        "core_electron_count": 0.015652592975920473,
+        "residence_s": 0.009763376896592789,
+        "core_residence_s": 0.015652592975883582
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.004928746123040967,
+        "field_energy_J": 0.050778446558144355,
+        "alive_electrons": 0.03166407304991857,
+        "core_electron_count": 0.051650685714368164,
+        "residence_s": 0.031664073049789805,
+        "core_residence_s": 0.051650685714239364
+      },
+      "final_loss_fraction": 0.76947,
+      "final_core_entries_per_injected_particle": 0.9883683333333333,
+      "final_repeated_entry_particle_fraction": 0.21188166666666666,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.08449897067823958,
+        0.03220942524898459,
+        0.06761809380737774,
+        0.06552050297668725,
+        0.043231513937573025,
+        0.7069214933511379
+      ],
+      "max_abs_charge_balance_C": 4.2886336910669294e-19,
+      "max_abs_deposition_error_C": 3.970466940254533e-23,
+      "wall_s_per_step": 0.005212444335933154
+    }
+  ],
+  "conductors": {
+    "pic_1A_casing_r015": {
+      "box_lower_m": [
+        -0.6,
+        -0.6,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6,
+        0.6,
+        0.65
+      ],
+      "mesh_shape": [
+        129,
+        129,
+        81
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": 0.0,
+          "nodes": 14856
+        },
+        {
+          "center_z_m": 0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": 0.0,
+          "nodes": 14856
+        }
+      ],
+      "conductor_setup_s": 10.883799839997664,
+      "source_potential_V_window_mean": -508.95452734949765,
+      "final_conductor_charge_C": {
+        "gun_barrel": 6.256799711953409e-09,
+        "casing_lower": 2.2115081641714847e-08,
+        "casing_upper": 1.499467030297178e-08
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.39570240623168274,
+        "gun_barrel": 0.6042975937683173,
+        "casing_lower": 0.0,
+        "casing_upper": 0.0
+      }
+    },
+    "pic_1A_casing_none": {
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        81
+      ],
+      "seed": 1234,
+      "coil_casings": [],
+      "conductor_setup_s": 0.29628837504424155,
+      "source_potential_V_window_mean": -461.38467410090277,
+      "final_conductor_charge_C": {
+        "gun_barrel": 4.851836520651431e-09
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.4606917506070404,
+        "gun_barrel": 0.5393082493929596
+      }
+    },
+    "pic_1A_casing_r015_w1275": {
+      "box_lower_m": [
+        -0.6375,
+        -0.6375,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6375,
+        0.6375,
+        0.65
+      ],
+      "mesh_shape": [
+        137,
+        137,
+        81
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": 0.0,
+          "nodes": 14856
+        },
+        {
+          "center_z_m": 0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": 0.0,
+          "nodes": 14856
+        }
+      ],
+      "conductor_setup_s": 10.484727904899046,
+      "source_potential_V_window_mean": -509.3456677665659,
+      "final_conductor_charge_C": {
+        "gun_barrel": 6.267748715652866e-09,
+        "casing_lower": 2.310451045667325e-08,
+        "casing_upper": 1.5665344823184767e-08
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.3951345255356855,
+        "gun_barrel": 0.6048654744643145,
+        "casing_lower": 0.0,
+        "casing_upper": 0.0
+      }
+    },
+    "pic_1A_casing_r020": {
+      "box_lower_m": [
+        -0.6375,
+        -0.6375,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6375,
+        0.6375,
+        0.65
+      ],
+      "mesh_shape": [
+        137,
+        137,
+        81
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.1,
+          "voltage_V": 0.0,
+          "nodes": 21032
+        },
+        {
+          "center_z_m": 0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.1,
+          "voltage_V": 0.0,
+          "nodes": 21032
+        }
+      ],
+      "conductor_setup_s": 18.196690078126267,
+      "source_potential_V_window_mean": -505.7675130922335,
+      "final_conductor_charge_C": {
+        "gun_barrel": 6.1425588752932616e-09,
+        "casing_lower": 2.6476243657141408e-08,
+        "casing_upper": 1.7568890025017417e-08
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.39944434274145785,
+        "gun_barrel": 0.6005556572585422,
+        "casing_lower": 0.0,
+        "casing_upper": 0.0
+      }
+    },
+    "pic_1A_casing_r015_p1kV": {
+      "box_lower_m": [
+        -0.6,
+        -0.6,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6,
+        0.6,
+        0.65
+      ],
+      "mesh_shape": [
+        129,
+        129,
+        81
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": 1000.0,
+          "nodes": 14856
+        },
+        {
+          "center_z_m": 0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": 1000.0,
+          "nodes": 14856
+        }
+      ],
+      "conductor_setup_s": 10.375963128870353,
+      "source_potential_V_window_mean": -454.49073588826207,
+      "final_conductor_charge_C": {
+        "gun_barrel": 4.739764977275634e-09,
+        "casing_lower": 1.5966318482089245e-07,
+        "casing_upper": 1.5445805148919122e-07
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.4700225894976484,
+        "gun_barrel": 0.5299774105023516,
+        "casing_lower": 0.0,
+        "casing_upper": 0.0
+      }
+    },
+    "pic_1A_casing_r015_m1kV": {
+      "box_lower_m": [
+        -0.6,
+        -0.6,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6,
+        0.6,
+        0.65
+      ],
+      "mesh_shape": [
+        129,
+        129,
+        81
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": -1000.0,
+          "nodes": 14856
+        },
+        {
+          "center_z_m": 0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": -1000.0,
+          "nodes": 14856
+        }
+      ],
+      "conductor_setup_s": 11.000272976001725,
+      "source_potential_V_window_mean": -551.169719763659,
+      "final_conductor_charge_C": {
+        "gun_barrel": 7.642436501839704e-09,
+        "casing_lower": -1.1533446167428803e-07,
+        "casing_upper": -1.243065956218586e-07
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.3221423413807177,
+        "gun_barrel": 0.6778576586192824,
+        "casing_lower": 0.0,
+        "casing_upper": 0.0
+      }
+    },
+    "pic_1A_casing_r015_s2345": {
+      "box_lower_m": [
+        -0.6,
+        -0.6,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6,
+        0.6,
+        0.65
+      ],
+      "mesh_shape": [
+        129,
+        129,
+        81
+      ],
+      "seed": 2345,
+      "coil_casings": [
+        {
+          "center_z_m": -0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": 0.0,
+          "nodes": 14856
+        },
+        {
+          "center_z_m": 0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": 0.0,
+          "nodes": 14856
+        }
+      ],
+      "conductor_setup_s": 10.254115378018469,
+      "source_potential_V_window_mean": -508.2055603601124,
+      "final_conductor_charge_C": {
+        "gun_barrel": 6.267418191796331e-09,
+        "casing_lower": 2.2172737261040915e-08,
+        "casing_upper": 1.503399726128226e-08
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.3960747069137415,
+        "gun_barrel": 0.6039252930862584,
+        "casing_lower": 0.0,
+        "casing_upper": 0.0
+      }
+    },
+    "pic_1A_casing_r015_t195": {
+      "box_lower_m": [
+        -0.6,
+        -0.6,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6,
+        0.6,
+        0.975
+      ],
+      "mesh_shape": [
+        129,
+        129,
+        97
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": 0.0,
+          "nodes": 14856
+        },
+        {
+          "center_z_m": 0.25,
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.075,
+          "voltage_V": 0.0,
+          "nodes": 14856
+        }
+      ],
+      "conductor_setup_s": 10.98310225806199,
+      "source_potential_V_window_mean": -509.17472834572783,
+      "final_conductor_charge_C": {
+        "gun_barrel": 6.253830480932558e-09,
+        "casing_lower": 2.2271094000152236e-08,
+        "casing_upper": 1.6254036092327246e-08
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.38929392958789816,
+        "gun_barrel": 0.6107060704121018,
+        "casing_lower": 0.0,
+        "casing_upper": 0.0
+      }
+    }
+  },
+  "final_fields": {
+    "pic_1A_casing_r015": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3972.8923152546695,
+      "core_minimum_potential_V": -4184.71826410262,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.06093749999999998
+      ],
+      "minimum_potential_V": -4423.229515283127,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.6,
+        -0.6,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6,
+        0.6,
+        0.65
+      ],
+      "mesh_shape": [
+        129,
+        129,
+        81
+      ]
+    },
+    "pic_1A_casing_none": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3406.409918174872,
+      "core_minimum_potential_V": -3594.203254939499,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.06093749999999998
+      ],
+      "minimum_potential_V": -4248.920171434996,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        81
+      ]
+    },
+    "pic_1A_casing_r015_w1275": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -4006.144812280427,
+      "core_minimum_potential_V": -4195.536473820008,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.04062499999999991
+      ],
+      "minimum_potential_V": -4405.20326253307,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.6375,
+        -0.6375,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6375,
+        0.6375,
+        0.65
+      ],
+      "mesh_shape": [
+        137,
+        137,
+        81
+      ]
+    },
+    "pic_1A_casing_r020": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3959.2533058530917,
+      "core_minimum_potential_V": -4155.963937523811,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.04062499999999991
+      ],
+      "minimum_potential_V": -4406.257416342629,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.6375,
+        -0.6375,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6375,
+        0.6375,
+        0.65
+      ],
+      "mesh_shape": [
+        137,
+        137,
+        81
+      ]
+    },
+    "pic_1A_casing_r015_p1kV": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3675.473360154421,
+      "core_minimum_potential_V": -3897.711978181124,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.04062499999999991
+      ],
+      "minimum_potential_V": -4218.738007681313,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.6,
+        -0.6,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6,
+        0.6,
+        0.65
+      ],
+      "mesh_shape": [
+        129,
+        129,
+        81
+      ]
+    },
+    "pic_1A_casing_r015_m1kV": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -4278.572762708152,
+      "core_minimum_potential_V": -4534.849769164209,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.04062499999999991
+      ],
+      "minimum_potential_V": -4574.362376273581,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.6,
+        -0.6,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6,
+        0.6,
+        0.65
+      ],
+      "mesh_shape": [
+        129,
+        129,
+        81
+      ]
+    },
+    "pic_1A_casing_r015_s2345": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -4000.6622644544814,
+      "core_minimum_potential_V": -4191.742743621149,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.04062499999999991
+      ],
+      "minimum_potential_V": -4436.951690943429,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.6,
+        -0.6,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6,
+        0.6,
+        0.65
+      ],
+      "mesh_shape": [
+        129,
+        129,
+        81
+      ]
+    },
+    "pic_1A_casing_r015_t195": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3993.7537223745358,
+      "core_minimum_potential_V": -4198.5185414303205,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.04062499999999991
+      ],
+      "minimum_potential_V": -4420.752245227329,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.6,
+        -0.6,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.6,
+        0.6,
+        0.975
+      ],
+      "mesh_shape": [
+        129,
+        129,
+        97
+      ]
+    }
+  },
+  "relative_to_r015": {
+    "pic_1A_casing_none": {
+      "minimum_potential_V": 0.0333927481013178,
+      "field_energy_J": -0.12153141672633286,
+      "alive_electrons": -0.04022726847818399,
+      "core_electron_count": -0.03651130330833202,
+      "residence_s": -0.040227268478183684,
+      "core_residence_s": -0.036511303308331876
+    },
+    "pic_1A_casing_r015_w1275": {
+      "minimum_potential_V": 0.00013299155037224317,
+      "field_energy_J": 0.0017179845058808228,
+      "alive_electrons": 0.003541993067526073,
+      "core_electron_count": 0.001695076510139163,
+      "residence_s": 0.003541993067526078,
+      "core_residence_s": 0.0016950765101392297
+    },
+    "pic_1A_casing_r020": {
+      "minimum_potential_V": 0.0029125872903387174,
+      "field_energy_J": -0.0009688831295606034,
+      "alive_electrons": 0.01113555715925585,
+      "core_electron_count": 0.010749140093417136,
+      "residence_s": 0.011135557159256203,
+      "core_residence_s": 0.010749140093417413
+    },
+    "pic_1A_casing_r015_p1kV": {
+      "minimum_potential_V": 0.045651362556411675,
+      "field_energy_J": 1.6373637530487821,
+      "alive_electrons": 0.08778403885774953,
+      "core_electron_count": 0.10405849043721213,
+      "residence_s": 0.08778403885774949,
+      "core_residence_s": 0.10405849043721198
+    },
+    "pic_1A_casing_r015_m1kV": {
+      "minimum_potential_V": -0.0359603266829638,
+      "field_energy_J": 1.3501495698659047,
+      "alive_electrons": -0.09128258243997645,
+      "core_electron_count": -0.10837095133147029,
+      "residence_s": -0.09128258243997671,
+      "core_residence_s": -0.10837095133147043
+    },
+    "pic_1A_casing_r015_s2345": {
+      "minimum_potential_V": -0.00024693470321322813,
+      "field_energy_J": 0.005162224893660952,
+      "alive_electrons": 0.003006165938146171,
+      "core_electron_count": 0.005252006075590969,
+      "residence_s": 0.0030061659381458382,
+      "core_residence_s": 0.005252006075590665
+    },
+    "pic_1A_casing_r015_t195": {
+      "minimum_potential_V": -0.0001870480154329277,
+      "field_energy_J": 0.013174324699290236,
+      "alive_electrons": 0.032786263680792016,
+      "core_electron_count": 0.00578792963149091,
+      "residence_s": 0.03278626368079183,
+      "core_residence_s": 0.005787929631490796
+    }
+  },
+  "limitations": [
+    "Conductor absorption tests step endpoints only; no casing received an electron in any case.",
+    "Casings are tori at the coil radius; the windings, supports and feedthroughs are not modelled.",
+    "Grounded outer box, imposed two-coil magnetic field, electrons only, one seed except r015."
+  ]
+}

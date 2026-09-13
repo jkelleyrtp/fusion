@@ -276,6 +276,140 @@ Data: `docs/data/pic-gun-52fcfac.json`.
   gives a 4.7% shallower window minimum and 4.5% less field energy, while core
   residence changes by only 0.7%. The staircase barrel and the unresolved
   50 µm source keep the inlet region the least trustworthy part of the field.
-- Still missing: transverse walls (coil casings, next), a cathode/anode gun
+- Still missing: transverse walls (coil casings, below), a cathode/anode gun
   model, exact particle–conductor crossing (absorption is tested at step
   endpoints), ions, and the six-coil field.
+
+## Coil casings and a wider box
+
+`run_pic_campaign.py --study casing` (commit `acd551c`, broker job
+`jonathan-pic-4bf35d2cc935-48f5b5`, one B200 node, eight concurrent CUDA cases)
+keeps the 3 cm grounded barrel and the bottom wall at 1.95a, and adds the coil
+housings as solved-domain conductors: two tori of major radius a = 0.5 m at
+z = ±0.25 m around the coil windings, with fixed potential and absorbing
+surfaces. That lets the transverse wall move outside the coils. The magnetic
+table excludes the casing interiors. Mesh spacing is the same 9.4 mm
+transversely in every case, so the ±0.3 m and ±0.6 m boxes are directly
+comparable.
+
+| Case | Box half-width | Casing minor radius | Casing voltage | Other |
+|---|---:|---:|---:|---|
+| `pic_1A_casing_r015` (reference) | 0.6 m | 7.5 cm | 0 V | 129×129×81 |
+| `pic_1A_casing_none` | 0.3 m | — | — | 65×65×81, = `pic_1A_gun_b195` |
+| `pic_1A_casing_r015_w1275` | 0.6375 m | 7.5 cm | 0 V | 137×137×81 |
+| `pic_1A_casing_r020` | 0.6375 m | 10 cm | 0 V | 137×137×81 |
+| `pic_1A_casing_r015_p1kV` | 0.6 m | 7.5 cm | +1 kV | |
+| `pic_1A_casing_r015_m1kV` | 0.6 m | 7.5 cm | −1 kV | |
+| `pic_1A_casing_r015_s2345` | 0.6 m | 7.5 cm | 0 V | seed 2345 |
+| `pic_1A_casing_r015_t195` | 0.6 m | 7.5 cm | 0 V | top wall 1.95a |
+
+Each 7.5 cm casing has 14,856 surface nodes. The dense capacitance setup for
+~30k conductor nodes took 10–18 s per case and fit in memory; steps cost
+5.2 ms versus 3.4 ms for the ±0.3 m box.
+
+### Results
+
+Window means over 200–300 ns; origin and core minimum from the 300 ns snapshot.
+
+| Case | Min potential | Origin | Core min | Residence | Core residence | Loss frac. | Repeated entry | Barrel share | Source |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| reference | −4408 V | −3973 V | −4185 V | 66.2 ns | 22.1 ns | 0.776 | 0.212 | 0.60 | −509 V |
+| no casing, ±0.3 m | −4260 V | −3406 V | −3594 V | 63.5 ns | 21.3 ns | 0.787 | 0.225 | 0.54 | −461 V |
+| ±0.6375 m | −4407 V | −4006 V | −4196 V | 66.4 ns | 22.2 ns | 0.776 | 0.212 | 0.60 | −509 V |
+| 10 cm casing | −4395 V | −3959 V | −4156 V | 66.9 ns | 22.4 ns | 0.774 | 0.214 | 0.60 | −506 V |
+| +1 kV casing | −4206 V | −3675 V | −3898 V | 72.0 ns | 24.4 ns | 0.756 | 0.253 | 0.53 | −454 V |
+| −1 kV casing | −4566 V | −4279 V | −4535 V | 60.2 ns | 19.7 ns | 0.796 | 0.172 | 0.68 | −551 V |
+| seed 2345 | −4409 V | −4001 V | −4192 V | 66.4 ns | 22.2 ns | 0.776 | 0.213 | 0.60 | −508 V |
+| top wall 1.95a | −4408 V | −3994 V | −4199 V | 68.4 ns | 22.2 ns | 0.769 | 0.212 | 0.61 | −509 V |
+
+**No electron reached a casing in any case**; losses split between the barrel
+and the box faces (mostly the upper z face). Charge balance stayed within
+4.5e−19 C and deposition error within 5.3e−23 C. Window relative standard
+deviations are ≤2.4% and linear drifts ≤7.9% per 100 ns (largest for the ±1 kV
+cases), so these are near-stationary, not settled. Field energy includes the
+casings' vacuum field and is not comparable between casing voltages.
+
+![Casing evolution](images/pic-casing-evolution.png)
+![Casing fields](images/pic-casing-fields.png)
+
+Data: `docs/data/pic-casing-acd551c.json`.
+
+### Interpretation
+
+- **The transverse domain is now converged.** With casings, widening the box
+  from 0.6 to 0.6375 m, enlarging the casings from 7.5 to 10 cm, or moving the
+  top wall changes minimum potential, origin potential and core residence by at
+  most 1.1%; the seed changes them by about 0.7%.
+- **The ±0.3 m box was electrostatic truncation, not particle loss.** Its
+  grounded side walls sit inside the coil radius and pull the core potential
+  up: the origin is 14% shallower (−3406 versus −3973 V) and core residence
+  3.7% shorter. Particles never reach the casings, so the earlier ±0.3 m
+  studies understate the central well mainly through image charge.
+- **Casing bias acts on the whole well.** ±1 kV moves the origin potential by
+  roughly ±300 V. A positive casing gives 10% more core residence and 19% more
+  repeated entries but a shallower well; a negative casing deepens the well but
+  shortens residence and sends more returning electrons to the barrel. Electrode
+  bias is therefore a real design knob, and deeper potential and longer dwell
+  pull in different directions here.
+- **The well is a beam channel.** The deposited density and potential follow
+  the injected beam from the inlet to a small blob at the centre, not a
+  quasi-spherical virtual cathode; the global minimum stays near the inlet.
+- `pic_1A_casing_r015` (±0.6 m, 7.5 cm casings at 0 V) is the new boundary
+  reference. Endpoint-only conductor tests are adequate at this timestep: the
+  drift bound limits each step to 0.2 cells (≈1.9 mm), much less than the 3 cm
+  barrel or 7.5 cm casing, so a step can only clip a conductor edge by a
+  fraction of a cell. Remaining boundary gaps: a cathode/anode gun that
+  reflects returning electrons, windings/supports, and the six-coil field.
+
+## Test hydrogen ions
+
+`src/ion_orbits.py` (commit `ff06373`) pushes protons with Boris steps through
+the window-averaged (200–300 ns) potential of a finished PIC case plus the
+imposed magnetic field, absorbing on the box and conductors. Ions carry no
+charge, so this measures the well an ion would see, not what ions do to it.
+Two birth models bracket where ions appear:
+
+- `density`: births weighted by time-averaged electron density, a proxy for
+  electron-impact ionization of a uniform background gas;
+- `uniform`: births uniform in the free box volume, a proxy for ions made by
+  something else anywhere in the vessel. This depends on the box volume.
+
+4096 ions, 0.1 eV thermal, dt = 1 ns, 20 µs. Halving dt changes lost fraction,
+core entry and core kinetic energy by under 0.5%. Survivor energy drift
+(maximum over ions) is ≤450 eV after 20 µs and halves with dt: it is
+interpolation noise from the piecewise-linear field, about 10% of the well at
+worst, so peak energies carry that uncertainty.
+
+| PIC case | Births | Median birth potential | Entered core | Core entries / ion | Core-time kinetic energy | Median peak KE | Peak KE > 2 keV | Lost |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| gun on wall | density | −2318 V | 0.39 | 2.7 | 404 eV | 1069 eV | 16% | 0.0% |
+| gun on wall | uniform | −132 V | 0.53 | 2.9 | 992 eV | 1185 eV | 20% | 0.2% |
+| barrel, ±0.3 m | density | −2777 V | 0.42 | 3.2 | 483 eV | 1181 eV | 22% | 0.8% |
+| barrel, ±0.3 m | uniform | −118 V | 0.66 | 3.4 | 1297 eV | 1900 eV | 47% | 0.8% |
+| casings, ±0.6 m | density | −3093 V | 0.45 | 3.7 | 565 eV | 1177 eV | 26% | 0.8% |
+| casings, ±0.6 m | uniform | −51 V | 0.23 | 1.1 | 1470 eV | 590 eV | 18% | 2.8% |
+
+![Test ions, density births](images/pic-test-ions-density.png)
+![Test ions, uniform births](images/pic-test-ions-uniform.png)
+
+Data: `docs/data/pic-test-ions-ff06373.json`.
+
+### Interpretation
+
+- **The frozen electron well does trap and accelerate protons**, but only
+  weakly. At least 98.7% of ions are energetically bound (all box walls and
+  conductors are at 0 V). With density births the only losses (0.8%) are ions
+  born beside the barrel, where the interpolated staircase potential is below
+  0 V; with uniform births most losses (2.2%) are ions born next to a casing.
+- **Ions made where the electrons are start deep in the well and gain little.**
+  With density births the median ion is born at −3.1 kV, so its time-weighted
+  kinetic energy in the core is only ~0.5 keV even though the well is 4 keV
+  deep. Ions born near the walls reach ~1–1.5 keV in the core, but most of the
+  box volume is far from the beam channel, so fewer of them pass through it.
+- **Tracked orbits oscillate along the beam line.** The potential is a channel
+  from the inlet to the centre, so ions slosh along z and through the central
+  blob rather than converging on a spherical focus.
+- None of this includes ion space charge, which will neutralise the electron
+  channel as ions accumulate, or charge exchange and collisions with the gas.
+  Next steps: self-consistent ion PIC (ions deposit charge, same field solve),
+  then ionisation from a background gas, then the six-coil field.
