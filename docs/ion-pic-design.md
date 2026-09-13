@@ -95,4 +95,55 @@ contributed negative rates. The output is kept unchanged as evidence.
 **Fix.** Source `05e2f69` returns exactly zero below threshold with `torch.where` and rejects
 negative rates on the host before sampling. Corrected job `jonathan-pic-267721c0347e`, output
 `/public/jonathan/cusp/runs/pic-267721c0347e/attempt-20260913-101913-995265517/`; preflight
-passed and all eight cases are advancing cycles with charge balances at 1e-22 C.
+passed and all eight cases completed (exit code 0, `DONE` in every case).
+
+## Results
+
+`src/analyze_ion_pic.py`, data `docs/data/pic-ions-05e2f69.json`. 400 µs at 1e-3 Pa and 40 µs at
+1e-2 Pa. "Neutralization" is live ion charge over window-mean electron charge in the whole box;
+"core" is the 0.125 m sphere. Last-quarter means (cycles 31–40, or 61–80 for `cycle5`); origin
+potential is the snapshot potential at the centre. Ion charge balance stayed below 1.1e-19 C.
+
+| Case | Neutralization time | Neutralization | Core neutralization | Origin | Min potential | Core ion KE | Ions lost (final) | Electron charge |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `ions_p1e-3` | 147 µs | 1.009 | 0.992 | −38 V | −137 V | 7.8 eV | 64% | −95 nC |
+| `ions_p1e-3_nocx` | 147 µs | 1.008 | 0.991 | −41 V | −152 V | 8.7 eV | 64% | −95 nC |
+| `ions_p1e-3_nosec` | 147 µs | 1.008 | 0.991 | −39 V | −147 V | 8.0 eV | 64% | −94 nC |
+| `ions_p1e-3_dt05` | 147 µs | 1.007 | 0.993 | −31 V | −137 V | 6.7 eV | 64% | −95 nC |
+| `ions_p1e-3_cycle5` | 147 µs | 1.010 | 0.993 | −26 V | −116 V | 6.6 eV | 63% | −96 nC |
+| `ions_p1e-3_window80` | 147 µs | 1.009 | 0.990 | −39 V | −139 V | 9.1 eV | 64% | −96 nC |
+| `ions_p1e-3_ions2x` | 147 µs | 1.007 | 0.993 | −31 V | −137 V | 6.6 eV | 64% | −96 nC |
+| `ions_p1e-2` | 14.5 µs | 1.203 | 0.973 | +60 V | −239 V | 23.9 eV | 56% | −98 nC |
+
+Before ions, the same geometry has origin potential −3.97 kV and −66 nC of live electrons.
+
+![Coupled ion evolution](images/pic-ions-evolution.png)
+![Coupled ion fields](images/pic-ions-fields.png)
+
+### Interpretation
+
+- **The electron well does not survive the gas.** Ions accumulate in the well until they cancel
+  the electron charge. The origin potential rises from −3.6 kV to about −40 V and the core ion
+  energy falls from ~450 eV to ~8 eV. Neutralization time is 147 µs at 1e-3 Pa and 14.5 µs at
+  1e-2 Pa, inversely proportional to pressure and within 15% of the 130 µs estimate above.
+  Extrapolating, 1e-5 Pa gives ~15 ms. A well used for ion acceleration therefore needs pulses
+  shorter than the neutralization time, much lower pressure, or an ion loss or electron supply
+  that this model lacks.
+- **After neutralization the plasma is quasi-neutral and leaks ions.** Neutralization settles at
+  1.01 and ion loss rises from a few percent of created ions at neutralization to 64% by 400 µs. About half the losses go to the gun
+  barrel along the beam channel, most of the rest to the top and side faces; no ion reached a
+  casing. At 1e-2 Pa the ions overshoot to 1.2, the centre becomes +60 V, and more ions leave
+  through the box faces.
+- **Neutralization pulls in electrons.** Live electron charge rises 43%, from −66 to −95 nC:
+  the ion background lets the beam's own space charge hold more electrons.
+- **Splitting and ion numerics are converged for these observables.** Halving the ion step or
+  the cycle, doubling the electron window or the ion macroparticles changes neutralization,
+  core neutralization, electron charge and loss fraction by at most 1%. The residual origin
+  potential varies from −26 to −41 V and core ion energy from 6.6 to 9.1 eV; these are small
+  differences between large cancelling charges and should be read as uncertain at the ~10 V and
+  ~2 eV level. Turning off charge exchange or secondary electrons changes those quantities by under 1% at
+  1e-3 Pa.
+- **Missing physics limits the steady state, not the neutralization time.** Neutralization time
+  is set by ionization rate and electron inventory. The quasi-neutral state depends on processes
+  not modelled: Coulomb collisions, recombination, neutral depletion, wall emission and plasma
+  magnetic fields. These results are for the two-coil field with a single beam.
