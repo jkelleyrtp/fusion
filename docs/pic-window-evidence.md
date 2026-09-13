@@ -194,7 +194,7 @@ Data: `docs/data/pic-domain-1a9dab6.json`.
   from the inlet face (69% → 42% of losses) to the top face, adds 28% core
   residence, and raises the repeated-entry fraction from 18.5% to 28.5%. The
   change saturates between 1.625a and 1.95a, which is what an energy offset,
-  rather than a wall-distance effect, would do. These cases do not model a
+  consistent with an energy offset rather than a wall-distance effect. These cases do not model a
   physical gun: there is no gun body and no fixed cathode reference.
 - Consequence: the reference-box well depth depends on the transverse wall and
   on where the source's energy is referenced. Well-depth claims need a gun
