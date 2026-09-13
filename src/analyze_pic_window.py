@@ -67,15 +67,20 @@ def summarize(name: str, records: list[Record], window_start_s: float) -> dict[s
         "window_s": [float(times[0]), float(times[-1])],
         "window_samples": len(window),
         "mean": {key: float(value.mean()) for key, value in values.items()},
-        "relative_std": {key: float(value.std() / abs(value.mean())) for key, value in values.items()},
+        "relative_std": {
+            key: float(value.std() / abs(value.mean())) if value.mean() else None
+            for key, value in values.items()
+        },
         "relative_drift_per_100ns": {
-            key: float(np.polyfit(times, value, 1)[0] * 1e-7 / abs(value.mean()))
+            key: float(np.polyfit(times, value, 1)[0] * 1e-7 / abs(value.mean())) if value.mean() else None
             for key, value in values.items()
         },
         "final_loss_fraction": scalar(final, "lost_count") / injected,
         "final_core_entries_per_injected_particle": scalar(final, "core_entry_count") / injected,
         "final_repeated_entry_particle_fraction": scalar(final, "repeated_entry_count") / injected,
-        "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [count / sum(exits) for count in exits],
+        "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": (
+            [count / sum(exits) for count in exits] if sum(exits) else None
+        ),
         "max_abs_charge_balance_C": max(abs(scalar(record, "charge_balance_C")) for record in records),
         "max_abs_deposition_error_C": max(abs(scalar(record, "deposition_error_C")) for record in records),
         "wall_s_per_step": scalar(final, "wall_s") / scalar(final, "step"),
