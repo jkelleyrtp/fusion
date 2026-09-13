@@ -129,7 +129,20 @@ SIX_COIL_GAS = {
     "d2_puff_gun_Q1e-1_S1e3": ("--gas-pa", "0", "--gas-inlet", *GUN_INLET, "--gas-inlet-throughput", "1e-1",
                                "--pump-speed", "1e3"),
 }
-COUPLED = ("ions", "six-coil-ions", "six-coil-feed", "six-coil-gas")
+TOP_CUSP = ("0", "0", "0.7")
+SIX_COIL_ION_GUN = {
+    "gun_none": (),
+    "gun_10mA_100eV": ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP, "--ion-gun-energy-ev", "100"),
+    "gun_10mA_10eV": ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP, "--ion-gun-energy-ev", "10"),
+    "gun_10mA_1keV": ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP, "--ion-gun-energy-ev", "1000"),
+    "gun_1mA_100eV": ("--ion-gun-current", "1e-3", "--ion-gun-position", *TOP_CUSP, "--ion-gun-energy-ev", "100"),
+    "gun_100mA_100eV": ("--ion-gun-current", "1e-1", "--ion-gun-position", *TOP_CUSP, "--ion-gun-energy-ev", "100"),
+    "gun_corner_10mA_100eV": ("--ion-gun-current", "1e-2", "--ion-gun-position", *CORNER_INLET,
+                              "--ion-gun-energy-ev", "100"),
+    "gun_10mA_100eV_bias5kV": ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP,
+                               "--ion-gun-energy-ev", "100", "--casing-voltage", "5000"),
+}
+COUPLED = ("ions", "six-coil-ions", "six-coil-feed", "six-coil-gas", "six-coil-ion-gun")
 
 
 def case_specs(
@@ -185,6 +198,7 @@ def case_specs(
             for name, (current, _, _, dt, interval) in SIX_COIL_FEED.items()
         ),
         "six-coil-gas": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_GAS),
+        "six-coil-ion-gun": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_ION_GUN),
         **{
             long: tuple(
                 (name, current, dt, 8, interval, math.ceil(duration / dt / 15), 65, seed, "cuda")
@@ -256,7 +270,7 @@ def commands(
                 "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
                 "--casing-voltage", str(voltage), "--coils", str(count), "--coil-offset", str(offset),
             ]
-        if study in ("six-coil-ions", "six-coil-feed", "six-coil-gas"):
+        if study in ("six-coil-ions", "six-coil-feed", "six-coil-gas", "six-coil-ion-gun"):
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
             result[-1] += [
                 "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
@@ -273,6 +287,9 @@ def commands(
             ]
         if study == "six-coil-gas":
             result[-1] += ["--fuel", "D2", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_GAS[name]]
+        if study == "six-coil-ion-gun":
+            result[-1] += ["--fuel", "D2", "--gas-pa", "1e-5", "--cycles", "40", "--save-every-cycles", "4",
+                           *SIX_COIL_ION_GUN[name]]
         if study in LONG:
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
             _, coil_current, voltage, _, _, _, _, energy = LONG[study][name]
@@ -296,6 +313,7 @@ def main() -> None:
         choices=(
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
             "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-gas",
+            "six-coil-ion-gun",
         ),
         default="startup",
     )
@@ -400,6 +418,13 @@ def main() -> None:
             "and the neutralization rate per unit fuel. No gas depletion, Coulomb collisions or plasma magnetic "
             "feedback."
         ) if args.study == "six-coil-gas" else (
+            "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV electron gun, 30 kA-turn, D2 at 1e-5 Pa, "
+            "40 x 10 us cycles) with a D2+ ion gun (5 mm spot, 5 degree divergence) aimed at the centre: from the "
+            "top face cusp (0, 0, 0.7) m at 10 mA with 10 eV, 100 eV and 1 keV, 1 mA and 100 mA at 100 eV, from "
+            "the corner cusp (0.68, 0.68, 0.68) m, and with +5 kV casings, plus a no-gun control. Tests whether "
+            "edge-injected ions fall through the electron well, how long they stay, and how the well tolerates "
+            "the injected ion charge. No extraction optics, D+ species, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-ion-gun" else (
             "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel and box), 1 us "
             "at 2 ps: casing (magrid) bias +1, +2.5, +5 and +10 kV at 1 A with a second +5 kV seed, a +5 kV 1 mA "
             "vacuum-potential control, +5 kV at 3 A, and +5 kV with a 2 keV gun. Tests whether a positive magrid "

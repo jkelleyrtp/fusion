@@ -193,6 +193,18 @@ class CampaignTests(unittest.TestCase):
         self.assertTrue(all(item.gas_pa == 0 and item.gas_inlet_throughput > 0 for item in inlets))
         self.assertEqual(len({tuple(item.gas_inlet) for item in inlets}), 3)
 
+    def test_six_coil_ion_gun_study_injects_d2_ions_from_cusps(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-ion-gun")
+        configurations = [ion_parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        for item in configurations:
+            validate_coupled(item)
+            self.assertEqual((item.fuel, item.coils, item.current_a, item.gas_pa), ("D2", 6, 1, 1e-5))
+        guns = [item for item in configurations if item.ion_gun_current > 0]
+        self.assertEqual(len(guns), 7)
+        self.assertEqual({item.ion_gun_energy_ev for item in guns}, {10, 100, 1000})
+        self.assertEqual([item.casing_voltage for item in configurations].count(5000), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
