@@ -38,6 +38,10 @@ SIX_COIL_LONG_CASES = (
     "six_long", "six_long_s2345", "six_long_1mA", "six_long_300mA", "six_long_3A", "six_long_m1kV",
     "six_long_60kAt", "six_long_60kAt_1mA",
 )
+SIX_COIL_BIAS_CASES = (
+    "six_bias_p1kV", "six_bias_p2p5kV", "six_bias_p5kV", "six_bias_p10kV", "six_bias_p5kV_s2345",
+    "six_bias_p5kV_1mA", "six_bias_p5kV_3A", "six_bias_p5kV_2keV",
+)
 WINDOW_METRICS = (
     "minimum_potential_V", "field_energy_J", "alive_electrons", "core_electron_count",
     "residence_s", "core_residence_s",
@@ -211,17 +215,19 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--window-start", type=float, default=2e-7)
     parser.add_argument(
-        "--study", choices=("window", "domain", "gun", "casing", "six-coil", "six-coil-long"), default="window",
+        "--study", choices=("window", "domain", "gun", "casing", "six-coil", "six-coil-long", "six-coil-bias"),
+        default="window",
     )
     parser.add_argument("--domain-run", type=Path, help="grounded-box campaign to compare the gun study against")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
     names = {
         "domain": DOMAIN_CASES, "gun": GUN_CASES, "casing": CASING_CASES, "six-coil": SIX_COIL_CASES,
-        "six-coil-long": SIX_COIL_LONG_CASES,
+        "six-coil-long": SIX_COIL_LONG_CASES, "six-coil-bias": SIX_COIL_BIAS_CASES,
     }.get(args.study, (*MESH_CASES, *VARIANT_CASES))
     histories = {name: load(args.run / name) for name in names}
-    long = args.study == "six-coil-long"
+    long = args.study in ("six-coil-long", "six-coil-bias")
+    bias = args.study == "six-coil-bias"
 
     def window_start(name: str) -> float:
         return 0.8 * scalar(histories[name][-1], "time_s") if long else args.window_start
@@ -236,7 +242,7 @@ def main() -> None:
             for key in WINDOW_METRICS
         }
 
-    if args.study in ("casing", "six-coil", "six-coil-long"):
+    if args.study in ("casing", "six-coil", "six-coil-long", "six-coil-bias"):
         six = args.study != "casing"
         core_radius = 0.25 * json.loads((args.run / names[0] / "configuration.json").read_text())["radius"]
         conductors = {}
@@ -251,6 +257,7 @@ def main() -> None:
                 "box_lower_m": configuration["box_lower_m"], "box_upper_m": configuration["box_upper_m"],
                 "mesh_shape": configuration["mesh_shape"], "seed": configuration["seed"],
                 "coil_casings": configuration["coil_casings"], "conductor_setup_s": configuration["conductor_setup_s"],
+                "casing_voltage_V": configuration["casing_voltage"], "gun_energy_eV": configuration["energy_ev"],
                 **({"coils": configuration["coils"], "coil_offset": configuration["coil_offset"],
                     "source_B_T": configuration["source_B_T"],
                     "source_nominal_pitch_deg": configuration["source_nominal_pitch_deg"]} if six else {}),
@@ -266,8 +273,12 @@ def main() -> None:
                     },
                 },
             }
+        fields = {name: core_field(args.run / name, core_radius) for name in names}
         casing_report: dict[str, object] = {
             "scope": (
+                "Six-coil imposed cube field, 1 us casing (magrid) bias study: +1 to +10 kV at 1 A, a second seed, "
+                "a 1 mA control, 3 A and a 2 keV gun at +5 kV; window is the last 20% of each run."
+                if bias else
                 "Six-coil imposed cube field, 1 us saturation study: current scaling, casing bias, seed and "
                 "60 kA-turn coils; window is the last 20% of each run."
                 if long else
@@ -277,7 +288,11 @@ def main() -> None:
             ),
             "cases": list(summaries.values()),
             "conductors": conductors,
-            "final_fields": {name: core_field(args.run / name, core_radius) for name in names},
+            "final_fields": fields,
+            "origin_depth_below_casings_V": {
+                name: conductors[name]["casing_voltage_V"] - cast(float, fields[name]["origin_potential_V"])
+                for name in names
+            },
             f"relative_to_{names[0]}" if six else "relative_to_r015": {name: relative(name, names[0]) for name in names[1:]},
             "limitations": [
                 "Conductor absorption tests step endpoints only." if six else
@@ -294,6 +309,7 @@ def main() -> None:
         else:
             plot_histories(histories, args.out / "evolution.png", names[:2])
         plot_fields(args.run, args.out / "fields.png", (
+            ("six_bias_p1kV", "six_bias_p5kV", "six_bias_p10kV", "six_bias_p5kV_2keV") if bias else
             ("six_long", "six_long_3A", "six_long_60kAt") if long else
             ("pic_1A_two_coil_c010", "pic_1A_six_d120", "pic_1A_six_d130") if six else
             ("pic_1A_casing_none", "pic_1A_casing_r015", "pic_1A_casing_r015_m1kV")
