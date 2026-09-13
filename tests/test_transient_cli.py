@@ -129,6 +129,7 @@ class TransientCLITests(unittest.TestCase):
             ("--save-every", "0"), ("--max-snapshots", "2"),
             ("--diagnostic-every", "-1"), ("--box-half-width", "0.25"),
             ("--box-bottom", "1.2"), ("--box-top", "0.2"), ("--box-half-width", "0.5"),
+            ("--gun-radius", "0.1"), ("--gun-radius", "-1"),
         ]:
             with self.subTest(option=option, value=value), self.assertRaises(ValueError):
                 validate(arguments(Path("unused"), option, value))
@@ -152,6 +153,32 @@ class TransientCLITests(unittest.TestCase):
                     (state["upper_m"] - state["lower_m"]) / (np.array([7, 7, 12]) - 1),
                     [0.075, 0.075, 1.3 / 8],
                 )
+
+    def test_gun_barrel_is_grounded_and_recorded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "gun"
+            with contextlib.redirect_stdout(io.StringIO()):
+                history = run(arguments(
+                    root, "--nodes", "17", "--box-bottom", "1.625", "--gun-radius", "0.3",
+                    "--current-a", "1e-3",
+                ))
+            configuration = json.loads((root / "configuration.json").read_text())
+            barrel = configuration["gun_barrel"]
+            self.assertGreater(barrel["nodes"], 0)
+            np.testing.assert_allclose(barrel["front_m"], [0, 0.004, -0.65])
+            self.assertIn("grounded absorbing gun barrel", configuration["boundary"])
+            final = history[-1]
+            self.assertEqual(final["conductor_exit_counts"], [0])
+            self.assertGreater(final["conductor_charge_C"][0], 0)
+            self.assertAlmostEqual(final["source_potential_V"], 0, delta=1e-9)
+            with np.load(root / final["snapshot"]) as state:
+                lower, upper, potential = state["lower_m"], state["upper_m"], state["potential_V"]
+            axes = [np.linspace(lower[i], upper[i], potential.shape[i]) for i in range(3)]
+            x, y, z = np.meshgrid(*axes, indexing="ij")
+            relative = np.stack((x, y - 0.004, z + 0.65), axis=-1)
+            inside = (-relative[..., 2] >= 0) & (np.hypot(relative[..., 0], relative[..., 1]) <= 0.15)
+            self.assertLess(np.abs(potential[inside]).max(), 1e-9)
+            self.assertLess(potential.min(), -1e-9)
 
     def test_backwards_sample_rejected(self):
         position = torch.tensor([[0, 0.004, -0.65]] * 2, dtype=torch.float64)

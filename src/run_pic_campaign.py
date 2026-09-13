@@ -23,6 +23,17 @@ DOMAIN_BOXES = {
     "pic_1A_box_b195_t26": (0.6, 1.95, 2.6),
 }
 
+GUN_BARRELS = {
+    "pic_1A_gun_wall": ((0.6, 1.3, 1.3), 0.0, 65, 1234),
+    "pic_1A_gun_b1625": ((0.6, 1.625, 1.3), 0.06, 65, 1234),
+    "pic_1A_gun_b195": ((0.6, 1.95, 1.3), 0.06, 65, 1234),
+    "pic_1A_gun_b26": ((0.6, 2.6, 1.3), 0.06, 65, 1234),
+    "pic_1A_gun_b195_r004": ((0.6, 1.95, 1.3), 0.04, 65, 1234),
+    "pic_1A_gun_b195_r010": ((0.6, 1.95, 1.3), 0.10, 65, 1234),
+    "pic_1A_gun_b195_s2345": ((0.6, 1.95, 1.3), 0.06, 65, 2345),
+    "pic_1A_gun_b195_n97": ((0.6, 1.95, 1.3), 0.06, 97, 1234),
+}
+
 
 def case_specs(
     study: str, kernels: str,
@@ -55,6 +66,10 @@ def case_specs(
         "domain": tuple(
             (name, 1, 4e-12, 8, 1, 7500, 65, 1234, "cuda") for name in DOMAIN_BOXES
         ),
+        "gun": tuple(
+            (name, 1, 4e-12, 8, 1, 7500, nodes, seed, "cuda")
+            for name, (_, _, nodes, seed) in GUN_BARRELS.items()
+        ),
     }[study]
     return list(cases)
 
@@ -63,7 +78,7 @@ def commands(
     out: Path, revision: str, study: str = "startup", kernels: str = "reference",
 ) -> list[list[str]]:
     result = []
-    window = study in ("window", "domain")
+    window = study in ("window", "domain", "gun")
     for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
         case_specs(study, kernels),
     ):
@@ -90,6 +105,12 @@ def commands(
             result[-1] += [
                 "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
             ]
+        if study == "gun":
+            (width, bottom, top), radius, _, _ = GUN_BARRELS[name]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+                "--gun-radius", str(radius),
+            ]
     return result
 
 
@@ -98,7 +119,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--case-timeout", type=float, default=900)
     parser.add_argument(
-        "--study", choices=("startup", "refinement", "acceptance", "window", "domain"),
+        "--study", choices=("startup", "refinement", "acceptance", "window", "domain", "gun"),
         default="startup",
     )
     parser.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
@@ -138,6 +159,12 @@ def main() -> None:
             "narrower transverse walls (the coils bound widening), a farther top wall, "
             "and a farther bottom wall that leaves the gun inside the box. Same gun, "
             "field, seed and packets. One realization per box; electron-only."
+        ) if args.study == "domain" else (
+            "CUDA 1 A grounded gun barrel, 300 ns: gun on the lower wall versus a grounded, "
+            "absorbing barrel behind the emitter with the lower wall at 1.625a, 1.95a and 2.6a; "
+            "barrel radius 0.04a/0.06a/0.10a, a second seed and a 97-node mesh at 1.95a. "
+            "Tests whether a fixed emitter reference removes the bottom-wall sensitivity. "
+            "Grounded outer box, imposed two-coil field, electron-only."
         ),
         "study": args.study, "kernels": args.kernels,
         "cases": [

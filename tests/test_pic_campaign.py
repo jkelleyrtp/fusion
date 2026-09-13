@@ -77,6 +77,20 @@ class CampaignTests(unittest.TestCase):
                 {key: value for key, value in vars(item).items() if key not in box_options}, expected,
             )
 
+    def test_gun_study_varies_box_barrel_seed_and_mesh(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "gun")
+        configurations = [parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        self.assertEqual([item.device for item in configurations], [f"cuda:{i}" for i in range(8)])
+        wall, *barrels = configurations
+        self.assertEqual((wall.box_bottom, wall.gun_radius), (1.3, 0))
+        self.assertTrue(all(item.box_bottom > 1.3 and item.gun_radius > 0 for item in barrels))
+        self.assertEqual([item.nodes for item in configurations], [65] * 7 + [97])
+        self.assertEqual([item.seed for item in configurations], [1234] * 6 + [2345, 1234])
+        for item in configurations:
+            validate(item)
+            self.assertEqual((item.current_a, item.duration, item.kernels), (1, 3e-7, "cuda"))
+
 
 if __name__ == "__main__":
     unittest.main()

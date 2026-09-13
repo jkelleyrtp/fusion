@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 from cusp_sim import E_CHARGE, M_E, QM, TorchPusher, ring_field_on_grid
-from electrostatic import ElectrostaticMesh
+from electrostatic import Conductors, Cylinder, ElectrostaticMesh
 from pic_cuda import CUDAKernels
 from pic_kernels import ReferenceKernels
 from steady_space_charge import thermal_source
@@ -36,6 +36,9 @@ def parser() -> argparse.ArgumentParser:
                         help="distance below the coil midplane in coil radii; the gun sits at 1.3")
     result.add_argument("--box-top", type=float, default=1.3,
                         help="distance above the coil midplane in coil radii")
+    result.add_argument("--gun-radius", type=float, default=0,
+                        help="radius in coil radii of a grounded, absorbing gun barrel behind the "
+                             "emitter; 0 leaves the gun on the lower wall only")
     result.add_argument("--energy-ev", type=float, default=5000)
     result.add_argument("--temperature-ev", type=float, default=0.2)
     result.add_argument("--aim-deg", type=float, default=30)
@@ -74,6 +77,8 @@ def validate(args: argparse.Namespace) -> int:
         raise ValueError("Invalid tracking count or seed")
     if args.box_half_width <= 0.25 or args.box_top <= 0.25 or args.box_bottom < 1.3:
         raise ValueError("Box must contain the core and the gun")
+    if args.gun_radius < 0 or (args.gun_radius > 0 and args.box_bottom == 1.3):
+        raise ValueError("A gun barrel needs a positive radius and the lower wall behind the gun")
     mesh_shape(args)
     ratio = args.duration / args.dt
     if not math.isfinite(ratio):
@@ -87,9 +92,13 @@ def validate(args: argparse.Namespace) -> int:
     return steps
 
 
+def source_potential(simulation: PIC, potential: torch.Tensor, origin: list[float]) -> float:
+    return float(simulation.mesh.gather(potential, potential.new_tensor([origin]))[0][0])
+
+
 def save_snapshot(
-    simulation: PIC, directory: Path, step: int, h: float,
-) -> dict[str, float | int | list[int] | str]:
+    simulation: PIC, directory: Path, step: int, h: float, origin: list[float] | None = None,
+) -> dict[str, float | int | list[int] | list[float] | str]:
     charge, potential = simulation.fields()
     p = simulation.particles
     arrays = {
@@ -112,10 +121,12 @@ def save_snapshot(
             **{key: value.cpu().numpy() for key, value in arrays.items()},
         )
     temporary.replace(path)
-    record: dict[str, float | int | list[int] | str] = {
+    record: dict[str, float | int | list[int] | list[float] | str] = {
         **simulation.diagnostics(charge, potential),
         "step": step, "dt_s": h, "snapshot": f"snapshots/{name}",
     }
+    if origin is not None:
+        record["source_potential_V"] = source_potential(simulation, potential, origin)
     if not all(math.isfinite(value) for value in record.values()
                if isinstance(value, (int, float))):
         raise ValueError("Nonfinite PIC diagnostics")
@@ -139,6 +150,15 @@ def mesh_shape(args: argparse.Namespace) -> tuple[int, int, int]:
 def source_geometry(args: argparse.Namespace) -> tuple[list[float], list[float]]:
     angle = math.radians(args.aim_deg)
     return [0.0, 0.008 * args.radius, -1.3 * args.radius], [0.0, -math.sin(angle), math.cos(angle)]
+
+
+def gun_barrel(args: argparse.Namespace) -> Cylinder:
+    """Grounded barrel extending backwards from the emitter, which sits on its front face."""
+    origin, direction = source_geometry(args)
+    return Cylinder(
+        (origin[0], origin[1], origin[2]), (-direction[0], -direction[1], -direction[2]),
+        4 * args.radius, args.gun_radius * args.radius,
+    )
 
 
 def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]:
@@ -182,8 +202,12 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
     else:
         kernels = ReferenceKernels(mesh)
         magnetic_field = pusher.field
+    conductors = Conductors(mesh, (gun_barrel(args),), kernels.potential) if args.gun_radius else None
+    if conductors is not None and conductors.node_counts[0] == 0:
+        raise ValueError("Gun barrel is unresolved on this mesh")
     simulation = PIC(
         mesh, magnetic_field, 0.25 * a, args.max_live_particles, args.track, kernels=kernels,
+        conductors=conductors,
     )
     origin, direction = source_geometry(args)
     source_field = pusher.field(lower.new_tensor([origin]))[0]
@@ -212,7 +236,14 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         "boundary": (
             "grounded rectangular box; absorbing particle walls"
             + ("; gun inside the box, not on its lower wall" if args.box_bottom > 1.3 else "")
+            + (f"; grounded absorbing gun barrel, {conductors.node_counts[0]} nodes, emitter on "
+               "its front face" if conductors else "")
         ),
+        "gun_barrel": None if conductors is None else {
+            "front_m": list(gun_barrel(args).start), "axis": list(gun_barrel(args).axis),
+            "length_m": gun_barrel(args).length, "radius_m": gun_barrel(args).radius,
+            "voltage_V": 0.0, "nodes": conductors.node_counts[0],
+        },
         "charge_deposition": "instantaneous CIC; no residence weighting",
         "energy_balance": "K + U + lost kinetic - injected kinetic; not a power budget",
         "tracking": "first stable particle IDs; includes terminal wall positions",
@@ -274,7 +305,7 @@ class GunSource:
         )
 
 
-def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | str]]:
+def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | list[float] | str]]:
     steps = validate(args)
     simulation, configuration = create_simulation(args)
     args.out.mkdir(parents=True, exist_ok=False)
@@ -283,10 +314,10 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
     (args.out / "configuration.json").write_text(
         json.dumps(configuration, indent=2, allow_nan=False) + "\n",
     )
-    history: list[dict[str, float | int | list[int] | str]] = []
+    history: list[dict[str, float | int | list[int] | list[float] | str]] = []
 
     def publish(step: int, h: float) -> None:
-        record = save_snapshot(simulation, snapshots, step, h)
+        record = save_snapshot(simulation, snapshots, step, h, origin)
         record["wall_s"] = time.perf_counter() - start
         history.append(record)
         temporary = args.out / "history.tmp"
@@ -295,14 +326,17 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
         print(json.dumps(record, allow_nan=False), flush=True)
 
     def record_diagnostics(step: int, h: float) -> None:
+        charge, potential = simulation.fields()
         record = {
-            **simulation.diagnostics(*simulation.fields()),
+            **simulation.diagnostics(charge, potential),
+            "source_potential_V": source_potential(simulation, potential, origin),
             "step": step, "dt_s": h, "wall_s": time.perf_counter() - start,
         }
         with (args.out / "diagnostics.jsonl").open("a") as stream:
             stream.write(json.dumps(record, allow_nan=False) + "\n")
 
     source = GunSource(args)
+    origin, _ = source_geometry(args)
     start = time.perf_counter()
     publish(0, 0)
     for step in range(steps):

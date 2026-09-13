@@ -9,6 +9,7 @@ import torch
 from cusp_sim import E_CHARGE, M_E, QM
 from electrostatic import (
     EPSILON_0,
+    Conductors,
     ElectrostaticMesh,
 )
 from pic_kernels import ReferenceKernels
@@ -57,7 +58,7 @@ class PIC:
     def __init__(
         self, mesh: ElectrostaticMesh, magnetic_field: MagneticField,
         core_radius: float, max_live: int, track: int = 0,
-        *, kernels: ReferenceKernels | None = None,
+        *, kernels: ReferenceKernels | None = None, conductors: Conductors | None = None,
     ) -> None:
         if not math.isfinite(core_radius) or core_radius <= 0 or max_live < 1:
             raise ValueError("Positive core radius and live-particle limit required")
@@ -67,6 +68,9 @@ class PIC:
         self.kernels = ReferenceKernels(mesh) if kernels is None else kernels
         if self.kernels.mesh is not mesh:
             raise ValueError("Particle operators must use the PIC mesh")
+        if conductors is not None and conductors.mesh is not mesh:
+            raise ValueError("Conductors must use the PIC mesh")
+        self.conductors = conductors
         self.magnetic_field = magnetic_field
         self.core_radius = core_radius
         self.max_live = max_live
@@ -82,7 +86,9 @@ class PIC:
         self.injected_charge = 0.0
         self.injected_kinetic = 0.0
         self._lost_totals = empty.new_zeros(len(LOST_TOTALS))
-        self.exit_counts = torch.zeros(6, device=empty.device, dtype=torch.int64)
+        shapes = 0 if conductors is None else len(conductors.shapes)
+        self.exit_counts = torch.zeros(6 + shapes, device=empty.device, dtype=torch.int64)
+        self.conductor_charge = empty.new_zeros(shapes)
         self.tracked_position = empty.new_full((track, 3), math.nan)
         self.tracked_birth = empty.new_full((track,), math.nan)
         self.tracked_exit_time = empty.new_full((track,), math.nan)
@@ -192,7 +198,10 @@ class PIC:
     def fields(self) -> tuple[torch.Tensor, torch.Tensor]:
         p = self.particles
         charge = self.kernels.deposit(p.position, -E_CHARGE * p.weight)
-        return charge, self.kernels.potential(charge)
+        if self.conductors is None:
+            return charge, self.kernels.potential(charge)
+        potential, self.conductor_charge = self.conductors.potential(charge)
+        return charge, potential
 
     def kinetic_energy(self) -> torch.Tensor:
         p = self.particles
@@ -208,6 +217,10 @@ class PIC:
         end, fraction, hit, inside, entered = self.kernels.drift(
             p.position, p.velocity, h, self.core_radius,
         )
+        wall = hit
+        if self.conductors is not None:
+            absorbed = self.conductors.absorbing(end)
+            hit = wall | (absorbed >= 0)
         (lost_count,) = self._raise_first(checks, hit.sum())
         elapsed = h * fraction
         p.dwell += elapsed
@@ -237,6 +250,9 @@ class PIC:
             (lost.position - self.mesh.upper).abs() / self.mesh.h,
         ), dim=2).flatten(start_dim=1)
         faces = distances.argmin(dim=1)
+        if self.conductors is not None:
+            removed = order[survivors:]
+            faces = torch.where(wall[removed], faces, 6 + absorbed[removed])
         self.exit_counts.index_add_(0, faces, torch.ones_like(faces))
         if live:
             tracked = int((lost.ids < len(self.tracked_birth)).sum())
@@ -285,13 +301,18 @@ class PIC:
 
     def diagnostics(
         self, charge: torch.Tensor, potential: torch.Tensor,
-    ) -> dict[str, float | int | list[int]]:
+    ) -> dict[str, float | int | list[int] | list[float]]:
         p = self.particles
         alive_charge = float(-E_CHARGE * p.weight.sum())
         kinetic = float(self.kinetic_energy())
         field = float(self.mesh.field_energy(potential))
         in_core = p.position.square().sum(dim=1) < self.core_radius ** 2
         lost = self.lost_totals()
+        exits = self.exit_counts.tolist()
+        conductors: dict[str, list[int] | list[float]] = {} if self.conductors is None else {
+            "conductor_exit_counts": exits[6:],
+            "conductor_charge_C": self.conductor_charge.tolist(),
+        }
         return {
             "time_s": self.time,
             "injected_count": self.injected_count,
@@ -329,5 +350,6 @@ class PIC:
             "core_particle_count": int(in_core.sum()),
             "core_electron_count": float(p.weight[in_core].sum()),
             "minimum_potential_V": float(potential.min()),
-            "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": self.exit_counts.tolist(),
+            "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": exits[:6],
+            **conductors,
         }

@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from electrostatic import (
     EPSILON_0,
+    Conductors,
+    Cylinder,
     ElectrostaticMesh,
     clip_segment,
     sphere_segment_fraction,
@@ -103,6 +105,37 @@ class ElectrostaticTests(unittest.TestCase):
         self.assertLess(float(potential.min()), 0)
         self.assertLess(float(potential.max()), 1e-14)
         self.assertEqual(float(potential[0].abs().sum()), 0)
+
+    def test_conductors_hold_voltages_and_induce_charge(self) -> None:
+        mesh = self.mesh(13)
+        shapes = (
+            Cylinder((0, 0, -0.5), (0, 0, 1), 1.0, 0.2),
+            Cylinder((0.4, 0, -0.3), (1, 0, 0), 0.4, 0.25, voltage=-100.0),
+        )
+        conductors = Conductors(mesh, shapes, mesh.potential)
+        self.assertTrue(all(count > 0 for count in conductors.node_counts))
+        charge = mesh.deposit(
+            torch.tensor([[-0.5, 0.4, 0.1]], dtype=torch.float64),
+            torch.tensor([-1e-12], dtype=torch.float64),
+        )
+        potential, induced = conductors.potential(charge)
+        torch.testing.assert_close(
+            potential.flatten()[conductors.indices], conductors.voltage, rtol=0, atol=1e-9,
+        )
+        free = torch.ones(mesh.shape, dtype=torch.bool)
+        free.view(-1)[conductors.indices] = False
+        rhs = charge / (EPSILON_0 * mesh.volume)
+        residual = (mesh.negative_laplacian(potential) - rhs[1:-1, 1:-1, 1:-1])[free[1:-1, 1:-1, 1:-1]]
+        self.assertLess(float(residual.abs().max() / rhs.abs().max()), 1e-9)
+        self.assertLess(float(potential.max()), 1e-9)
+        self.assertGreater(float(potential.min()), -100 - 1e-9)
+        self.assertLess(float(induced[1]), 0)
+        grounded = Conductors(mesh, shapes[:1], mesh.potential)
+        _, induced = grounded.potential(charge)
+        self.assertGreater(float(induced[0]), 0)
+        self.assertLess(float(induced[0]), 1e-12)
+        points = torch.tensor([[0, 0, 0], [0.6, 0, -0.3], [0.9, 0.9, 0.9]], dtype=torch.float64)
+        self.assertEqual(conductors.absorbing(points).tolist(), [0, 1, -1])
 
     def test_segment_absorption_and_core_crossing(self) -> None:
         mesh = self.mesh()

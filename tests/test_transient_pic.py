@@ -5,7 +5,7 @@ from itertools import pairwise
 import torch
 
 from cusp_sim import E_CHARGE
-from electrostatic import ElectrostaticMesh
+from electrostatic import Conductors, Cylinder, ElectrostaticMesh
 from transient_pic import PIC
 
 
@@ -164,6 +164,26 @@ class TransientPICTests(unittest.TestCase):
         self.assertEqual(len(simulation.particles.ids), 0)
         self.assertEqual(simulation.exit_counts.tolist(), [1] * 6)
         self.assertEqual(simulation.tracked_exit_face.tolist(), list(range(6)))
+
+    def test_conductor_absorbs_particles_before_walls(self):
+        grid = mesh()
+        conductors = Conductors(
+            grid, (Cylinder((0.3, 0, -0.5), (0, 0, 1), 1.0, 0.25),), grid.potential,
+        )
+        simulation = PIC(grid, zero_field, 0.2, 10, track=2, conductors=conductors)
+        position = torch.tensor([[0.0, 0, 0], [-0.999, 0, 0]], dtype=torch.float64)
+        velocity = position.new_tensor([[1e6, 0, 0], [-1e6, 0, 0]])
+        simulation.inject(position, velocity, position.new_full((2,), 1e7))
+        for _ in range(4):
+            simulation.advance(2e-8)
+        self.assertEqual(len(simulation.particles.ids), 0)
+        self.assertEqual(simulation.exit_counts.tolist(), [1, 0, 0, 0, 0, 0, 1])
+        self.assertEqual(simulation.tracked_exit_face.tolist(), [6, 0])
+        charge, potential = simulation.fields()
+        record = simulation.diagnostics(charge, potential)
+        self.assertEqual(record["exit_counts_xlo_xhi_ylo_yhi_zlo_zhi"], [1, 0, 0, 0, 0, 0])
+        self.assertEqual(record["conductor_exit_counts"], [1])
+        self.assertAlmostEqual(record["charge_balance_C"], 0, delta=1e-24)
 
 
 if __name__ == "__main__":

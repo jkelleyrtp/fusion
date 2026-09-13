@@ -3,6 +3,7 @@
 import itertools
 import math
 import weakref
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import torch
@@ -148,3 +149,80 @@ def sphere_segment_fraction(start: torch.Tensor, end: torch.Tensor,
     fraction = torch.where(a == 0, (c < 0).to(start.dtype), fraction)
     entries = (a > 0) & (discriminant > 0) & (lo > 0) & (lo <= 1)
     return fraction, entries
+
+
+@dataclass(frozen=True)
+class Cylinder:
+    """Solid cylinder of `radius` around the segment from `start` along unit `axis` for `length`."""
+
+    start: tuple[float, float, float]
+    axis: tuple[float, float, float]
+    length: float
+    radius: float
+    voltage: float = 0.0
+
+    def __post_init__(self) -> None:
+        if abs(math.hypot(*self.axis) - 1) > 1e-12 or self.length <= 0 or self.radius <= 0:
+            raise ValueError("Cylinder needs a unit axis and positive length and radius")
+
+    def contains(self, points: torch.Tensor) -> torch.Tensor:
+        relative = points - points.new_tensor(self.start)
+        along = relative @ points.new_tensor(self.axis)
+        radial = relative.square().sum(dim=1) - along.square()
+        return (along >= 0) & (along <= self.length) & (radial <= self.radius ** 2)
+
+
+class Conductors:
+    """Interior mesh nodes held at fixed potentials by induced nodal charge (capacitance matrix).
+
+    Each solve adds the induced charge that restores the conductor potentials to the grounded-box
+    solution and solves again, so conductor nodes reach their voltages to roundoff.
+    """
+
+    def __init__(
+        self, mesh: ElectrostaticMesh, shapes: tuple[Cylinder, ...],
+        potential: Callable[[torch.Tensor], torch.Tensor],
+    ) -> None:
+        self.mesh = mesh
+        self.shapes = shapes
+        self._potential = potential
+        axes = [
+            torch.linspace(float(mesh.lower[axis]), float(mesh.upper[axis]), count,
+                           dtype=torch.float64, device=mesh.lower.device)
+            for axis, count in enumerate(mesh.shape)
+        ]
+        grid = torch.meshgrid(*axes, indexing="ij")
+        nodes = torch.stack(grid, dim=-1).reshape(-1, 3)
+        interior = torch.zeros(mesh.shape, dtype=torch.bool, device=mesh.lower.device)
+        interior[1:-1, 1:-1, 1:-1] = True
+        owner = self.absorbing(nodes)
+        self.indices = torch.nonzero((owner >= 0) & interior.flatten()).flatten()
+        self.owner = owner[self.indices]
+        self.node_counts = torch.bincount(self.owner, minlength=len(shapes)).tolist()
+        self.voltage = mesh.lower.new_tensor([shape.voltage for shape in shapes])[self.owner]
+        capacitance = mesh.lower.new_zeros((len(self.indices), len(self.indices)))
+        unit = mesh.lower.new_zeros(math.prod(mesh.shape))
+        for column, node in enumerate(self.indices.tolist()):
+            unit[node] = 1.0
+            capacitance[:, column] = potential(unit.reshape(mesh.shape)).flatten()[self.indices]
+            unit[node] = 0.0
+        self._factor = torch.linalg.cholesky(0.5 * (capacitance + capacitance.T))
+
+    def absorbing(self, points: torch.Tensor) -> torch.Tensor:
+        """Index of the first shape containing each point, or -1."""
+        result = torch.full((len(points),), -1, dtype=torch.long, device=points.device)
+        for index in reversed(range(len(self.shapes))):
+            result = torch.where(self.shapes[index].contains(points), index, result)
+        return result
+
+    def potential(self, charge: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Potential with conductors held at their voltages, and induced charge per conductor."""
+        free = self._potential(charge)
+        induced_total = charge.new_zeros(len(self.shapes))
+        if not len(self.indices):
+            return free, induced_total
+        induced = torch.cholesky_solve(
+            (self.voltage - free.flatten()[self.indices])[:, None], self._factor,
+        )[:, 0]
+        total = charge.flatten().index_add(0, self.indices, induced).reshape(self.mesh.shape)
+        return self._potential(total), induced_total.index_add_(0, self.owner, induced)
