@@ -34,6 +34,18 @@ GUN_BARRELS = {
     "pic_1A_gun_b195_n97": ((0.6, 1.95, 1.3), 0.06, 97, 1234),
 }
 
+COIL_CASINGS = {
+    "pic_1A_casing_none": ((0.6, 1.95, 1.3), 0.0, 0.0, 1234),
+    "pic_1A_casing_r015": ((1.2, 1.95, 1.3), 0.15, 0.0, 1234),
+    "pic_1A_casing_r015_w1275": ((1.275, 1.95, 1.3), 0.15, 0.0, 1234),
+    "pic_1A_casing_r020": ((1.275, 1.95, 1.3), 0.20, 0.0, 1234),
+    "pic_1A_casing_r015_p1kV": ((1.2, 1.95, 1.3), 0.15, 1000.0, 1234),
+    "pic_1A_casing_r015_m1kV": ((1.2, 1.95, 1.3), 0.15, -1000.0, 1234),
+    "pic_1A_casing_r015_s2345": ((1.2, 1.95, 1.3), 0.15, 0.0, 2345),
+    "pic_1A_casing_r015_t195": ((1.2, 1.95, 1.95), 0.15, 0.0, 1234),
+}
+CASING_GUN_RADIUS = 0.06
+
 
 def case_specs(
     study: str, kernels: str,
@@ -70,6 +82,10 @@ def case_specs(
             (name, 1, 4e-12, 8, 1, 7500, nodes, seed, "cuda")
             for name, (_, _, nodes, seed) in GUN_BARRELS.items()
         ),
+        "casing": tuple(
+            (name, 1, 4e-12, 8, 1, 7500, 65, seed, "cuda")
+            for name, (_, _, _, seed) in COIL_CASINGS.items()
+        ),
     }[study]
     return list(cases)
 
@@ -78,7 +94,7 @@ def commands(
     out: Path, revision: str, study: str = "startup", kernels: str = "reference",
 ) -> list[list[str]]:
     result = []
-    window = study in ("window", "domain", "gun")
+    window = study in ("window", "domain", "gun", "casing")
     for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
         case_specs(study, kernels),
     ):
@@ -111,6 +127,13 @@ def commands(
                 "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
                 "--gun-radius", str(radius),
             ]
+        if study == "casing":
+            (width, bottom, top), casing, voltage, _ = COIL_CASINGS[name]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+                "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(casing),
+                "--casing-voltage", str(voltage),
+            ]
     return result
 
 
@@ -119,7 +142,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--case-timeout", type=float, default=900)
     parser.add_argument(
-        "--study", choices=("startup", "refinement", "acceptance", "window", "domain", "gun"),
+        "--study", choices=("startup", "refinement", "acceptance", "window", "domain", "gun", "casing"),
         default="startup",
     )
     parser.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
@@ -165,6 +188,12 @@ def main() -> None:
             "barrel radius 0.04a/0.06a/0.10a, a second seed and a 97-node mesh at 1.95a. "
             "Tests whether a fixed emitter reference removes the bottom-wall sensitivity. "
             "Grounded outer box, imposed two-coil field, electron-only."
+        ) if args.study == "gun" else (
+            "CUDA 1 A absorbing toroidal coil casings, 300 ns, grounded 0.06a gun barrel with the "
+            "lower wall at 1.95a: no casings in the coil-bounded 0.6a box versus 0.15a casings in "
+            "1.2a and 1.275a boxes, 0.20a casings, casings at +1 kV and -1 kV, a second seed and "
+            "a farther top wall. Tests whether the side-wall sensitivity survives once the box "
+            "encloses the coils. Imposed two-coil field, electron-only."
         ),
         "study": args.study, "kernels": args.kernels,
         "cases": [

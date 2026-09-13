@@ -91,6 +91,18 @@ class CampaignTests(unittest.TestCase):
             validate(item)
             self.assertEqual((item.current_a, item.duration, item.kernels), (1, 3e-7, "cuda"))
 
+    def test_casing_study_encloses_the_coils(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "casing")
+        configurations = [parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        control, *cased = configurations
+        self.assertEqual((control.box_half_width, control.casing_radius), (0.6, 0))
+        self.assertTrue(all(item.casing_radius > 0 and item.box_half_width > 1 for item in cased))
+        self.assertEqual(sorted({item.casing_voltage for item in cased}), [-1000, 0, 1000])
+        for item in configurations:
+            validate(item)
+            self.assertEqual((item.gun_radius, item.box_bottom, item.kernels), (0.06, 1.95, "cuda"))
+
 
 if __name__ == "__main__":
     unittest.main()

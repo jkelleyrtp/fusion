@@ -172,15 +172,37 @@ class Cylinder:
         return (along >= 0) & (along <= self.length) & (radial <= self.radius ** 2)
 
 
-class Conductors:
-    """Interior mesh nodes held at fixed potentials by induced nodal charge (capacitance matrix).
+@dataclass(frozen=True)
+class Torus:
+    """Solid torus around the z axis: tube of `minor_radius` about the circle of `major_radius` at `center_z`."""
 
-    Each solve adds the induced charge that restores the conductor potentials to the grounded-box
-    solution and solves again, so conductor nodes reach their voltages to roundoff.
+    center_z: float
+    major_radius: float
+    minor_radius: float
+    voltage: float = 0.0
+
+    def __post_init__(self) -> None:
+        if not 0 < self.minor_radius < self.major_radius:
+            raise ValueError("Torus needs 0 < minor radius < major radius")
+
+    def contains(self, points: torch.Tensor) -> torch.Tensor:
+        radial = torch.hypot(points[:, 0], points[:, 1]) - self.major_radius
+        return radial.square() + (points[:, 2] - self.center_z).square() <= self.minor_radius ** 2
+
+
+Shape = Cylinder | Torus
+
+
+class Conductors:
+    """Conductor surface nodes held at fixed potentials by induced nodal charge (capacitance matrix).
+
+    Only nodes inside a shape with a node outside every shape among their 26 neighbours are held;
+    enclosed nodes then carry no charge and follow at the conductor voltage. Each solve adds the
+    induced charge that restores the held potentials and solves again.
     """
 
     def __init__(
-        self, mesh: ElectrostaticMesh, shapes: tuple[Cylinder, ...],
+        self, mesh: ElectrostaticMesh, shapes: tuple[Shape, ...],
         potential: Callable[[torch.Tensor], torch.Tensor],
     ) -> None:
         self.mesh = mesh
@@ -196,7 +218,9 @@ class Conductors:
         interior = torch.zeros(mesh.shape, dtype=torch.bool, device=mesh.lower.device)
         interior[1:-1, 1:-1, 1:-1] = True
         owner = self.absorbing(nodes)
-        self.indices = torch.nonzero((owner >= 0) & interior.flatten()).flatten()
+        outside = (owner < 0).reshape(1, 1, *mesh.shape).to(torch.float64)
+        surface = torch.nn.functional.max_pool3d(outside, 3, stride=1, padding=1).flatten() > 0
+        self.indices = torch.nonzero((owner >= 0) & surface & interior.flatten()).flatten()
         self.owner = owner[self.indices]
         self.node_counts = torch.bincount(self.owner, minlength=len(shapes)).tolist()
         self.voltage = mesh.lower.new_tensor([shape.voltage for shape in shapes])[self.owner]
@@ -206,7 +230,8 @@ class Conductors:
             unit[node] = 1.0
             capacitance[:, column] = potential(unit.reshape(mesh.shape)).flatten()[self.indices]
             unit[node] = 0.0
-        self._factor = torch.linalg.cholesky(0.5 * (capacitance + capacitance.T))
+        capacitance = 0.5 * (capacitance + capacitance.T)
+        self._inverse = torch.cholesky_inverse(torch.linalg.cholesky(capacitance))
 
     def absorbing(self, points: torch.Tensor) -> torch.Tensor:
         """Index of the first shape containing each point, or -1."""
@@ -221,8 +246,6 @@ class Conductors:
         induced_total = charge.new_zeros(len(self.shapes))
         if not len(self.indices):
             return free, induced_total
-        induced = torch.cholesky_solve(
-            (self.voltage - free.flatten()[self.indices])[:, None], self._factor,
-        )[:, 0]
+        induced = self._inverse @ (self.voltage - free.flatten()[self.indices])
         total = charge.flatten().index_add(0, self.indices, induced).reshape(self.mesh.shape)
         return self._potential(total), induced_total.index_add_(0, self.owner, induced)

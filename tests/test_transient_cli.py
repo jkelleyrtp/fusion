@@ -130,9 +130,14 @@ class TransientCLITests(unittest.TestCase):
             ("--diagnostic-every", "-1"), ("--box-half-width", "0.25"),
             ("--box-bottom", "1.2"), ("--box-top", "0.2"), ("--box-half-width", "0.5"),
             ("--gun-radius", "0.1"), ("--gun-radius", "-1"),
+            ("--casing-radius", "-0.1"), ("--casing-radius", "0.5"), ("--casing-radius", "0.2"),
+            ("--casing-voltage", "nan"),
         ]:
             with self.subTest(option=option, value=value), self.assertRaises(ValueError):
                 validate(arguments(Path("unused"), option, value))
+        for extra in (("--box-half-width", "0.75"), ("--box-half-width", "1.2", "--casing-radius", "0.2")):
+            with self.subTest(extra=extra), self.assertRaises(ValueError):
+                validate(arguments(Path("unused"), *extra))
 
     def test_box_extensions_keep_reference_cells(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -179,6 +184,33 @@ class TransientCLITests(unittest.TestCase):
             inside = (-relative[..., 2] >= 0) & (np.hypot(relative[..., 0], relative[..., 1]) <= 0.15)
             self.assertLess(np.abs(potential[inside]).max(), 1e-9)
             self.assertLess(potential.min(), -1e-9)
+
+    def test_coil_casings_hold_voltage_and_absorb(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "casings"
+            with contextlib.redirect_stdout(io.StringIO()):
+                history = run(arguments(
+                    root, "--nodes", "17", "--box-half-width", "1.35", "--casing-radius", "0.3",
+                    "--casing-voltage", "-500", "--coil-current", "30000", "--dt", "4e-12",
+                    "--duration", "2e-11", "--save-every", "5", "--current-a", "1e-3",
+                ))
+            configuration = json.loads((root / "configuration.json").read_text())
+            self.assertEqual(configuration["conductor_names"], ["casing_lower", "casing_upper"])
+            self.assertEqual(configuration["mesh_shape"], [37, 37, 17])
+            casings = configuration["coil_casings"]
+            self.assertEqual([casing["center_z_m"] for casing in casings], [-0.25, 0.25])
+            self.assertTrue(all(casing["nodes"] > 0 and casing["voltage_V"] == -500 for casing in casings))
+            self.assertIn("toroidal coil casings", configuration["boundary"])
+            self.assertLess(configuration["magnetic_table_max_T"], 1)
+            final = history[-1]
+            self.assertEqual(final["conductor_exit_counts"], [0, 0])
+            self.assertTrue(all(charge < 0 for charge in final["conductor_charge_C"]))
+            with np.load(root / final["snapshot"]) as state:
+                lower, upper, potential = state["lower_m"], state["upper_m"], state["potential_V"]
+            axes = [np.linspace(lower[i], upper[i], potential.shape[i]) for i in range(3)]
+            x, y, z = np.meshgrid(*axes, indexing="ij")
+            tube = (np.hypot(x, y) - 0.5) ** 2 + np.minimum((z + 0.25) ** 2, (z - 0.25) ** 2) <= 0.15 ** 2
+            np.testing.assert_allclose(potential[tube], -500, atol=1e-8)
 
     def test_backwards_sample_rejected(self):
         position = torch.tensor([[0, 0.004, -0.65]] * 2, dtype=torch.float64)

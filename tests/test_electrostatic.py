@@ -12,6 +12,7 @@ from electrostatic import (
     Conductors,
     Cylinder,
     ElectrostaticMesh,
+    Torus,
     clip_segment,
     sphere_segment_fraction,
 )
@@ -136,6 +137,26 @@ class ElectrostaticTests(unittest.TestCase):
         self.assertLess(float(induced[0]), 1e-12)
         points = torch.tensor([[0, 0, 0], [0.6, 0, -0.3], [0.9, 0.9, 0.9]], dtype=torch.float64)
         self.assertEqual(conductors.absorbing(points).tolist(), [0, 1, -1])
+
+    def test_torus_surface_nodes_hold_the_enclosed_volume(self) -> None:
+        mesh = self.mesh(25)
+        torus = Torus(0.2, 0.55, 0.3, voltage=250.0)
+        points = torch.tensor([[0.55, 0, 0.2], [0, 0.8, 0.2], [0, 0, 0.2], [0.55, 0, 0.55]],
+                              dtype=torch.float64)
+        self.assertEqual(torus.contains(points).tolist(), [True, True, False, False])
+        conductors = Conductors(mesh, (torus,), mesh.potential)
+        axes = [torch.linspace(-1, 1, 25, dtype=torch.float64)] * 3
+        nodes = torch.stack(torch.meshgrid(*axes, indexing="ij"), dim=-1).reshape(-1, 3)
+        inside = torus.contains(nodes)
+        self.assertLess(len(conductors.indices), int(inside.sum()))
+        charge = mesh.deposit(points[2:3], torch.tensor([-1e-12], dtype=torch.float64))
+        potential, induced = conductors.potential(charge)
+        torch.testing.assert_close(
+            potential.flatten()[inside], potential.new_full((int(inside.sum()),), 250.0), rtol=0, atol=1e-8,
+        )
+        self.assertGreater(float(induced[0]), 0)
+        with self.assertRaises(ValueError):
+            Torus(0, 0.3, 0.3)
 
     def test_segment_absorption_and_core_crossing(self) -> None:
         mesh = self.mesh()

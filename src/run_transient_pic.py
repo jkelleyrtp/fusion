@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 from cusp_sim import E_CHARGE, M_E, QM, TorchPusher, ring_field_on_grid
-from electrostatic import Conductors, Cylinder, ElectrostaticMesh
+from electrostatic import Conductors, Cylinder, ElectrostaticMesh, Shape, Torus
 from pic_cuda import CUDAKernels
 from pic_kernels import ReferenceKernels
 from steady_space_charge import thermal_source
@@ -39,6 +39,10 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--gun-radius", type=float, default=0,
                         help="radius in coil radii of a grounded, absorbing gun barrel behind the "
                              "emitter; 0 leaves the gun on the lower wall only")
+    result.add_argument("--casing-radius", type=float, default=0,
+                        help="minor radius in coil radii of absorbing toroidal coil casings; 0 omits them")
+    result.add_argument("--casing-voltage", type=float, default=0,
+                        help="casing potential in volts relative to the grounded box and emitter")
     result.add_argument("--energy-ev", type=float, default=5000)
     result.add_argument("--temperature-ev", type=float, default=0.2)
     result.add_argument("--aim-deg", type=float, default=30)
@@ -79,6 +83,12 @@ def validate(args: argparse.Namespace) -> int:
         raise ValueError("Box must contain the core and the gun")
     if args.gun_radius < 0 or (args.gun_radius > 0 and args.box_bottom == 1.3):
         raise ValueError("A gun barrel needs a positive radius and the lower wall behind the gun")
+    if not 0 <= args.casing_radius < 0.5 or not math.isfinite(args.casing_voltage):
+        raise ValueError("Casing radius must be in [0, 0.5) coil radii with a finite voltage")
+    if args.casing_radius and args.box_half_width <= 1 + args.casing_radius:
+        raise ValueError("Coil casings must lie inside the box")
+    if not args.casing_radius and args.box_half_width * math.sqrt(2) >= 1:
+        raise ValueError("Coil windings inside the box need casings")
     mesh_shape(args)
     ratio = args.duration / args.dt
     if not math.isfinite(ratio):
@@ -161,6 +171,13 @@ def gun_barrel(args: argparse.Namespace) -> Cylinder:
     )
 
 
+def coil_casings(args: argparse.Namespace) -> tuple[Torus, ...]:
+    a = args.radius
+    return tuple(
+        Torus(z * a, a, args.casing_radius * a, args.casing_voltage) for z in (-0.5, 0.5)
+    ) if args.casing_radius else ()
+
+
 def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]:
     device = torch.device(args.device)
     a = args.radius
@@ -186,7 +203,12 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         r, z, a, [-0.5 * a, 0.5 * a],
         [args.coil_current, -args.coil_current], 720, device,
     )
-    bmax = float(torch.sqrt(br.square() + bz.square()).max())
+    table = torch.stack(torch.meshgrid(r, z, indexing="ij"), dim=-1).reshape(-1, 2)
+    windings = torch.zeros(len(table), dtype=torch.bool, device=device)
+    for casing in coil_casings(args):
+        windings |= casing.contains(torch.nn.functional.pad(table, (1, 0))[:, [1, 0, 2]])
+    magnitude = torch.sqrt(br.square() + bz.square()).T.reshape(-1)
+    bmax = float(magnitude[~windings].max())
     if not math.isfinite(bmax):
         raise ValueError("Nonfinite magnetic field table")
     if abs(QM) * bmax * min(args.dt, args.duration) > 2 * math.pi / 80:
@@ -202,13 +224,19 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
     else:
         kernels = ReferenceKernels(mesh)
         magnetic_field = pusher.field
-    conductors = Conductors(mesh, (gun_barrel(args),), kernels.potential) if args.gun_radius else None
-    if conductors is not None and conductors.node_counts[0] == 0:
-        raise ValueError("Gun barrel is unresolved on this mesh")
+    shapes: tuple[Shape, ...] = ((gun_barrel(args),) if args.gun_radius else ()) + coil_casings(args)
+    setup_start = time.perf_counter()
+    conductors = Conductors(mesh, shapes, kernels.potential) if shapes else None
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+    conductor_setup_s = time.perf_counter() - setup_start
+    if conductors is not None and 0 in conductors.node_counts:
+        raise ValueError("A conductor is unresolved on this mesh")
     simulation = PIC(
         mesh, magnetic_field, 0.25 * a, args.max_live_particles, args.track, kernels=kernels,
         conductors=conductors,
     )
+    counts = [] if conductors is None else conductors.node_counts
     origin, direction = source_geometry(args)
     source_field = pusher.field(lower.new_tensor([origin]))[0]
     source_norm = float(source_field.norm())
@@ -236,14 +264,24 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         "boundary": (
             "grounded rectangular box; absorbing particle walls"
             + ("; gun inside the box, not on its lower wall" if args.box_bottom > 1.3 else "")
-            + (f"; grounded absorbing gun barrel, {conductors.node_counts[0]} nodes, emitter on "
-               "its front face" if conductors else "")
+            + (f"; grounded absorbing gun barrel, {counts[0]} surface nodes, emitter on its front face"
+               if args.gun_radius else "")
+            + (f"; absorbing toroidal coil casings at {args.casing_voltage:g} V, surface nodes "
+               f"{counts[-2:]}" if args.casing_radius else "")
         ),
-        "gun_barrel": None if conductors is None else {
+        "conductor_setup_s": conductor_setup_s,
+        "conductor_names": (["gun_barrel"] if args.gun_radius else [])
+        + (["casing_lower", "casing_upper"] if args.casing_radius else []),
+        "gun_barrel": {
             "front_m": list(gun_barrel(args).start), "axis": list(gun_barrel(args).axis),
             "length_m": gun_barrel(args).length, "radius_m": gun_barrel(args).radius,
-            "voltage_V": 0.0, "nodes": conductors.node_counts[0],
-        },
+            "voltage_V": 0.0, "nodes": counts[0],
+        } if args.gun_radius else None,
+        "coil_casings": [
+            {"center_z_m": casing.center_z, "major_radius_m": casing.major_radius,
+             "minor_radius_m": casing.minor_radius, "voltage_V": casing.voltage, "nodes": nodes}
+            for casing, nodes in zip(coil_casings(args), counts[-2:], strict=False)
+        ],
         "charge_deposition": "instantaneous CIC; no residence weighting",
         "energy_balance": "K + U + lost kinetic - injected kinetic; not a power budget",
         "tracking": "first stable particle IDs; includes terminal wall positions",
