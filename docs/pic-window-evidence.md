@@ -113,7 +113,7 @@ single-GPU profile at ~60k live particles measured 2.24 ms per step. The
 difference between concurrent long-window and isolated profile timings is being
 measured separately (see `docs/pic-cuda-evidence.md`).
 
-## Grounded-box sensitivity (design)
+## Grounded-box sensitivity
 
 `run_pic_campaign.py --study domain` repeats the 65³ long-window case (1 A,
 5 keV, 30 kA-turn, seed 1234, 4 ps, 300 ns, CUDA) in eight grounded boxes.
@@ -148,3 +148,55 @@ Two geometric constraints shape the matrix:
 reference box, the final-snapshot potential at the origin, the minimum inside
 the core sphere and the global minimum with their positions. This is a
 sensitivity check with one seed per box, not a convergence certificate.
+
+### Results
+
+Job `jonathan-pic-4af1720882ba-488610` at source `1a9dab6`: all eight cases
+wrote `DONE` with exit code 0 in about seven minutes on one B200 node. Window
+means cover 200–300 ns. Final fields are the 300 ns snapshot.
+
+| Case | Window min φ | Field energy | Core residence | Loss | ≥2 core entries | Inlet-face share of losses | φ at origin | Core min φ | φ at gun |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| reference | −3692 V | 58.3 µJ | 17.4 ns | 0.818 | 0.185 | 0.69 | −2758 V | −2921 V | 0 V |
+| width 0.525 | −3661 V | 55.0 µJ | 16.8 ns | 0.823 | 0.185 | 0.67 | −2525 V | −2698 V | 0 V |
+| width 0.45 | −3623 V | 51.3 µJ | 16.0 ns | 0.828 | 0.182 | 0.65 | −2277 V | −2437 V | 0 V |
+| top 1.95 | −3696 V | 58.9 µJ | 17.5 ns | 0.813 | 0.185 | 0.69 | −2760 V | −2919 V | 0 V |
+| top 2.6 | −3696 V | 59.0 µJ | 17.4 ns | 0.807 | 0.185 | 0.70 | −2728 V | −2908 V | 0 V |
+| bottom 1.625 | −4229 V | 85.8 µJ | 22.3 ns | 0.773 | 0.283 | 0.43 | −3455 V | −3627 V | −1862 V |
+| bottom 1.95 | −4239 V | 86.3 µJ | 22.3 ns | 0.768 | 0.285 | 0.41 | −3460 V | −3643 V | −1935 V |
+| bottom 1.95, top 2.6 | −4237 V | 87.7 µJ | 22.4 ns | 0.749 | 0.285 | 0.42 | −3474 V | −3636 V | −1940 V |
+
+Charge balance stayed within 5e−19 C and deposition error within 5e−23 C in
+every case.
+
+![Domain evolution](images/pic-domain-evolution.png)
+![Domain fields](images/pic-domain-fields.png)
+
+Data: `docs/data/pic-domain-1a9dab6.json`.
+
+### Interpretation
+
+- **Top wall: not limiting.** Doubling the distance above the midplane changes
+  core residence and core potential by under 1% and the window minimum by 0.1%.
+  Total live electrons rise 3–6%: particles leaving upward spend longer in the
+  box before absorption, outside the core.
+- **Transverse walls: material and not saturated.** Pulling the side walls in
+  from 0.6a to 0.45a raises the core potential by 17% (−2921 → −2437 V) and
+  cuts core residence by 8%, with successive steps of similar size. The
+  reference box is therefore not converged transversely, and it cannot grow:
+  the coil windings sit just outside it. Resolving this needs the coil casings
+  inside the solved domain as conductors and absorbers.
+- **Bottom wall: a source-definition effect, not a domain effect.** The source
+  is defined as a post-extraction inlet on a grounded wall, injecting 5 keV
+  kinetic energy. Once the wall moves behind the gun, the beam's own space
+  charge holds the injection point at −1.9 kV, so electrons carry 1.9 keV more
+  total energy than in the reference box. That shifts the returning-beam loss
+  from the inlet face (69% → 42% of losses) to the top face, adds 28% core
+  residence, and raises the repeated-entry fraction from 18.5% to 28.5%. The
+  change saturates between 1.625a and 1.95a, which is what an energy offset,
+  rather than a wall-distance effect, would do. These cases do not model a
+  physical gun: there is no gun body and no fixed cathode reference.
+- Consequence: the reference-box well depth depends on the transverse wall and
+  on where the source's energy is referenced. Well-depth claims need a gun
+  electrode held at a fixed potential and the coil casings inside the domain.
+  Those are the next boundary-model steps.
