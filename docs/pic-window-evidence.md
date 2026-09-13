@@ -228,8 +228,8 @@ above is still present.
 
 Job `jonathan-pic-c10065923288-89ef7d` at source `52fcfac`: all eight cases
 wrote `DONE` with exit code 0, 263 s of wall time for the 65-node barrel cases.
-Window means cover 200–300 ns; relative standard deviations are ≤1.4% and
-drifts ≤4.4% per 100 ns.
+Window means cover 200–300 ns; relative standard deviations are ≤1.7% and
+drifts ≤5.1% per 100 ns, so these are near-stationary but not fully settled.
 
 | Case | Window min φ | Field energy | Residence | Core residence | Loss | ≥2 core entries | Barrel share of losses | φ at emitter |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
