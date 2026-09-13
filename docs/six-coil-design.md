@@ -34,8 +34,9 @@ coils are ideal filaments of radius a inside toroidal casings.
   reference PIC run.
 - `validate_pic_gpu.py` preflight: CUDA field lookup against the reference superposition at
   65,536 seeded box points excluding casings, `rtol=1e-10`. The CPU reference side passes
-  (62,721 points, maximum 0.159 T, below the 0.223 T allowed by 80 steps per gyration at 2 ps);
-  the CUDA comparison runs in the campaign preflight.
+  (62,721 points, maximum 0.159 T, below the 0.223 T allowed by 80 steps per gyration at 2 ps),
+  and the CUDA lookup matched it on a B200 in the campaign preflight (job
+  `jonathan-pic-e169c8cb23b9`, source `23e5800`).
 
 ## Conductor memory
 
