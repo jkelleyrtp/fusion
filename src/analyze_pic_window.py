@@ -8,6 +8,7 @@ from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import LogNorm
 
 from analyze_pic_startup import Record, field_summary, scalar
 from cusp_sim import E_CHARGE
@@ -153,14 +154,15 @@ def plot_fields(run: Path, output: Path, names: tuple[str, ...]) -> None:
         coordinates = [np.linspace(lower[axis], upper[axis], potential.shape[axis]) for axis in range(3)]
         cell_volume = np.prod([(upper[axis] - lower[axis]) / (potential.shape[axis] - 1) for axis in range(3)])
         center_y = potential.shape[1] // 2
+        density = np.maximum(-charge[:, center_y, :] / cell_volume / E_CHARGE, 0)
         images = (
             axes[0, column].pcolormesh(coordinates[2], coordinates[0], potential[:, center_y, :],
                                        cmap="viridis", shading="auto"),
-            axes[1, column].pcolormesh(coordinates[2], coordinates[0], -charge[:, center_y, :] / cell_volume / E_CHARGE,
-                                       cmap="magma", shading="auto"),
+            axes[1, column].pcolormesh(coordinates[2], coordinates[0], density, cmap="magma", shading="auto",
+                                       norm=LogNorm(vmin=1e-4 * density.max(), vmax=density.max())),
         )
         figure.colorbar(images[0], ax=axes[0, column], label="Potential (V)")
-        figure.colorbar(images[1], ax=axes[1, column], label="Electron density (m⁻³)")
+        figure.colorbar(images[1], ax=axes[1, column], label="Electron density (m⁻³), log scale")
         axes[0, column].set_title(f"{name}\npotential, y = 0", fontsize=10)
         axes[1, column].set_title(f"{name}\ndeposited density, y = 0", fontsize=10)
         for axis in axes[:, column]:
