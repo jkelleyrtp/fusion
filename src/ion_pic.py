@@ -6,6 +6,9 @@ long ion push in the window-mean electron charge plus the live ion charge. See d
 The neutral density is a static background, pumped residual plus inlet throughput over pump speed,
 plus an optional free-molecular effusive plume from a gas inlet: n(x) = Q cos(theta) / (pi vbar r^2)
 with Q the molecular throughput, theta the angle from the inlet axis and r clamped to the inlet radius.
+
+An optional ion gun injects the same molecular ion species as a monoenergetic beam with Gaussian
+spot radius and angular divergence, in addition to the ions born by electron-impact ionization.
 """
 
 import argparse
@@ -57,6 +60,13 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--cx-cross-section", type=float, default=5e-20, help="m^2")
     result.add_argument("--ion-mass-amu", type=float, default=None, help="defaults to the fuel molecule")
     result.add_argument("--ion-temperature-ev", type=float, default=0.05)
+    result.add_argument("--ion-gun-current", type=float, default=0.0, help="A")
+    result.add_argument("--ion-gun-position", type=float, nargs=3, default=None, help="m")
+    result.add_argument("--ion-gun-direction", type=float, nargs=3, default=None,
+                        help="beam axis; defaults to pointing at the origin")
+    result.add_argument("--ion-gun-energy-ev", type=float, default=100.0)
+    result.add_argument("--ion-gun-divergence-deg", type=float, default=5.0, help="RMS angle per transverse axis")
+    result.add_argument("--ion-gun-radius", type=float, default=5e-3, help="RMS spot size per transverse axis (m)")
     result.add_argument("--secondaries", action=argparse.BooleanOptionalAction, default=True)
     result.add_argument("--secondary-temperature-ev", type=float, default=3.0)
     result.add_argument("--secondary-every", type=int, default=64, help="electron steps per secondary batch")
@@ -98,12 +108,21 @@ def validate_coupled(args: argparse.Namespace) -> Plan:
                          "speed must be positive")
     if args.gas_inlet_throughput and args.gas_inlet is None:
         raise ValueError("Gas inlet throughput requires --gas-inlet")
-    if args.gas_inlet is not None and math.dist(inlet_direction(args), (0, 0, 0)) == 0:
+    if args.gas_inlet is not None and math.dist(aim(args.gas_inlet, args.gas_inlet_direction), (0, 0, 0)) == 0:
         raise ValueError("Gas inlet direction must be nonzero")
+    if args.ion_gun_current and args.ion_gun_position is None:
+        raise ValueError("Ion gun current requires --ion-gun-position")
+    if args.ion_gun_position is not None and math.dist(aim(args.ion_gun_position, args.ion_gun_direction),
+                                                       (0, 0, 0)) == 0:
+        raise ValueError("Ion gun direction must be nonzero")
+    if not (math.isfinite(args.ion_gun_energy_ev) and args.ion_gun_energy_ev > 0
+            and 0 <= args.ion_gun_divergence_deg < 90):
+        raise ValueError("Ion gun energy must be positive and divergence in [0, 90) degrees")
     nonnegative = (args.gas_pa, args.gas_inlet_throughput, args.ionization_scale, args.cx_cross_section,
-                   args.ion_temperature_ev, args.secondary_temperature_ev)
+                   args.ion_temperature_ev, args.secondary_temperature_ev, args.ion_gun_current, args.ion_gun_radius)
     if not all(math.isfinite(value) and value >= 0 for value in nonnegative):
-        raise ValueError("Ionization scale, cross section and temperatures must be nonnegative")
+        raise ValueError("Ionization scale, cross section, temperatures and ion gun current and radius must be "
+                         "nonnegative")
     if (args.cycles < 1 or args.electron_samples < 1 or args.ion_field_every < 1 or args.secondary_every < 1
             or args.save_every_cycles < 1 or args.ions_per_cycle < 1 or args.ion_batches < 1
             or args.ions_per_cycle % args.ion_batches or args.max_live_ions < 1):
@@ -121,8 +140,18 @@ def ion_mass_amu(args: argparse.Namespace) -> float:
     return FUELS[args.fuel][0] if args.ion_mass_amu is None else args.ion_mass_amu
 
 
-def inlet_direction(args: argparse.Namespace) -> tuple[float, ...]:
-    return tuple(-item for item in args.gas_inlet) if args.gas_inlet_direction is None else tuple(args.gas_inlet_direction)
+def aim(position: list[float], direction: list[float] | None) -> tuple[float, ...]:
+    """Source axis: `direction`, or from `position` toward the origin."""
+    return tuple(-item for item in position) if direction is None else tuple(direction)
+
+
+def transverse_basis(axis: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Two unit vectors perpendicular to the unit vector `axis` and to each other."""
+    helper = torch.zeros_like(axis)
+    helper[int(axis.abs().argmin())] = 1
+    first = torch.linalg.cross(axis, helper)
+    first = first / first.norm()
+    return first, torch.linalg.cross(axis, first)
 
 
 def electron_arguments(args: argparse.Namespace, steps: int) -> argparse.Namespace:
@@ -186,11 +215,18 @@ class CoupledPIC:
         self.gas_density = (args.gas_pa + args.gas_inlet_throughput / args.pump_speed) / kt
         self.inlet: tuple[torch.Tensor, torch.Tensor, float] | None = None
         if args.gas_inlet is not None:
-            axis = torch.tensor(inlet_direction(args), dtype=torch.float64, device=device)
+            axis = torch.tensor(aim(args.gas_inlet, args.gas_inlet_direction), dtype=torch.float64, device=device)
             molecule = FUELS[args.fuel][0] * AMU
             speed = math.sqrt(8 * kt / (math.pi * molecule))
             strength = args.gas_inlet_throughput / kt / (math.pi * speed)
             self.inlet = (torch.tensor(args.gas_inlet, dtype=torch.float64, device=device), axis / axis.norm(), strength)
+        self.ion_gun: tuple[torch.Tensor, ...] | None = None
+        if args.ion_gun_position is not None:
+            axis = torch.tensor(aim(args.ion_gun_position, args.ion_gun_direction), dtype=torch.float64, device=device)
+            axis = axis / axis.norm()
+            self.ion_gun = (torch.tensor(args.ion_gun_position, dtype=torch.float64, device=device), axis,
+                            *transverse_basis(axis))
+        self.ion_gun_charge = 0.0
         self.generator = torch.Generator(device=device).manual_seed(args.seed + 7919)
         self.source = GunSource(electron_args)
         self.origin, _ = source_geometry(args)
@@ -298,6 +334,27 @@ class CoupledPIC:
         position = self.pool[(start + torch.arange(count, device=self.pool.device)) % len(self.pool)]
         thermal = math.sqrt(args.ion_temperature_ev * E_CHARGE / self.ion_mass)
         velocity = thermal * torch.randn((count, 3), generator=self.generator, dtype=torch.float64, device=position.device)
+        self.append_ions(position, velocity, weight, potential)
+
+    def inject_gun_ions(self, count: int, potential: torch.Tensor) -> None:
+        """Append `count` ion-gun macroparticles carrying one batch of the gun current."""
+        args = self.args
+        if self.ion_gun is None or not args.ion_gun_current:
+            return
+        if len(self.ions.weight) + count > args.max_live_ions:
+            raise PopulationLimit("ion population reached max-live-ions")
+        origin, axis, first, second = self.ion_gun
+        spot, angle = torch.randn((2, count, 2), generator=self.generator, dtype=torch.float64, device=origin.device)
+        position = origin + args.ion_gun_radius * (spot[:, :1] * first + spot[:, 1:] * second)
+        spread = math.tan(math.radians(args.ion_gun_divergence_deg))
+        direction = axis + spread * (angle[:, :1] * first + angle[:, 1:] * second)
+        speed = math.sqrt(2 * args.ion_gun_energy_ev * E_CHARGE / self.ion_mass)
+        weight = args.ion_gun_current * args.cycle_duration / (E_CHARGE * args.ions_per_cycle)
+        self.append_ions(position, speed * direction / direction.norm(dim=1, keepdim=True), weight, potential)
+        self.ion_gun_charge += E_CHARGE * weight * count
+
+    def append_ions(self, position: torch.Tensor, velocity: torch.Tensor, weight: float, potential: torch.Tensor) -> None:
+        count = len(position)
         weights = position.new_full((count,), weight)
         phi = self.mesh.gather(potential, position)[0]
         zeros = torch.zeros_like(weights)
@@ -385,6 +442,7 @@ class CoupledPIC:
         for step in range(plan.ion_steps):
             if step % plan.batch_every == 0 and step // plan.batch_every < args.ion_batches:
                 self.create_ions(plan.per_batch, weight, potential, step // plan.batch_every * plan.per_batch)
+                self.inject_gun_ions(plan.per_batch, potential)
             self.drift_ions(h / 2)
             if step % args.ion_field_every == 0:
                 ion_charge = self.ion_charge()
@@ -433,6 +491,7 @@ class CoupledPIC:
             "window_mean_core_electron_charge_C": core_electron,
             "electron_residence_s": abs(mean_electron) / args.current_a if args.current_a else None,
             "secondary_injected_charge_C": self.secondary_charge,
+            "ion_gun_injected_charge_C": self.ion_gun_charge,
             "ionization_rate_s": self.rate,
             "neutralization_time_s": abs(mean_electron) / (E_CHARGE * self.rate) if self.rate else None,
             "ion_count": len(ions.weight), "ion_created_count": self.ion_created,
@@ -495,6 +554,17 @@ def run(args: argparse.Namespace) -> list[dict[str, object]]:
         "coupling": "operator-split cycles: electron window on frozen ions, ion push on window-mean electrons",
         "ionization": f"electron impact on {args.fuel}: static background plus effusive inlet plume, Lotz cross section",
         "ion_species": f"{args.fuel}+",
+        "ion_gun": None if simulation.ion_gun is None else {
+            "species": f"{args.fuel}+", "current_A": args.ion_gun_current, "position_m": args.ion_gun_position,
+            "direction": simulation.ion_gun[1].tolist(), "energy_eV": args.ion_gun_energy_ev,
+            "divergence_deg": args.ion_gun_divergence_deg, "radius_m": args.ion_gun_radius,
+        },
+        "gas_inlet": None if args.gas_inlet is None else {
+            "position_m": args.gas_inlet, "direction": aim(args.gas_inlet, args.gas_inlet_direction),
+            "throughput_Pa_m3_s": args.gas_inlet_throughput, "radius_m": args.gas_inlet_radius,
+            "pump_speed_m3_s": args.pump_speed, "temperature_K": args.gas_temperature_k,
+            "model": "free-molecular cosine-law plume, no shadowing or wall reflection",
+        },
         "ion_mass_amu": ion_mass_amu(args),
         "gas_density_m3": simulation.gas_density,
         "gas_density_at_origin_m3": float(simulation.neutral_density(simulation.mesh.lower.new_zeros((1, 3)))[0]),

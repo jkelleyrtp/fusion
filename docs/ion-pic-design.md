@@ -54,8 +54,14 @@ of ion-acoustic dynamics faster than the cycle.
   at 0.1–1 keV. Primary electrons lose no energy to ionization (~5e-4 events per electron
   lifetime at 1e-3 Pa).
 - Ion species: the fuel molecular ion (H2+ or D2+), born with `--ion-temperature-ev`
-  Maxwellian velocity. Dissociative ionization and H3+/D3+ formation are omitted. There is no
-  external ion gun: every ion is born where an electron ionizes the gas.
+  Maxwellian velocity. Dissociative ionization and H3+/D3+ formation are omitted.
+- Ion gun: `--ion-gun-current` injects the same molecular ion species from `--ion-gun-position`
+  along `--ion-gun-direction` (default toward the origin), monoenergetic at `--ion-gun-energy-ev`
+  with Gaussian spot `--ion-gun-radius` and RMS divergence `--ion-gun-divergence-deg` per
+  transverse axis, in the same batches as ionization ions. The energy is the kinetic energy at
+  the emission point, whatever the local potential there. No extraction optics are modelled, so
+  place the gun where the potential is near the intended source reference. A D+ beam in a D2 gas
+  would need a second species with its own charge-to-mass ratio; it is not implemented.
 - Secondary electrons: injected into the electron PIC at the ionization rate from the same
   birth pool, Maxwellian at `--secondary-temperature-ev`; `--no-secondaries` disables them.
   Their population is only captured when their lifetime is short compared with the window.

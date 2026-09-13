@@ -92,6 +92,33 @@ class IonPICTests(unittest.TestCase):
             self.assertGreater(final["ion_created_charge_C"], 0)
             self.assertLess(abs(final["ion_charge_balance_C"]), 1e-9 * final["ion_created_charge_C"])
 
+    def test_ion_gun_beam_energy_direction_and_spread(self):
+        args = arguments(Path("unused"), "--fuel", "D2", "--ion-gun-current", "1e-3", "--ion-gun-position", "0", "0",
+                         "0.05", "--ion-gun-energy-ev", "200", "--ion-gun-divergence-deg", "3")
+        simulation = CoupledPIC(args, validate_coupled(args))
+        simulation.inject_gun_ions(20_000, simulation.mesh.lower.new_zeros(tuple(simulation.mesh.shape)))
+        ions = simulation.ions
+        kinetic = simulation.ion_kinetic_ev()
+        self.assertLess(float((kinetic - 200).abs().max()), 1e-9)
+        direction = ions.velocity / ions.velocity.norm(dim=1, keepdim=True)
+        self.assertLess(float(direction[:, :2].mean(dim=0).norm()), 2e-3)
+        self.assertLess(float(direction[:, 2].max()), -0.9)
+        self.assertAlmostEqual(float(direction[:, 0].std()), math.sin(math.radians(3)), delta=2e-3)
+        self.assertAlmostEqual(simulation.ion_gun_charge, 1e-3 * 1e-7 * 20_000 / 64, delta=1e-20)
+
+    def test_ion_gun_run_accounts_for_charge(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "case"
+            with contextlib.redirect_stdout(io.StringIO()):
+                history = run(arguments(root, "--gas-pa", "1e-6", "--ion-gun-current", "1e-3", "--ion-gun-position",
+                                        "0", "0", "0.05", "--cx-cross-section", "0"))
+            configuration = json.loads((root / "configuration.json").read_text())
+            self.assertEqual(configuration["ion_gun"]["direction"], [0.0, 0.0, -1.0])
+            final = history[-1]
+            self.assertAlmostEqual(final["ion_gun_injected_charge_C"] / (1e-3 * 2 * 1e-7), 1.0, delta=1e-12)
+            self.assertGreaterEqual(final["ion_created_charge_C"], final["ion_gun_injected_charge_C"])
+            self.assertLess(abs(final["ion_charge_balance_C"]), 1e-9 * final["ion_created_charge_C"])
+
     def test_charge_exchange_thermalizes(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "case"
