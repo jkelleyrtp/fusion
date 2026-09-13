@@ -190,7 +190,7 @@ def inject_packet(simulation: PIC, args: argparse.Namespace, step: int) -> None:
     origin, direction = source_geometry(args)
     position, velocity = thermal_source(
         origin, direction, args.energy_ev, args.temperature_ev,
-        args.source_sigma, args.inject_per_step, simulation.mesh.lower.device,
+        args.source_sigma, args.inject_per_step, torch.device("cpu"),
         args.seed + step // args.inject_every, args.divergence_deg,
     )
     if (velocity[:, 2] <= 0).any():
@@ -199,7 +199,8 @@ def inject_packet(simulation: PIC, args: argparse.Namespace, step: int) -> None:
     weight = position.new_full(
         (args.inject_per_step,), args.current_a * pulse_duration / (E_CHARGE * args.inject_per_step),
     )
-    simulation.inject(position, velocity, weight)
+    packet = torch.cat((position, velocity, weight[:, None]), dim=1).to(simulation.mesh.lower.device)
+    simulation.inject(packet[:, :3], packet[:, 3:6], packet[:, 6])
 
 
 def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | str]]:

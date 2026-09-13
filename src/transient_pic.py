@@ -120,8 +120,9 @@ class PIC:
             for tensor in (position, velocity, weight)
         ] + [
             ((weight < 0).any(), "Represented electron counts must be nonnegative"),
+            (((position < self.mesh.lower) | (position > self.mesh.upper)).any(),
+             "Deposit/gather requires positions inside the box"),
         ])
-        self.mesh.check_positions(position)
         ids = torch.arange(
             self.injected_count, self.injected_count + count, device=position.device,
         )

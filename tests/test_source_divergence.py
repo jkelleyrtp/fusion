@@ -63,6 +63,15 @@ class SourceDivergenceTests(unittest.TestCase):
         for actual, expected in zip(first, second, strict=True):
             torch.testing.assert_close(actual, expected, rtol=0, atol=0)
 
+    def test_sampling_leaves_caller_rng_state_unchanged(self):
+        torch.manual_seed(7)
+        expected = torch.rand(10, dtype=torch.float64)
+        torch.manual_seed(7)
+        self.call(0.2, 10.0)
+        torch.testing.assert_close(
+            torch.rand(10, dtype=torch.float64), expected, rtol=0, atol=0
+        )
+
     def test_cold_source_cone_distribution(self):
         count = 20_000
         positions, velocity = self.call(0.0, 20.0, count, sigma=0)
