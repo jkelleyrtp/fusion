@@ -104,7 +104,60 @@ against ~10 ms of GPU kernel time. The remaining launches are validity checks
 Poisson `einsum`. At this particle count further kernel work cannot move the
 step time much; the backend earns its keep at larger live-particle counts.
 
-SCALING_PLACEHOLDER
+### Scaling with live-particle count
+
+`benchmark_pic_scaling.py` (job `jonathan-pic-cuda-03ae418ef610-ef6934`, source
+`bbe3ed3d90126c52b421c1ca7fb1587008110fc1`) times `PIC.advance` alone on one
+B200: 33³ mesh, 4 ps, 20 warm and 100 timed steps, a fixed inside-born 100 eV
+population and no injection. This is a numerical load, not physics evidence.
+
+| Live particles | Reference | CUDA | Speedup |
+|---:|---:|---:|---:|
+| 65,536 | 3.92 ms | 1.28 ms | 3.06× |
+| 1,048,576 | 4.96 ms | 1.29 ms | 3.85× |
+| 4,194,304 | 14.7 ms | 2.50 ms | 5.87× |
+| 16,777,216 | 54.9 ms | 8.33 ms | 6.59× |
+
+CUDA step time is flat to 1M particles, so ~1.3 ms per step is fixed launch
+overhead; it only starts growing between 1M and 4M. At 16.8M particles CUDA
+advances ~2.0e9 particle-steps per second. Data: `docs/data/pic-scaling-bbe3ed3.json`;
+artifacts under
+`/public/devcontainer-shared/jonathan/cusp/runs/pic-cuda-03ae418ef610/attempt-20260912-235430-093002102/`.
+
+### Where the external-gun step goes
+
+Job `jonathan-pic-cuda-e13ec447d701-51f034` (source
+`4813f2b971d816ff15bdb30c03ffec8c28347cc9`) repeats the stage profile and then
+times `inject_packet` and `PIC.advance` separately, synchronizing after each,
+over 500 steps at ~60k live particles:
+
+| Per step | Reference | CUDA | CUDA / reference |
+|---|---:|---:|---:|
+| Plain step | 6.19 ms | 4.38 ms | 0.71 |
+| `inject_packet` (8 electrons) | 1.90 ms | 2.26 ms | 1.19 |
+| `PIC.advance` | 4.63 ms | 2.53 ms | 0.55 |
+
+Artifacts: `/public/devcontainer-shared/jonathan/cusp/runs/pic-cuda-e13ec447d701/attempt-20260912-235830-477520911/`.
+
+Sampling and appending an eight-electron packet costs about as much as advancing
+60k electrons, and it is the same code on both backends: `thermal_source`
+reseeds the global RNG and launches ~40 tiny tensor operations, then
+`inject_packet` and `PIC.inject` each force a host readback for validation.
+The advance itself is 1.83× faster on CUDA here and 3–6.6× faster at
+65k–16.8M particles; the ~1.3 ms fixed launch cost in the advance dominates
+below ~1M particles.
+
+Two ways to remove the injection cost, neither applied:
+
+- Configuration: `--inject-every N` with `N` times more electrons per packet
+  amortizes the sampler to 1/N per step at the same current. At 4 ps steps,
+  `N = 8` gives 32 ps packets, short compared with ~ns transit and dwell times,
+  but it is still a change of packet granularity that needs its own
+  physics-level check.
+- Code: sample packets with a dedicated generator (on the host or batched for
+  many steps) instead of reseeding the global RNG per packet. This changes the
+  sampled stream, so under the repository rules it needs an explicit reviewed
+  injection design before implementation.
 
 ## History: strict long-run parity
 
