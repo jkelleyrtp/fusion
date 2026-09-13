@@ -13,9 +13,18 @@ from analyze_pic_startup import Record, scalar
 
 plt.switch_backend("Agg")
 
-REFERENCE_CASE = "ions_p1e-3"
-PHYSICS_CASES = ("ions_p1e-3", "ions_p1e-3_nocx", "ions_p1e-3_nosec", "ions_p1e-2")
-SPLITTING_CASES = ("ions_p1e-3_dt05", "ions_p1e-3_cycle5", "ions_p1e-3_window80", "ions_p1e-3_ions2x")
+STUDIES = {
+    "two-coil": (
+        ("ions_p1e-3", "ions_p1e-3_nocx", "ions_p1e-3_nosec", "ions_p1e-2"),
+        ("ions_p1e-3_dt05", "ions_p1e-3_cycle5", "ions_p1e-3_window80", "ions_p1e-3_ions2x"),
+        ("ions_p1e-3", "ions_p1e-3_nocx", "ions_p1e-2"),
+    ),
+    "six-coil": (
+        ("ions6_p1e-3", "ions6_p1e-3_s2345", "ions6_p1e-3_300mA", "ions6_p1e-2"),
+        ("ions6_p1e-3_dt05", "ions6_p1e-3_cycle5", "ions6_p1e-3_window80", "ions6_p1e-3_ions2x"),
+        ("ions6_p1e-3", "ions6_p1e-3_300mA", "ions6_p1e-2"),
+    ),
+}
 METRICS = (
     "neutralization_fraction", "core_neutralization_fraction", "potential_origin_V", "potential_min_V",
     "core_mean_potential_V", "window_mean_electron_charge_C", "window_mean_core_electron_charge_C",
@@ -72,13 +81,13 @@ def summarize(name: str, configuration: dict[str, object], history: list[Record]
     }
 
 
-def plot_histories(histories: dict[str, list[Record]], output: Path) -> None:
+def plot_histories(histories: dict[str, list[Record]], physics: tuple[str, ...], output: Path) -> None:
     figure, axes = plt.subplots(2, 3, figsize=(15, 8), constrained_layout=True)
     for axis, (key, label) in zip(axes.flat, PLOTS):
         for name, history in histories.items():
             time = [1e3 * scalar(record, "time_s") for record in history]
             axis.plot(time, [derived(record)[key] for record in history], label=name,
-                      linestyle="-" if name in PHYSICS_CASES else "--")
+                      linestyle="-" if name in physics else "--")
         axis.set_xlabel("time (ms)")
         axis.set_ylabel(label)
         axis.grid(alpha=0.3)
@@ -111,24 +120,27 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run", type=Path)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--study", choices=tuple(STUDIES), default="two-coil")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
-    loaded = {name: load(args.run / name) for name in PHYSICS_CASES + SPLITTING_CASES}
+    physics, splitting, fields = STUDIES[args.study]
+    reference_case = physics[0]
+    loaded = {name: load(args.run / name) for name in physics + splitting}
     summaries = {name: summarize(name, *values) for name, values in loaded.items()}
-    reference = cast(dict[str, float], summaries[REFERENCE_CASE]["last_quarter_mean"])
+    reference = cast(dict[str, float], summaries[reference_case]["last_quarter_mean"])
 
     def relative(name: str) -> dict[str, float | None]:
         means = cast(dict[str, float], summaries[name]["last_quarter_mean"])
         return {key: (means[key] - value) / abs(value) if value else None for key, value in reference.items()}
 
     result = {
-        "run": str(args.run), "reference": REFERENCE_CASE, "cases": summaries,
-        "relative_to_reference": {name: relative(name) for name in summaries if name != REFERENCE_CASE},
+        "run": str(args.run), "reference": reference_case, "cases": summaries,
+        "relative_to_reference": {name: relative(name) for name in summaries if name != reference_case},
     }
     (args.out / "ion-pic-summary.json").write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
     histories = {name: history for name, (_, history) in loaded.items()}
-    plot_histories(histories, args.out / "ion-pic-histories.png")
-    plot_fields(args.run, args.out / "ion-pic-fields.png", ("ions_p1e-3", "ions_p1e-3_nocx", "ions_p1e-2"))
+    plot_histories(histories, physics, args.out / "ion-pic-histories.png")
+    plot_fields(args.run, args.out / "ion-pic-fields.png", fields)
     for name, summary in summaries.items():
         means = cast(dict[str, float], summary["last_quarter_mean"])
         print(f"{name:22s} neut={means['neutralization_fraction']:.3f} "
