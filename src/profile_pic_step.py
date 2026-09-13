@@ -173,10 +173,13 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
     activities = [torch.profiler.ProfilerActivity.CPU]
     if device.type == "cuda":
         activities.append(torch.profiler.ProfilerActivity.CUDA)
+    first += args.timed_steps
     with torch.profiler.profile(activities=activities) as profiler:
-        for _ in range(20):
+        for step in range(first, first + 20):
+            source.inject(simulation, step)
             simulation.advance(h)
             synchronize(device)
+            simulation.time = (step + 1) * args.dt
     profile_dir.mkdir(parents=True, exist_ok=True)
     (profile_dir / f"profile-{args.kernels}.txt").write_text(
         profiler.key_averages().table(sort_by="cuda_time_total", row_limit=40) + "\n",
