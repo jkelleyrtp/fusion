@@ -205,6 +205,19 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual({item.ion_gun_energy_ev for item in guns}, {10, 100, 1000})
         self.assertEqual([item.casing_voltage for item in configurations].count(5000), 1)
 
+    def test_six_coil_deuteron_study_injects_atomic_ions(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-deuteron")
+        configurations = [ion_parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        for item in configurations:
+            validate_coupled(item)
+            self.assertEqual((item.fuel, item.coils, item.current_a, item.gas_pa, item.dissociative_fraction),
+                             ("D2", 6, 1, 1e-5, 0.05))
+        species = [item.ion_gun_species for item in configurations if item.ion_gun_current > 0]
+        self.assertEqual((species.count("atomic"), species.count("molecular")), (6, 1))
+        self.assertEqual({item.coil_current for item in configurations}, {30000, 60000})
+        self.assertEqual({item.seed for item in configurations}, {1234, 2345})
+
 
 if __name__ == "__main__":
     unittest.main()

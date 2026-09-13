@@ -1,4 +1,4 @@
-"""Coupled electron and molecular-ion (H2+ or D2+) PIC with electron-impact ionization of neutral gas.
+"""Coupled electron and ion (H2+/H+ or D2+/D+) PIC with electron-impact ionization of neutral gas.
 
 Cycles alternate a short external-gun electron window, run against the frozen ion charge, with a
 long ion push in the window-mean electron charge plus the live ion charge. See docs/ion-pic-design.md.
@@ -7,8 +7,10 @@ The neutral density is a static background, pumped residual plus inlet throughpu
 plus an optional free-molecular effusive plume from a gas inlet: n(x) = Q cos(theta) / (pi vbar r^2)
 with Q the molecular throughput, theta the angle from the inlet axis and r clamped to the inlet radius.
 
-An optional ion gun injects the same molecular ion species as a monoenergetic beam with Gaussian
-spot radius and angular divergence, in addition to the ions born by electron-impact ionization.
+Ions are molecular (species 0) or atomic (species 1). A fraction `--dissociative-fraction` of
+ionizations produce the atomic ion with `--dissociation-energy-ev` of isotropic kinetic energy. Charge
+exchange on the fuel molecule leaves a thermal molecular ion for either species. An optional ion gun
+injects either species as a monoenergetic beam with Gaussian spot radius and angular divergence.
 """
 
 import argparse
@@ -41,7 +43,8 @@ LOTZ_A_M2_EV2 = 4.5e-18
 H2_IONIZATION_EV = 15.43
 H2_SHELL_ELECTRONS = 2
 SECONDARY_BATCH = 16
-FUELS = {"H2": (2.016, 15.43), "D2": (4.028, 15.47)}  # molecular mass in amu, ionization energy in eV
+FUELS = {"H2": (2.016, 1.008, 15.43), "D2": (4.028, 2.014, 15.47)}  # molecule and atom in amu, ionization eV
+SPECIES = ("molecular", "atomic")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -58,9 +61,14 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--pump-speed", type=float, default=1.0, help="m^3/s")
     result.add_argument("--ionization-scale", type=float, default=1.0)
     result.add_argument("--cx-cross-section", type=float, default=5e-20, help="m^2")
-    result.add_argument("--ion-mass-amu", type=float, default=None, help="defaults to the fuel molecule")
+    result.add_argument("--ion-mass-amu", type=float, default=None, help="molecular ion mass; defaults to the fuel molecule")
+    result.add_argument("--dissociative-fraction", type=float, default=0.0,
+                        help="fraction of ionizations producing the atomic ion")
+    result.add_argument("--dissociation-energy-ev", type=float, default=5.0,
+                        help="isotropic kinetic energy of dissociatively born atomic ions")
     result.add_argument("--ion-temperature-ev", type=float, default=0.05)
     result.add_argument("--ion-gun-current", type=float, default=0.0, help="A")
+    result.add_argument("--ion-gun-species", choices=SPECIES, default="molecular")
     result.add_argument("--ion-gun-position", type=float, nargs=3, default=None, help="m")
     result.add_argument("--ion-gun-direction", type=float, nargs=3, default=None,
                         help="beam axis; defaults to pointing at the origin")
@@ -118,6 +126,9 @@ def validate_coupled(args: argparse.Namespace) -> Plan:
     if not (math.isfinite(args.ion_gun_energy_ev) and args.ion_gun_energy_ev > 0
             and 0 <= args.ion_gun_divergence_deg < 90):
         raise ValueError("Ion gun energy must be positive and divergence in [0, 90) degrees")
+    if not (0 <= args.dissociative_fraction <= 1 and math.isfinite(args.dissociation_energy_ev)
+            and args.dissociation_energy_ev >= 0):
+        raise ValueError("Dissociative fraction must be in [0, 1] and dissociation energy nonnegative")
     nonnegative = (args.gas_pa, args.gas_inlet_throughput, args.ionization_scale, args.cx_cross_section,
                    args.ion_temperature_ev, args.secondary_temperature_ev, args.ion_gun_current, args.ion_gun_radius)
     if not all(math.isfinite(value) and value >= 0 for value in nonnegative):
@@ -138,6 +149,14 @@ def validate_coupled(args: argparse.Namespace) -> Plan:
 
 def ion_mass_amu(args: argparse.Namespace) -> float:
     return FUELS[args.fuel][0] if args.ion_mass_amu is None else args.ion_mass_amu
+
+
+def species_label(args: argparse.Namespace, species: str) -> str:
+    return f"{args.fuel}+" if species == "molecular" else f"{args.fuel[0]}+"
+
+
+def atomic_enabled(args: argparse.Namespace) -> bool:
+    return args.dissociative_fraction > 0 or (args.ion_gun_current > 0 and args.ion_gun_species == "atomic")
 
 
 def aim(position: list[float], direction: list[float] | None) -> tuple[float, ...]:
@@ -180,10 +199,11 @@ class Ions:
     core_time: torch.Tensor
     entries: torch.Tensor
     exchanges: torch.Tensor
+    species: torch.Tensor
 
     def tensors(self) -> tuple[torch.Tensor, ...]:
         return (self.position, self.velocity, self.weight, self.birth, self.birth_potential,
-                self.core_time, self.entries, self.exchanges)
+                self.core_time, self.entries, self.exchanges, self.species)
 
     def select(self, keep: torch.Tensor) -> "Ions":
         return Ions(*(tensor[keep] for tensor in self.tensors()))
@@ -208,8 +228,11 @@ class CoupledPIC:
         device = self.mesh.lower.device
         self.ion_mass = ion_mass_amu(args) * AMU
         self.qm = E_CHARGE / self.ion_mass
+        self.species_mass = torch.tensor((self.ion_mass, FUELS[args.fuel][1] * AMU), dtype=torch.float64, device=device)
+        self.qm_ratio = self.ion_mass / self.species_mass
+        self.max_qm = E_CHARGE / float(self.species_mass[1]) if atomic_enabled(args) else self.qm
         bmax = cast(float, self.configuration["magnetic_table_max_T"])
-        if self.qm * bmax * args.ion_dt > 2 * math.pi / 80:
+        if self.max_qm * bmax * args.ion_dt > 2 * math.pi / 80:
             raise ValueError("Ion timestep requires at least 80 steps per gyration")
         kt = K_B * args.gas_temperature_k
         self.gas_density = (args.gas_pa + args.gas_inlet_throughput / args.pump_speed) / kt
@@ -226,6 +249,7 @@ class CoupledPIC:
             axis = axis / axis.norm()
             self.ion_gun = (torch.tensor(args.ion_gun_position, dtype=torch.float64, device=device), axis,
                             *transverse_basis(axis))
+        self.ion_gun_species = SPECIES.index(args.ion_gun_species)
         self.ion_gun_charge = 0.0
         self.generator = torch.Generator(device=device).manual_seed(args.seed + 7919)
         self.source = GunSource(electron_args)
@@ -235,7 +259,7 @@ class CoupledPIC:
         empty = self.mesh.lower.new_empty(0)
         self.ions = Ions(
             empty.reshape(0, 3), empty.reshape(0, 3), empty.clone(), empty.clone(), empty.clone(),
-            empty.clone(), empty.long(), empty.long(),
+            empty.clone(), empty.long(), empty.long(), empty.long(),
         )
         shapes = 0 if self.conductors is None else len(self.conductors.shapes)
         self.ion_exit_counts = torch.zeros(6 + shapes, device=device, dtype=torch.int64)
@@ -273,7 +297,7 @@ class CoupledPIC:
         charge = self.kernels.deposit(p.position, -E_CHARGE * p.weight)
         speed = p.velocity.norm(dim=1)
         energy_ev = 0.5 * M_E * speed.square() / E_CHARGE
-        sigma = ionization_cross_section(energy_ev, FUELS[self.args.fuel][1])
+        sigma = ionization_cross_section(energy_ev, FUELS[self.args.fuel][2])
         rates = self.neutral_density(p.position) * self.args.ionization_scale * p.weight * sigma * speed
         total = rates.sum()
         if bool((rates < 0).any()):
@@ -334,7 +358,15 @@ class CoupledPIC:
         position = self.pool[(start + torch.arange(count, device=self.pool.device)) % len(self.pool)]
         thermal = math.sqrt(args.ion_temperature_ev * E_CHARGE / self.ion_mass)
         velocity = thermal * torch.randn((count, 3), generator=self.generator, dtype=torch.float64, device=position.device)
-        self.append_ions(position, velocity, weight, potential)
+        species = torch.zeros(count, dtype=torch.long, device=position.device)
+        if args.dissociative_fraction > 0:
+            atomic = torch.rand(count, generator=self.generator, dtype=torch.float64,
+                                device=position.device) < args.dissociative_fraction
+            direction = torch.randn((count, 3), generator=self.generator, dtype=torch.float64, device=position.device)
+            speed = math.sqrt(2 * args.dissociation_energy_ev * E_CHARGE / float(self.species_mass[1]))
+            velocity = torch.where(atomic[:, None], speed * direction / direction.norm(dim=1, keepdim=True), velocity)
+            species = atomic.long()
+        self.append_ions(position, velocity, weight, potential, species)
 
     def inject_gun_ions(self, count: int, potential: torch.Tensor) -> None:
         """Append `count` ion-gun macroparticles carrying one batch of the gun current."""
@@ -348,25 +380,32 @@ class CoupledPIC:
         position = origin + args.ion_gun_radius * (spot[:, :1] * first + spot[:, 1:] * second)
         spread = math.tan(math.radians(args.ion_gun_divergence_deg))
         direction = axis + spread * (angle[:, :1] * first + angle[:, 1:] * second)
-        speed = math.sqrt(2 * args.ion_gun_energy_ev * E_CHARGE / self.ion_mass)
+        speed = math.sqrt(2 * args.ion_gun_energy_ev * E_CHARGE / float(self.species_mass[self.ion_gun_species]))
         weight = args.ion_gun_current * args.cycle_duration / (E_CHARGE * args.ions_per_cycle)
-        self.append_ions(position, speed * direction / direction.norm(dim=1, keepdim=True), weight, potential)
+        species = torch.full((count,), self.ion_gun_species, dtype=torch.long, device=origin.device)
+        self.append_ions(position, speed * direction / direction.norm(dim=1, keepdim=True), weight, potential, species)
         self.ion_gun_charge += E_CHARGE * weight * count
 
-    def append_ions(self, position: torch.Tensor, velocity: torch.Tensor, weight: float, potential: torch.Tensor) -> None:
+    def append_ions(
+        self, position: torch.Tensor, velocity: torch.Tensor, weight: float, potential: torch.Tensor,
+        species: torch.Tensor,
+    ) -> None:
         count = len(position)
         weights = position.new_full((count,), weight)
         phi = self.mesh.gather(potential, position)[0]
         zeros = torch.zeros_like(weights)
         self.ions = self.ions.cat(Ions(
             position, velocity, weights, position.new_full((count,), self.time), phi, zeros.clone(),
-            zeros.long(), zeros.long(),
+            zeros.long(), zeros.long(), species,
         ))
         self.ion_totals[0] += E_CHARGE * weight * count
         self.ion_created += count
 
     def ion_kinetic_ev(self) -> torch.Tensor:
-        return 0.5 * self.ion_mass * self.ions.velocity.square().sum(dim=1) / E_CHARGE
+        return self.kinetic_j(self.ions) / E_CHARGE
+
+    def kinetic_j(self, ions: Ions) -> torch.Tensor:
+        return 0.5 * self.species_mass[ions.species] * ions.velocity.square().sum(dim=1)
 
     def drift_ions(self, h: float) -> None:
         ions = self.ions
@@ -387,7 +426,7 @@ class CoupledPIC:
             return
         lost = ions.select(hit)
         self.ion_totals[1] += E_CHARGE * lost.weight.sum()
-        self.ion_totals[2] += (0.5 * self.ion_mass * lost.weight * lost.velocity.square().sum(dim=1)).sum()
+        self.ion_totals[2] += (lost.weight * self.kinetic_j(lost)).sum()
         distances = torch.stack((
             (lost.position - self.mesh.lower).abs() / self.mesh.h,
             (lost.position - self.mesh.upper).abs() / self.mesh.h,
@@ -410,17 +449,26 @@ class CoupledPIC:
         replacement = thermal * torch.randn(ions.velocity.shape, generator=self.generator, dtype=torch.float64,
                                             device=speed.device)
         mask = exchanged[:, None]
-        self.ion_totals[3] += (0.5 * self.ion_mass * ions.weight * exchanged * (
-            ions.velocity.square().sum(dim=1) - replacement.square().sum(dim=1))).sum()
+        self.ion_totals[3] += (ions.weight * exchanged * (
+            self.kinetic_j(ions) - 0.5 * self.ion_mass * replacement.square().sum(dim=1))).sum()
         ions.velocity = torch.where(mask, replacement, ions.velocity)
+        ions.species = torch.where(exchanged, 0, ions.species)
         ions.exchanges += exchanged.long()
         self.ion_exchanges += exchanged.sum()
+
+    def accelerate(self, potential: torch.Tensor, h: float) -> None:
+        """Boris velocity update; per-species charge-to-mass enters as a scale on E and B at the molecular q/m."""
+        ions = self.ions
+        ratio = self.qm_ratio[ions.species][:, None]
+        electric = ratio * self.kernels.gather(potential, ions.position)
+        magnetic = ratio * self.electrons.magnetic_field(ions.position)
+        ions.velocity = self.kernels.boris(ions.velocity, electric, magnetic, h, self.qm)
 
     def check_ions(self, h: float, charge: torch.Tensor) -> None:
         if not len(self.ions.weight):
             return
         speed = self.ions.velocity.norm(dim=1).max()
-        omega = torch.sqrt(charge.clamp(min=0).max() / (self.mesh.volume * EPSILON_0) * self.qm)
+        omega = torch.sqrt(charge.clamp(min=0).max() / (self.mesh.volume * EPSILON_0) * self.max_qm)
         speeding, oscillating, finite = torch.stack((
             speed * h > 0.2 * self.mesh.h.min(), omega * h > 0.1, torch.isfinite(speed),
         )).tolist()
@@ -448,11 +496,8 @@ class CoupledPIC:
                 ion_charge = self.ion_charge()
                 self.check_ions(h, ion_charge)
                 potential = self.potential(electron_charge + ion_charge)
-            ions = self.ions
-            if len(ions.weight):
-                electric = self.kernels.gather(potential, ions.position)
-                magnetic = self.electrons.magnetic_field(ions.position)
-                ions.velocity = self.kernels.boris(ions.velocity, electric, magnetic, h, self.qm)
+            if len(self.ions.weight):
+                self.accelerate(potential, h)
                 self.exchange(h)
             self.drift_ions(h / 2)
             ions = self.ions
@@ -495,6 +540,8 @@ class CoupledPIC:
             "ionization_rate_s": self.rate,
             "neutralization_time_s": abs(mean_electron) / (E_CHARGE * self.rate) if self.rate else None,
             "ion_count": len(ions.weight), "ion_created_count": self.ion_created,
+            "atomic_ion_count": int(ions.species.sum()),
+            "atomic_ion_alive_charge_C": float(E_CHARGE * (ions.weight * ions.species).sum()),
             "ion_created_charge_C": created, "ion_lost_charge_C": lost, "ion_alive_charge_C": alive_ion_charge,
             "ion_charge_balance_C": created - lost - alive_ion_charge,
             "ion_deposition_error_C": float(ion_charge.sum()) - alive_ion_charge,
@@ -529,6 +576,7 @@ class CoupledPIC:
             "ion_position_m": ions.position, "ion_velocity_m_s": ions.velocity, "ion_count": ions.weight,
             "ion_birth_s": ions.birth, "ion_birth_potential_V": ions.birth_potential,
             "ion_core_time_s": ions.core_time, "ion_core_entries": ions.entries, "ion_exchanges": ions.exchanges,
+            "ion_species": ions.species,
             "lower_m": self.mesh.lower, "upper_m": self.mesh.upper,
         }
         name = f"cycle-{cycle:05d}.npz"
@@ -554,8 +602,14 @@ def run(args: argparse.Namespace) -> list[dict[str, object]]:
         "coupling": "operator-split cycles: electron window on frozen ions, ion push on window-mean electrons",
         "ionization": f"electron impact on {args.fuel}: static background plus effusive inlet plume, Lotz cross section",
         "ion_species": f"{args.fuel}+",
+        "atomic_ion_species": species_label(args, "atomic"),
+        "atomic_ion_mass_amu": FUELS[args.fuel][1],
+        "dissociative_ionization": {
+            "fraction": args.dissociative_fraction, "atomic_energy_eV": args.dissociation_energy_ev,
+            "model": "fixed branching ratio, isotropic monoenergetic atomic ion, neutral atom not tracked",
+        },
         "ion_gun": None if simulation.ion_gun is None else {
-            "species": f"{args.fuel}+", "current_A": args.ion_gun_current, "position_m": args.ion_gun_position,
+            "species": species_label(args, args.ion_gun_species), "current_A": args.ion_gun_current, "position_m": args.ion_gun_position,
             "direction": simulation.ion_gun[1].tolist(), "energy_eV": args.ion_gun_energy_ev,
             "divergence_deg": args.ion_gun_divergence_deg, "radius_m": args.ion_gun_radius,
         },

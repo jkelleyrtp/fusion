@@ -53,29 +53,37 @@ of ion-acoustic dynamics faster than the cycle.
   `q = 2`, `P = 15.43 eV`, scaled by `--ionization-scale`. Within ~10% of measured H2 totals
   at 0.1–1 keV. Primary electrons lose no energy to ionization (~5e-4 events per electron
   lifetime at 1e-3 Pa).
-- Ion species: the fuel molecular ion (H2+ or D2+), born with `--ion-temperature-ev`
-  Maxwellian velocity. Dissociative ionization and H3+/D3+ formation are omitted.
-- Ion gun: `--ion-gun-current` injects the same molecular ion species from `--ion-gun-position`
+- Ion species: the fuel molecular ion (H2+ or D2+, species 0) and the atomic ion (H+ or D+,
+  species 1). Each ionization produces the atomic ion with probability `--dissociative-fraction`
+  (default 0), carrying `--dissociation-energy-ev` (default 5 eV) in an isotropic direction; the
+  molecular ion is born with `--ion-temperature-ev` Maxwellian velocity. This is a fixed branching
+  ratio: measured H+/H2+ production by 100 eV–1 keV electrons is a few percent, so the campaign uses
+  0.05. The companion neutral atom is not tracked. Electron-impact dissociation of trapped D2+,
+  D3+ formation and recombination are omitted. The Boris push scales E and B by each ion's
+  charge-to-mass ratio relative to the molecular ion, which leaves single-species runs unchanged
+  bit for bit.
+- Ion gun: `--ion-gun-current` injects `--ion-gun-species` (molecular or atomic) from `--ion-gun-position`
   along `--ion-gun-direction` (default toward the origin), monoenergetic at `--ion-gun-energy-ev`
   with Gaussian spot `--ion-gun-radius` and RMS divergence `--ion-gun-divergence-deg` per
   transverse axis, in the same batches as ionization ions. The energy is the kinetic energy at
   the emission point, whatever the local potential there. No extraction optics are modelled, so
-  place the gun where the potential is near the intended source reference. A D+ beam in a D2 gas
-  would need a second species with its own charge-to-mass ratio; it is not implemented.
+  place the gun where the potential is near the intended source reference.
 - Secondary electrons: injected into the electron PIC at the ionization rate from the same
   birth pool, Maxwellian at `--secondary-temperature-ev`; `--no-secondaries` disables them.
   Their population is only captured when their lifetime is short compared with the window.
 - Charge exchange: constant cross section `--cx-cross-section` (default 5e-20 m²) against the
-  gas; an exchanged ion is replaced by a thermal gas ion at the same position (charge unchanged,
-  kinetic energy removed by the fast neutral and counted). No elastic scattering.
+  gas for both species; an exchanged ion is replaced by a thermal molecular gas ion at the same
+  position (charge unchanged, kinetic energy removed by the fast neutral and counted). D+ on D2
+  uses the same cross section as D2+ on D2. No elastic scattering.
 - Boundaries: ions are absorbed at the box faces, the gun barrel and the casings, using the
   same endpoint classification as electrons.
 
 ## Numerical checks
 
 - Electron window: the existing electron checks (gyration, 0.2-cell drift, omega_p).
-- Ions: at least 80 steps per gyration at the table maximum, 0.2-cell drift bound at every
-  field update, and `omega_pi dt <= 0.1` from the peak ion nodal charge.
+- Ions: at least 80 steps per gyration of the lightest enabled species at the table maximum,
+  0.2-cell drift bound at every field update, and `omega_pi dt <= 0.1` from the peak ion nodal
+  charge at the lightest enabled species.
 - Accounting: ion created charge = lost + alive; electron charge balance as before; deposited
   ion charge equals live ion charge.
 

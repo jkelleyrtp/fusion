@@ -42,10 +42,16 @@ STUDIES = {
         (),
         ("gun_none", "gun_10mA_100eV", "gun_100mA_100eV"),
     ),
+    "six-coil-deuteron": (
+        ("diss5_gun_none", "d2plus_10mA_100eV", "dplus_10mA_100eV", "dplus_10mA_100eV_s2345", "dplus_10mA_1keV",
+         "dplus_100mA_100eV", "dplus_10mA_100eV_bias5kV", "dplus_10mA_100eV_60kAt"),
+        (),
+        ("diss5_gun_none", "d2plus_10mA_100eV", "dplus_10mA_100eV"),
+    ),
 }
 SOURCE_KEYS = (
     "ion_species", "current_a", "energy_ev", "coil_current", "casing_voltage", "gas_pa", "gas_density_m3",
-    "gas_density_at_origin_m3", "gas_inlet", "ion_gun",
+    "gas_density_at_origin_m3", "gas_inlet", "ion_gun", "dissociative_ionization",
 )
 METRICS = (
     "neutralization_fraction", "core_neutralization_fraction", "potential_origin_V", "potential_min_V",
@@ -108,6 +114,7 @@ def summarize(case: Path, configuration: dict[str, object], history: list[Record
         "time_s": scalar(final, "time_s"),
         "sources": {key: configuration[key] for key in SOURCE_KEYS if key in configuration},
         "ion_gun_injected_charge_C": final.get("ion_gun_injected_charge_C"),
+        "atomic_ion_alive_charge_C": final.get("atomic_ion_alive_charge_C"),
         "alive_ion_mean_birth_potential_V": birth_potential(case),
         "cycle_duration_s": configuration["cycle_duration"],
         "electron_window_s": configuration["electron_window"], "ion_dt_s": configuration["ion_dt"],

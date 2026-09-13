@@ -119,6 +119,56 @@ class IonPICTests(unittest.TestCase):
             self.assertGreaterEqual(final["ion_created_charge_C"], final["ion_gun_injected_charge_C"])
             self.assertLess(abs(final["ion_charge_balance_C"]), 1e-9 * final["ion_created_charge_C"])
 
+    def test_atomic_ion_gun_run_accounts_for_charge(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "case"
+            with contextlib.redirect_stdout(io.StringIO()):
+                history = run(arguments(root, "--fuel", "D2", "--gas-pa", "1e-6", "--ion-gun-current", "1e-3",
+                                        "--ion-gun-species", "atomic", "--ion-gun-position", "0", "0", "0.05",
+                                        "--cx-cross-section", "0"))
+            configuration = json.loads((root / "configuration.json").read_text())
+            self.assertEqual(configuration["ion_gun"]["species"], "D+")
+            final = history[-1]
+            self.assertGreater(final["atomic_ion_count"], 0)
+            self.assertLess(abs(final["ion_charge_balance_C"]), 1e-9 * final["ion_created_charge_C"])
+            with np.load(root / final["snapshot"]) as state:
+                self.assertEqual(int(state["ion_species"].sum()), final["atomic_ion_count"])
+
+    def test_atomic_gun_speed_and_gyration(self):
+        args = arguments(Path("unused"), "--fuel", "D2", "--ion-gun-current", "1e-3", "--ion-gun-species", "atomic",
+                         "--ion-gun-position", "0", "0", "0.05", "--ion-gun-energy-ev", "200")
+        simulation = CoupledPIC(args, validate_coupled(args))
+        potential = simulation.mesh.lower.new_zeros(tuple(simulation.mesh.shape))
+        simulation.inject_gun_ions(2, potential)
+        self.assertEqual(simulation.ions.species.tolist(), [1, 1])
+        self.assertLess(float((simulation.ion_kinetic_ev() - 200).abs().max()), 1e-9)
+        speed = float(simulation.ions.velocity[0].norm())
+        self.assertAlmostEqual(speed, math.sqrt(2 * 200 * 1.602176634e-19 / (2.014 * AMU)), delta=1e-6 * speed)
+        ions = simulation.ions
+        ions.position = torch.tensor([[0.02, 0.01, 0.03]] * 2, dtype=torch.float64)
+        ions.velocity = torch.tensor([[1e4, 2e4, -3e4]] * 2, dtype=torch.float64)
+        ions.species = torch.tensor([0, 1])
+        before = ions.velocity.clone()
+        simulation.accelerate(potential, 1e-11)
+        change = (simulation.ions.velocity - before).norm(dim=1)
+        self.assertGreater(float(change[0]), 0)
+        self.assertAlmostEqual(float(change[1] / change[0]), 4.028 / 2.014, delta=1e-6)
+
+    def test_dissociative_ionization_and_exchange_species(self):
+        args = arguments(Path("unused"), "--fuel", "D2", "--dissociative-fraction", "0.25",
+                         "--dissociation-energy-ev", "4", "--cx-cross-section", "1e-12")
+        simulation = CoupledPIC(args, validate_coupled(args))
+        potential = simulation.mesh.lower.new_zeros(tuple(simulation.mesh.shape))
+        simulation.pool = torch.zeros((1, 3), dtype=torch.float64)
+        simulation.create_ions(40_000, 1.0, potential, 0)
+        atomic = simulation.ions.species == 1
+        self.assertAlmostEqual(float(atomic.double().mean()), 0.25, delta=0.01)
+        self.assertLess(float((simulation.ion_kinetic_ev()[atomic] - 4).abs().max()), 1e-9)
+        self.assertLess(float(simulation.ion_kinetic_ev()[~atomic].mean()), 0.1)
+        simulation.exchange(1e-6)
+        self.assertEqual(int(simulation.ions.species.sum()), 0)
+        self.assertEqual(int(simulation.ion_exchanges), 40_000)
+
     def test_charge_exchange_thermalizes(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "case"
