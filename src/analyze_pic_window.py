@@ -1,4 +1,4 @@
-"""Summarize the long-window and grounded-box transient PIC sensitivity campaigns."""
+"""Summarize the long-window, grounded-box and gun-barrel transient PIC sensitivity campaigns."""
 
 import argparse
 import json
@@ -20,6 +20,10 @@ VARIANT_CASES = ("pic_1A_n65_particles", "pic_1A_n65_dt", "pic_1A_n65_s2345")
 DOMAIN_CASES = (
     "pic_1A_box", "pic_1A_box_w0525", "pic_1A_box_w045", "pic_1A_box_t195", "pic_1A_box_t26",
     "pic_1A_box_b1625", "pic_1A_box_b195", "pic_1A_box_b195_t26",
+)
+GUN_CASES = (
+    "pic_1A_gun_wall", "pic_1A_gun_b1625", "pic_1A_gun_b195", "pic_1A_gun_b26",
+    "pic_1A_gun_b195_r004", "pic_1A_gun_b195_r010", "pic_1A_gun_b195_s2345", "pic_1A_gun_b195_n97",
 )
 WINDOW_METRICS = (
     "minimum_potential_V", "field_energy_J", "alive_electrons", "core_electron_count",
@@ -162,18 +166,66 @@ def main() -> None:
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--window-start", type=float, default=2e-7)
-    parser.add_argument("--study", choices=("window", "domain"), default="window")
+    parser.add_argument("--study", choices=("window", "domain", "gun"), default="window")
+    parser.add_argument("--domain-run", type=Path, help="grounded-box campaign to compare the gun study against")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
-    names = DOMAIN_CASES if args.study == "domain" else (*MESH_CASES, *VARIANT_CASES)
+    names = {"domain": DOMAIN_CASES, "gun": GUN_CASES}.get(args.study, (*MESH_CASES, *VARIANT_CASES))
     histories = {name: load(args.run / name) for name in names}
     summaries = {name: summarize(name, records, args.window_start) for name, records in histories.items()}
 
-    def relative(name: str, reference: str) -> dict[str, float]:
+    def relative(name: str, reference: str) -> dict[str, float | None]:
         current = cast(dict[str, float], summaries[name]["mean"])
         target = cast(dict[str, float], summaries[reference]["mean"])
-        return {key: (current[key] - target[key]) / abs(target[key]) for key in WINDOW_METRICS}
+        return {
+            key: (current[key] - target[key]) / abs(target[key]) if target[key] else None
+            for key in WINDOW_METRICS
+        }
 
+    if args.study == "gun":
+        core_radius = 0.25 * json.loads((args.run / GUN_CASES[0] / "configuration.json").read_text())["radius"]
+        barrels = {}
+        for name, records in histories.items():
+            configuration = json.loads((args.run / name / "configuration.json").read_text())
+            window = [record for record in records if scalar(record, "time_s") >= args.window_start]
+            source = np.array([scalar(record, "source_potential_V") for record in window])
+            final = records[-1]
+            exits = cast(list[int], final["exit_counts_xlo_xhi_ylo_yhi_zlo_zhi"])
+            conductor_exits = cast(list[int], final.get("conductor_exit_counts", []))
+            barrels[name] = {
+                "box_lower_m": configuration["box_lower_m"], "box_upper_m": configuration["box_upper_m"],
+                "mesh_shape": configuration["mesh_shape"], "gun_barrel": configuration["gun_barrel"],
+                "seed": configuration["seed"],
+                "source_potential_V": {"window_mean": float(source.mean()), "final": float(source[-1])},
+                "final_conductor_charge_C": final.get("conductor_charge_C"),
+                "final_barrel_exit_fraction": (
+                    sum(conductor_exits) / (sum(exits) + sum(conductor_exits))
+                    if sum(exits) + sum(conductor_exits) else None
+                ),
+            }
+        report: dict[str, object] = {
+            "scope": "Grounded, absorbing gun barrel around the emitter of the 1 A external-gun CUDA PIC model.",
+            "cases": list(summaries.values()),
+            "barrels": barrels,
+            "final_fields": {name: core_field(args.run / name, core_radius) for name in names},
+            "relative_to_wall_gun": {name: relative(name, GUN_CASES[0]) for name in GUN_CASES[1:]},
+            "limitations": [
+                "The barrel is a staircase of mesh nodes; the emitter potential is interpolated, not exactly 0 V.",
+                "The 50 micrometre source and a few-cm barrel are both unresolved at the few-cell level.",
+                "Grounded outer box, no coil casings, imposed two-coil magnetic field, electrons only.",
+            ],
+        }
+        if args.domain_run is not None:
+            for name in ("pic_1A_box_b1625", "pic_1A_box_b195"):
+                summaries[name] = summarize(name, load(args.domain_run / name), args.window_start)
+            report["barrel_relative_to_open_bottom_wall"] = {
+                "pic_1A_gun_b1625": relative("pic_1A_gun_b1625", "pic_1A_box_b1625"),
+                "pic_1A_gun_b195": relative("pic_1A_gun_b195", "pic_1A_box_b195"),
+            }
+        (args.out / "analysis.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+        plot_histories(histories, args.out / "evolution.png", GUN_CASES[:1])
+        plot_fields(args.run, args.out / "fields.png", ("pic_1A_gun_wall", "pic_1A_gun_b195", "pic_1A_gun_b26"))
+        return
     if args.study == "domain":
         core_radius = 0.25 * json.loads((args.run / DOMAIN_CASES[0] / "configuration.json").read_text())["radius"]
         domain_report = {
