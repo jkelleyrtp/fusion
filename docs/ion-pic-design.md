@@ -80,3 +80,19 @@ cells, 1.2a box, 0.06a barrel, 0.15a grounded casings):
 | `ions_p1e-3_cycle5` | 80 × 5 µs cycles |
 | `ions_p1e-3_window80` | 80 ns electron windows |
 | `ions_p1e-3_ions2x` | twice the ion macroparticles per cycle |
+
+## Campaign record
+
+**Failed attempt.** Job `jonathan-pic-ed7b7f62b292` at source `06a0f7a`, output
+`/public/jonathan/cusp/runs/pic-ed7b7f62b292/attempt-20260913-095532-962632006/`. Preflight
+controls passed; seven of eight cases stopped in the first ionization sample with the CUDA
+assertion `!(val < zero)` inside `torch.multinomial`, before writing any history. The
+secondaries-off case was still running when the job was stopped through the broker CLI.
+The Lotz cross section was evaluated on energies clamped to the threshold and then multiplied
+by a logarithm that rounds to a tiny negative number just below threshold, so some electrons
+contributed negative rates. The output is kept unchanged as evidence.
+
+**Fix.** Source `05e2f69` returns exactly zero below threshold with `torch.where` and rejects
+negative rates on the host before sampling. Corrected job `jonathan-pic-267721c0347e`, output
+`/public/jonathan/cusp/runs/pic-267721c0347e/attempt-20260913-101913-995265517/`; preflight
+passed and all eight cases are advancing cycles with charge balances at 1e-22 C.
