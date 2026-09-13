@@ -241,7 +241,8 @@ def plot_scan(summaries: dict[str, dict[str, object]], output: Path) -> None:
 
 
 def plot_fields(run: Path, output: Path, names: tuple[str, ...]) -> None:
-    figure, axes = plt.subplots(len(names), 3, figsize=(15, 3.6 * len(names)), constrained_layout=True)
+    figure, axes = plt.subplots(len(names), 3, figsize=(15, 3.6 * len(names)), constrained_layout=True,
+                               squeeze=False)
     for row, name in zip(axes, names):
         snapshot = last_snapshot(run / name)
         with np.load(snapshot, allow_pickle=False) as values:
@@ -272,17 +273,19 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--study", choices=tuple(STUDIES), default="two-coil")
     parser.add_argument("--partial", action="store_true",
-                        help="summarize cases that are still running and skip cases without a history")
+                        help="summarize cases that are still running and skip cases without a history or snapshot")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     physics, splitting, fields = STUDIES[args.study]
-    reference_case = physics[0]
     if args.partial:
-        missing = [name for name in physics + splitting if not (args.run / name / "history.json").is_file()]
+        missing = [name for name in physics + splitting
+                   if not (args.run / name / "history.json").is_file()
+                   or not any((args.run / name / "snapshots").glob("cycle-*.npz"))]
         physics, splitting = (tuple(name for name in names if name not in missing) for names in (physics, splitting))
         fields = tuple(name for name in fields if name not in missing)
     else:
         missing = []
+    reference_case = physics[0]
     loaded = {name: load(args.run / name, args.partial) for name in physics + splitting}
     summaries = {
         name: summarize(args.run / name, configuration, history, complete(args.run / name, configuration, history))
