@@ -111,7 +111,8 @@ def electron_arguments(args: argparse.Namespace, steps: int) -> argparse.Namespa
 def ionization_cross_section(energy_ev: torch.Tensor) -> torch.Tensor:
     """Lotz electron-impact ionization cross section of H2 in m^2; zero below threshold."""
     energy = energy_ev.clamp(min=H2_IONIZATION_EV)
-    return LOTZ_A_M2_EV2 * H2_SHELL_ELECTRONS * torch.log(energy / H2_IONIZATION_EV) / (energy * H2_IONIZATION_EV)
+    sigma = LOTZ_A_M2_EV2 * H2_SHELL_ELECTRONS * torch.log(energy / H2_IONIZATION_EV) / (energy * H2_IONIZATION_EV)
+    return torch.where(energy_ev > H2_IONIZATION_EV, sigma, 0.0)
 
 
 @dataclass
@@ -193,6 +194,8 @@ class CoupledPIC:
         energy_ev = 0.5 * M_E * speed.square() / E_CHARGE
         rates = self.gas_density * self.args.ionization_scale * p.weight * ionization_cross_section(energy_ev) * speed
         total = rates.sum()
+        if bool((rates < 0).any()):
+            raise ValueError("Ionization rates must be nonnegative")
         if not len(p.ids) or float(total) <= 0:
             return charge, total, p.position.new_empty((0, 3))
         index = torch.multinomial(rates, count, replacement=True, generator=self.generator)
