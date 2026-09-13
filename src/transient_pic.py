@@ -36,6 +36,22 @@ class Particles:
             self.core_dwell[keep], self.entries[keep],
         )
 
+    def split(self, count: int) -> tuple["Particles", "Particles"]:
+        fields = (
+            self.ids, self.birth, self.position, self.velocity, self.weight,
+            self.dwell, self.core_dwell, self.entries,
+        )
+        return (
+            Particles(*(field[:count] for field in fields)),
+            Particles(*(field[count:] for field in fields)),
+        )
+
+
+LOST_TOTALS = (
+    "charge", "kinetic", "dwell", "core_dwell", "electron_dwell",
+    "electron_core_dwell", "entries", "repeated_entries",
+)
+
 
 class PIC:
     def __init__(
@@ -64,15 +80,8 @@ class PIC:
         self.injected_count = 0
         self.lost_count = 0
         self.injected_charge = 0.0
-        self.lost_charge = 0.0
         self.injected_kinetic = 0.0
-        self.lost_kinetic = 0.0
-        self.lost_dwell = 0.0
-        self.lost_core_dwell = 0.0
-        self.lost_electron_dwell = 0.0
-        self.lost_electron_core_dwell = 0.0
-        self.lost_entries = 0
-        self.lost_repeated_entries = 0
+        self._lost_totals = empty.new_zeros(len(LOST_TOTALS))
         self.exit_counts = torch.zeros(6, device=empty.device, dtype=torch.int64)
         self.tracked_position = empty.new_full((track, 3), math.nan)
         self.tracked_birth = empty.new_full((track,), math.nan)
@@ -81,6 +90,26 @@ class PIC:
             (track,), -1, device=empty.device, dtype=torch.int64,
         )
         self._tracked_live = 0
+
+    def lost_totals(self) -> dict[str, float]:
+        """Charge, kinetic energy, dwell and entry sums over lost particles."""
+        return dict(zip(LOST_TOTALS, self._lost_totals.tolist(), strict=True))
+
+    @property
+    def lost_charge(self) -> float:
+        return self.lost_totals()["charge"]
+
+    @property
+    def lost_kinetic(self) -> float:
+        return self.lost_totals()["kinetic"]
+
+    @property
+    def lost_dwell(self) -> float:
+        return self.lost_totals()["dwell"]
+
+    @property
+    def lost_core_dwell(self) -> float:
+        return self.lost_totals()["core_dwell"]
 
     def _raise_first(
         self, checks: list[tuple[torch.Tensor, str]], *extra: torch.Tensor,
@@ -191,9 +220,8 @@ class PIC:
             return
         survivors = len(p.ids) - int(lost_count)
         order = torch.argsort(hit.to(torch.int8), stable=True)
-        lost = p.select(order[survivors:])
-        lost_end = end[order[survivors:]]
-        stats = torch.stack((
+        kept, lost = p.select(order).split(survivors)
+        self._lost_totals += torch.stack((
             -E_CHARGE * lost.weight.sum(),
             (0.5 * M_E * lost.weight * lost.velocity.square().sum(dim=1)).sum(),
             lost.dwell.sum(),
@@ -202,29 +230,23 @@ class PIC:
             (lost.weight * lost.core_dwell).sum(),
             lost.entries.sum().to(torch.float64),
             (lost.entries >= 2).sum().to(torch.float64),
-            (lost.ids < len(self.tracked_birth)).sum().to(torch.float64),
-        )).tolist()
-        tracked = int(stats[8])
+        ))
         self.lost_count += len(lost.ids)
-        self.lost_charge += stats[0]
-        self.lost_kinetic += stats[1]
-        self.lost_dwell += stats[2]
-        self.lost_core_dwell += stats[3]
-        self.lost_electron_dwell += stats[4]
-        self.lost_electron_core_dwell += stats[5]
-        self.lost_entries += int(stats[6])
-        self.lost_repeated_entries += int(stats[7])
-        self._tracked_live = live - tracked
         distances = torch.stack((
-            (lost_end - self.mesh.lower).abs() / self.mesh.h,
-            (lost_end - self.mesh.upper).abs() / self.mesh.h,
+            (lost.position - self.mesh.lower).abs() / self.mesh.h,
+            (lost.position - self.mesh.upper).abs() / self.mesh.h,
         ), dim=2).flatten(start_dim=1)
         faces = distances.argmin(dim=1)
         self.exit_counts.index_add_(0, faces, torch.ones_like(faces))
-        tracked_ids = lost.ids[:tracked]
-        self.tracked_exit_time[tracked_ids] = start_time + elapsed[order[survivors:survivors + tracked]]
-        self.tracked_exit_face[tracked_ids] = faces[:tracked]
-        self.particles = p.select(order[:survivors])
+        if live:
+            tracked = int((lost.ids < len(self.tracked_birth)).sum())
+            self._tracked_live = live - tracked
+            tracked_ids = lost.ids[:tracked]
+            self.tracked_exit_time[tracked_ids] = (
+                start_time + elapsed[order[survivors:survivors + tracked]]
+            )
+            self.tracked_exit_face[tracked_ids] = faces[:tracked]
+        self.particles = kept
 
     def _speed_checks(self, h: float) -> list[tuple[torch.Tensor, str]]:
         if len(self.particles.ids) == 0:
@@ -269,15 +291,16 @@ class PIC:
         kinetic = float(self.kinetic_energy())
         field = float(self.mesh.field_energy(potential))
         in_core = p.position.square().sum(dim=1) < self.core_radius ** 2
+        lost = self.lost_totals()
         return {
             "time_s": self.time,
             "injected_count": self.injected_count,
             "lost_count": self.lost_count,
             "alive_count": len(p.ids),
             "injected_charge_C": self.injected_charge,
-            "lost_charge_C": self.lost_charge,
+            "lost_charge_C": lost["charge"],
             "alive_charge_C": alive_charge,
-            "charge_balance_C": self.injected_charge - self.lost_charge - alive_charge,
+            "charge_balance_C": self.injected_charge - lost["charge"] - alive_charge,
             "deposition_error_C": float(charge.sum()) - alive_charge,
             "boundary_shape_charge_C": float(
                 charge.sum() - charge[1:-1, 1:-1, 1:-1].sum(),
@@ -285,23 +308,23 @@ class PIC:
             "kinetic_J": kinetic,
             "field_energy_J": field,
             "injected_kinetic_J": self.injected_kinetic,
-            "lost_kinetic_J": self.lost_kinetic,
+            "lost_kinetic_J": lost["kinetic"],
             "open_energy_balance_J": (
-                kinetic + field + self.lost_kinetic - self.injected_kinetic
+                kinetic + field + lost["kinetic"] - self.injected_kinetic
             ),
-            "total_dwell_particle_s": self.lost_dwell + float(p.dwell.sum()),
+            "total_dwell_particle_s": lost["dwell"] + float(p.dwell.sum()),
             "total_core_dwell_particle_s": (
-                self.lost_core_dwell + float(p.core_dwell.sum())
+                lost["core_dwell"] + float(p.core_dwell.sum())
             ),
             "total_dwell_electron_s": (
-                self.lost_electron_dwell + float((p.weight * p.dwell).sum())
+                lost["electron_dwell"] + float((p.weight * p.dwell).sum())
             ),
             "total_core_dwell_electron_s": (
-                self.lost_electron_core_dwell + float((p.weight * p.core_dwell).sum())
+                lost["electron_core_dwell"] + float((p.weight * p.core_dwell).sum())
             ),
-            "core_entry_count": self.lost_entries + int(p.entries.sum()),
+            "core_entry_count": int(lost["entries"]) + int(p.entries.sum()),
             "repeated_entry_count": (
-                self.lost_repeated_entries + int((p.entries >= 2).sum())
+                int(lost["repeated_entries"]) + int((p.entries >= 2).sum())
             ),
             "core_particle_count": int(in_core.sum()),
             "core_electron_count": float(p.weight[in_core].sum()),

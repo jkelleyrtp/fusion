@@ -41,6 +41,18 @@ class ElectrostaticTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             mesh.deposit(points + 4, charges)
 
+    def test_revalidates_positions_modified_after_a_check(self) -> None:
+        mesh = self.mesh()
+        points = torch.zeros(4, 3, dtype=torch.float64)
+        mesh.check_positions(points)
+        mesh.check_positions(points)
+        points[0, 0] = 2
+        with self.assertRaisesRegex(ValueError, "inside the box"):
+            mesh.check_positions(points)
+        points[0, 0] = math.nan
+        with self.assertRaisesRegex(ValueError, "Nonfinite"):
+            mesh.deposit(points, torch.ones(4, dtype=torch.float64))
+
     def test_poisson_discrete_manufactured_solution_and_energy(self) -> None:
         lower = torch.tensor([-1, -2, -3], dtype=torch.float64)
         mesh = ElectrostaticMesh(lower, -lower, (9, 13, 17))

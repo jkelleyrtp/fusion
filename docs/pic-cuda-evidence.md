@@ -1,20 +1,26 @@
 # CUDA PIC backend: physics-level acceptance and throughput
 
 The CUDA backend passes physics-level acceptance against the FP64 reference
-on four seeds and runs the 1 A external-gun step 1.40× faster at ~60k live
-particles. At that load the GPU is mostly idle: per-step time is dominated by
-Python/PyTorch launch overhead, not by the kernels. The history below keeps the
-earlier strict long-run failures, which motivated the change of acceptance
-policy.
+on four seeds. With the block-sampled external gun (`af7c878`), the isolated 1 A
+step at ~60k live particles takes 2.24 ms on CUDA versus 4.44 ms on the
+reference (1.98×), and the acceptance campaign's median step speedup is 2.68×.
+The advance still dominates the step; about 60% of CUDA step time is host
+launch overhead rather than GPU kernels. The history below keeps the earlier
+strict long-run failures, which motivated the change of acceptance policy.
 
 Four distinct claims, only the first two of which are established:
 
 | Claim | Status |
 |---|---|
-| Physics-level agreement (paired seeds, 1 A, 30 ns) | Passed at `3026943` |
+| Physics-level agreement (paired seeds, 1 A, 30 ns) | Passed at `3026943`, `1dde46e` and `af7c878` |
 | Operator controls with explicit numerical tolerances | Passed at `b161e8a` |
 | Bitwise or strict long-run trajectory parity | Not required; fails for reference repeats too |
-| Physical convergence of the modeled device | Not established by any of this |
+| Physical convergence of the modeled device | Not established by any of this; see `docs/pic-window-evidence.md` |
+
+Optimization is complete in the sense that injection is no longer a bottleneck
+and the remaining cost is fixed per-step launch overhead, which only matters
+below ~1M live particles. It is not complete in the sense of a fused step: the
+~184 kernel launches per step are still individually dispatched.
 
 ## Current backend
 
@@ -45,6 +51,8 @@ deposition error and exit counts per face.
 | Campaign | Broker job | Source | Result | Median step speedup |
 |---|---|---|---|---:|
 | 1 A, 5 keV, 30 kA-turn, 33³, 4 ps, 30 ns, seeds 1234/2345/3456/4567 | `jonathan-pic-f420db2dd32f` | `3026943fc1221e97ecd7f9cdda3b7fa1c837bdab` | Passed, 0 failures | 1.78× |
+| Same, isolated CPU gun RNG, one transfer per packet | `jonathan-pic-1222d14875b1` | `1dde46e56f3bc160efbc38df94e2f453c4dbe207` | Passed, 0 failures | 1.88× |
+| Same, 256-packet CPU blocks, append without readbacks | `jonathan-pic-7986ca791c43-622e76` | `af7c8781a59ff46886528f655617ddacd8ecc69f` | Passed, 0 failures | 2.68× |
 
 The largest paired difference as a fraction of its bound was 2e−12 for minimum
 potential, 6e−12 for field energy and 1e−12 for core dwell; dwell, entries,
@@ -55,6 +63,22 @@ loss fractions and every exit count were identical. Deposition error reached
 ```text
 /public/devcontainer-shared/jonathan/cusp/runs/pic-f420db2dd32f/
   attempt-20260912-234000-049357622/
+```
+
+`1dde46e` and `af7c878` change the sampled gun stream (see below), so paired
+runs compare the two backends on the new stream, not against earlier campaigns.
+At `af7c878` the largest paired difference as a fraction of its bound was
+8.5e−12 for minimum potential, 5.7e−12 for field energy, 1.3e−12 for core
+dwell, and 0.12 for deposition error; every count-based metric was identical.
+Median CUDA campaign step time was 1.66 ms versus 4.42 ms for the reference.
+Analyses: `docs/data/pic-acceptance-1dde46e.json`,
+`docs/data/pic-acceptance-af7c878.json`. Artifacts:
+
+```text
+/public/devcontainer-shared/jonathan/cusp/runs/pic-1222d14875b1/
+  attempt-20260913-072930-468212161/
+/public/devcontainer-shared/jonathan/cusp/runs/pic-7986ca791c43/
+  attempt-20260913-074500-739897261/
 ```
 
 The median campaign speedup includes injection, diagnostics and snapshot output,
@@ -147,17 +171,92 @@ The advance itself is 1.83× faster on CUDA here and 3–6.6× faster at
 65k–16.8M particles; the ~1.3 ms fixed launch cost in the advance dominates
 below ~1M particles.
 
-Two ways to remove the injection cost, neither applied:
+### Gun sampler changes
 
-- Configuration: `--inject-every N` with `N` times more electrons per packet
-  amortizes the sampler to 1/N per step at the same current. At 4 ps steps,
-  `N = 8` gives 32 ps packets, short compared with ~ns transit and dwell times,
-  but it is still a change of packet granularity that needs its own
-  physics-level check.
-- Code: sample packets with a dedicated generator (on the host or batched for
-  many steps) instead of reseeding the global RNG per packet. This changes the
-  sampled stream, so under the repository rules it needs an explicit reviewed
-  injection design before implementation.
+Following `space-charge-checks/pic-gun-block-design.md`, the gun sampler was
+changed twice. Packet timing, particles per packet, represented current,
+source geometry, divergence and energy distribution are unchanged; the sampled
+random stream is not.
+
+- `1dde46e`: sample each packet on the CPU inside `torch.random.fork_rng`, so
+  caller RNG state is untouched, and transfer each packet once.
+- `af7c878`: `GunSource` samples 256 packets per block on the CPU with a seed
+  derived from `SeedSequence([seed, block])`, validates the block once, keeps
+  it on the device, and appends slices through `PIC.append_validated_packet`
+  without per-packet host readbacks. A given seed and block index reproduce
+  the same packets on any backend.
+
+Runs before `1dde46e` cannot be reproduced particle-for-particle with the
+current code; physics comparisons with them are statistical.
+
+| Per step, ~60k live particles | Source | Reference | CUDA |
+|---|---|---:|---:|
+| Plain step | `4813f2b` | 6.19 ms | 4.38 ms |
+| Plain step | `1dde46e` | 5.89 ms | 3.76 ms |
+| Plain step | `af7c878` | 4.44 ms | 2.24 ms |
+| Injection | `4813f2b` | 1.90 ms | 2.26 ms |
+| Injection | `1dde46e` | 1.43 ms | 1.58 ms |
+| Injection | `af7c878` | 0.19 ms | 0.21 ms |
+| Advance | `af7c878` | 4.61 ms | 2.49 ms |
+
+Profiles: `jonathan-pic-cuda-5b0d9b64ffcd` (`1dde46e`) and
+`jonathan-pic-cuda-3251000934e2-7f82e8` (`af7c878`), same 7,000 warm and 500
+timed steps, 55,820–59,540 live particles, B200, Torch `2.11.0+cu129`. Artifacts
+for `af7c878`:
+
+```text
+/public/devcontainer-shared/jonathan/cusp/runs/pic-cuda-3251000934e2/
+  attempt-20260913-074500-345816476/
+```
+
+Injection time includes block sampling amortized over 256 packets.
+
+### Remaining step cost at `af7c878`
+
+Instrumented CUDA / reference stage ratios: deposit 0.61, Poisson 0.64,
+gather 0.29, magnetic 0.052, Boris 0.22, drift 0.083. Host launch and
+orchestration are 61% of the instrumented CUDA step. The 20-step torch.profiler
+trace of the advance shows ~184 CUDA launches per step (~0.92 ms of launch
+time). The largest operators by CPU time per step are `sum` (0.52 ms), `to`/
+`_to_copy`/`copy_` (~0.3 ms each, nested), `einsum` (0.33 ms, Poisson),
+`index` (0.31 ms), `mul` (0.26 ms), `isfinite` (0.25 ms), `abs` (0.23 ms),
+`stack` (0.22 ms) and `cat` (0.17 ms, injection append).
+
+Most of these are safety checks (finite fields, gyration and plasma-frequency
+guards, speed limits) and loss statistics, each a handful of launches plus one
+batched readback. Removing them would change what the production run refuses
+to do, so they stay. A fused-step kernel or CUDA graphs could remove the launch
+cost. Neither is attempted yet: the CUDA/C++ sources would change, and the
+advance is already flat at ~1.3 ms up to 1M particles.
+
+### Production load and eight concurrent processes
+
+Job `jonathan-pic-cuda-27f385db26be-650bfe` (source
+`0d113e765b9320a66653a247dfe35069973bbe94`) runs the long-window production
+case (65³, 1 A, 30 kA-turn, 30,000 warm and 1,000 timed steps, ~100k live
+particles) once alone on GPU 0, then as eight simultaneous processes on GPUs
+0–7 of the same node. Timings include injection.
+
+| Process | Plain step | Injection | Advance |
+|---|---:|---:|---:|
+| Alone | 2.76 ms | 0.19 ms | 2.62 ms |
+| Eight concurrent, fastest | 2.69 ms | 0.19 ms | 2.55 ms |
+| Eight concurrent, slowest | 2.97 ms | 0.20 ms | 2.82 ms |
+
+Eight independent cases on one node each run within 8% of an isolated case, so
+the host does not throttle a full-node campaign; eight cases give ~7.4× the
+throughput of one. Host orchestration is ~71% of the instrumented step at this
+load. Data: `docs/data/pic-production-profile-0d113e7.json`. Artifacts:
+
+```text
+/public/devcontainer-shared/jonathan/cusp/runs/pic-cuda-27f385db26be/
+  attempt-20260913-080800-314353209/
+```
+
+An earlier submission of this job (`jonathan-pic-cuda-20364cb774fd-6b0612`)
+measured the isolated case (2.77 ms) but its concurrent stage never wrote
+output: the nested shell did not receive the output path. The generator now
+passes it explicitly and waits on every process id.
 
 ## History: strict long-run parity
 

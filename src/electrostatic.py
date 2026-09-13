@@ -2,6 +2,7 @@
 
 import itertools
 import math
+import weakref
 from dataclasses import dataclass
 
 import torch
@@ -34,6 +35,7 @@ class ElectrostaticMesh:
             raise ValueError("Each axis needs at least three nodes and positive length")
         self.h = (self.upper - self.lower) / self.lower.new_tensor(self.shape).sub(1)
         self.volume = self.h.prod()
+        self._checked: tuple[weakref.ref[torch.Tensor], int] | None = None
         self.corners = torch.tensor(list(itertools.product((0, 1), repeat=3)),
                                     device=self.lower.device, dtype=torch.long)
         eigenvalues = []
@@ -44,6 +46,10 @@ class ElectrostaticMesh:
                             + eigenvalues[2][None, None, :])
 
     def check_positions(self, positions: torch.Tensor) -> None:
+        """Validate positions, skipping a tensor already validated and not modified since."""
+        if (self._checked is not None and self._checked[0]() is positions
+                and self._checked[1] == positions._version):
+            return
         nonfinite, outside = torch.stack((
             ~torch.isfinite(positions).all(),
             ((positions < self.lower) | (positions > self.upper)).any(),
@@ -52,6 +58,7 @@ class ElectrostaticMesh:
             raise ValueError("Nonfinite particle position")
         if outside:
             raise ValueError("Deposit/gather requires positions inside the box")
+        self._checked = (weakref.ref(positions), positions._version)
 
     def stencil(self, positions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         self.check_positions(positions)
