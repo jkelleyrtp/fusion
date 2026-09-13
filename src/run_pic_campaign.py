@@ -82,6 +82,18 @@ ION_CASES = {
     "ions_p1e-3_ions2x": ("--ions-per-cycle", "16384"),
 }
 
+SIX_COIL_IONS = {
+    "ions6_p1e-3": (1, 1234, ()),
+    "ions6_p1e-3_s2345": (1, 2345, ()),
+    "ions6_p1e-3_300mA": (0.3, 1234, ()),
+    "ions6_p1e-2": (1, 1234, ("--gas-pa", "1e-2", "--cycle-duration", "1e-6")),
+    "ions6_p1e-3_dt05": (1, 1234, ("--ion-dt", "5e-10")),
+    "ions6_p1e-3_cycle5": (1, 1234, ("--cycle-duration", "5e-6", "--cycles", "80", "--save-every-cycles", "8")),
+    "ions6_p1e-3_window80": (1, 1234, ("--electron-window", "8e-8")),
+    "ions6_p1e-3_ions2x": (1, 1234, ("--ions-per-cycle", "16384")),
+}
+COUPLED = ("ions", "six-coil-ions")
+
 
 def case_specs(
     study: str, kernels: str,
@@ -127,6 +139,10 @@ def case_specs(
             (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
             for name, (_, _, _, _, current, seed) in SIX_COILS.items()
         ),
+        "six-coil-ions": tuple(
+            (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
+            for name, (current, seed, _) in SIX_COIL_IONS.items()
+        ),
         "six-coil-long": tuple(
             (name, current, dt, 8, interval, math.ceil(duration / dt / 15), 65, seed, "cuda")
             for name, (current, _, _, seed, dt, interval, duration) in SIX_COIL_LONG.items()
@@ -139,7 +155,7 @@ def commands(
     out: Path, revision: str, study: str = "startup", kernels: str = "reference",
 ) -> list[list[str]]:
     result = []
-    window = study in ("window", "domain", "gun", "casing", "ions", "six-coil", "six-coil-long")
+    window = study in ("window", "domain", "gun", "casing", "six-coil", "six-coil-long", *COUPLED)
     for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
         case_specs(study, kernels),
     ):
@@ -149,15 +165,15 @@ def commands(
         ] if window else [
             "--duration", "3e-8", "--max-steps", "20000", "--max-live-particles", "150000",
         ]
-        if study == "ions":
-            limits = ["--max-live-particles", "3000000"]
+        if study in COUPLED:
+            limits = ["--max-live-particles", "3000000" if study == "ions" else "6000000"]
         if study == "six-coil-long":
             limits = [
                 "--duration", str(SIX_COIL_LONG[name][6]), "--diagnostic-every", str(stride // 30),
                 "--max-steps", "1000000", "--max-live-particles", "6000000",
             ]
         result.append([
-            sys.executable, str(Path(__file__).with_name("ion_pic.py" if study == "ions" else "run_transient_pic.py")),
+            sys.executable, str(Path(__file__).with_name("ion_pic.py" if study in COUPLED else "run_transient_pic.py")),
             "--out", str(out / name), "--device", f"cuda:{device}",
             "--kernels", backend, "--source-revision", revision,
             "--nodes", str(nodes), "--current-a", str(current),
@@ -195,6 +211,14 @@ def commands(
                 "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
                 "--casing-voltage", str(voltage), "--coils", str(count), "--coil-offset", str(offset),
             ]
+        if study == "six-coil-ions":
+            width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+                "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
+                "--coils", "6", "--coil-offset", "1.2", "--electron-startup", "5e-7",
+                "--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_IONS[name][2],
+            ]
         if study == "six-coil-long":
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
             _, coil_current, voltage, _, _, _, _ = SIX_COIL_LONG[name]
@@ -217,7 +241,7 @@ def main() -> None:
         "--study",
         choices=(
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
-            "six-coil-long",
+            "six-coil-long", "six-coil-ions",
         ),
         default="startup",
     )
@@ -229,7 +253,7 @@ def main() -> None:
     argv = commands(args.out, revision, args.study, args.kernels)
     targets = []
     for command in argv:
-        if args.study == "ions":
+        if args.study in COUPLED:
             configuration = ion_parser().parse_args(command[2:])
             validate_coupled(configuration)
             targets.append(configuration.cycles)
@@ -238,7 +262,7 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=False)
     manifest = {
         "source_revision": revision, "commands": argv,
-        "progress_unit": "cycles" if args.study == "ions" else "steps",
+        "progress_unit": "cycles" if args.study in COUPLED else "steps",
         "step_targets": targets,
         "purpose": (
             "FP64 transient electron startup, 5 keV compact external gun, 30 kA-turn, "
@@ -297,6 +321,13 @@ def main() -> None:
             "potential and losses saturate. 1 A with two seeds, a 1 mA control, 0.3 A and 3 A current scaling, "
             "casings at -1 kV, and 60 kA-turn at 1 ps with matched packet timing for 600 ns (1 A and 1 mA). "
             "No plasma magnetic feedback, no ions."
+        ) if args.study == "six-coil-long" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (imposed vacuum field, coil planes 1.2a, 0.10a "
+            "casings, grounded 0.06a barrel, 2 ps), starting from the 500 ns saturated electron population: "
+            "1 A at 1e-3 Pa over 40 x 10 us cycles with a second seed, 0.3 A, 1e-2 Pa over 1 us cycles, half "
+            "ion timestep, 5 us cycles, 80 ns electron windows and twice the ion macroparticles. Tests how "
+            "fast ions neutralize the six-coil well, where they go, and whether the operator split is "
+            "converged. No Coulomb collisions, gas depletion or plasma magnetic feedback."
         ),
         "study": args.study, "kernels": args.kernels,
         "cases": [

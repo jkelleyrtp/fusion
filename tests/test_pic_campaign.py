@@ -137,6 +137,16 @@ class CampaignTests(unittest.TestCase):
                 (2e-12, 2, 8, 3e-7, 0.1),
             )
 
+    def test_six_coil_ion_study_starts_from_the_saturated_cube(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-ions")
+        configurations = [ion_parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        self.assertTrue(all(command[1].endswith("ion_pic.py") for command in argv))
+        for item in configurations:
+            validate_coupled(item)
+            self.assertEqual((item.coils, item.coil_offset, item.dt, item.electron_startup), (6, 1.2, 2e-12, 5e-7))
+        self.assertEqual(sorted({item.gas_pa for item in configurations}), [1e-3, 1e-2])
+
     def test_long_six_coil_study_keeps_charge_per_time_and_bounds_output(self) -> None:
         argv = commands(Path("/campaign"), "a" * 40, "six-coil-long")
         configurations = [parser().parse_args(command[2:]) for command in argv]
