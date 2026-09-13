@@ -181,7 +181,7 @@ Observations:
   cube, not in repeated passes through the centre.
 - **The central well is nearly linear in current up to 1 A, then the gun limits it.** The
   origin potential per ampere is −3428 V at 1 mA, −3091 V at 0.3 A and −3113 V at 1 A:
-  space charge costs about 9%. It does reshape the orbits: at 1 A core dwell is 25% shorter and
+  space charge costs about 9%. It does reshape the orbits: at 1 A core dwell is 23% shorter and
   repeated core entries are 40% fewer than at 1 mA. At 3 A the beam's own charge at the gun
   mouth reaches −5.7 kV, comparable to the 5 keV beam energy; 68% of losses return to the
   barrel and the centre only reaches −3.4 kV. More current needs different gun optics, not a
@@ -194,7 +194,8 @@ Observations:
   many back to the barrel.
 - **The density is a diffuse cube fill with a bright beam.** Outside the beam the deposited
   density is 1e12–1e13 m⁻³, with lanes towards the face cusps (clearest at 60 kA-turn).
-  Average density over the cube is about 1e12 m⁻³.
+  The 1 A trap holds about 1e12 electrons, so the mean density inside the coils is of order
+  1e12 m⁻³.
 
 What this does not establish: behaviour with ions (the next study), a mesh-converged well (one
 mesh), a realistic gun (the emitter is defined as 5 keV at its node regardless of the local
