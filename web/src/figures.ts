@@ -39,7 +39,7 @@ const studies: Study[] = [
   },
   {
     id: "six-coil-deuteron", title: "Atomic D+ ion gun at a cusp (six-coil)",
-    summary: "Same setup as the D2+ gun, 400 µs, 6 of 8 cases complete (100 mA failed the ion-step check and is rerun at 0.2 ns; 60 kA-turn still running, not shown in conclusions). A 10 mA, 100 eV D+ beam builds a +425 V mouth hill (D2+: +798 V) and still chokes: 97% leave through the top. At 1 keV D+ transits, 62% out the opposite face, 0.87% retained. +5 kV casings remove the well. Changing species does not trap gun ions in a static well.",
+    summary: "Same setup as the D2+ gun, 400 µs, 7 of 8 cases complete (100 mA failed the ion-step check and is rerun at 0.2 ns). A 10 mA, 100 eV D+ beam builds a +425 V mouth hill (D2+: +798 V) and still chokes: 97% leave through the top. At 1 keV D+ transits, 62% out the opposite face, 0.87% retained. +5 kV casings remove the well. 60 kA-turn deepens the centre 19% but leaves the mouth hill and 0.29% retention unchanged. Changing species does not trap gun ions in a static well.",
     doc: "ion-pic-design.md", figures: pair("six-coil-deuteron", "D+ ion gun"),
   },
   {

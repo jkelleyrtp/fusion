@@ -375,10 +375,12 @@ Exit fractions count all lost ions, so the `gun_none` row is gas ions only. The 
 
 Same setup as the D2+ gun study: 1 A / 5 keV electron gun, D2 at 1e-5 Pa, 400 µs, 1 ns ion step,
 gun at the top point cusp (`0, 0, 0.7` m, aimed at the centre). Gas ionization makes D2+, with 5%
-dissociative ionization to D+ (`diss5`). Six of eight cases are complete. `dplus_100mA_100eV`
+dissociative ionization to D+ (`diss5`). Seven of eight cases are complete. `dplus_100mA_100eV`
 failed the `omega_pi * dt <= 0.1` ion-step check before writing a history and is rerun at 0.2 ns in
-`jonathan-pic-a551941178c2`. `dplus_10mA_100eV_60kAt` had reached 21/40 cycles and is not
-interpreted. Exit fractions count gun macroparticles.
+`jonathan-pic-a551941178c2`. Exit fractions count gun macroparticles. After the last case finished
+the campaign exited non-zero because of the failed case and the broker restarted the whole sweep;
+that second attempt was stopped and only the first attempt (`attempt-20260913-174029-877869917`)
+is analysed.
 
 | case | mouth hill | top face | opposite face | conductors | D+ alive / injected | core ion KE | origin |
 |---|---|---|---|---|---|---|---|
@@ -386,6 +388,7 @@ interpreted. Exit fractions count gun macroparticles.
 | D2+ 10 mA, 100 eV | +798 V | 98.7% | 0.6% | 0.4% | — | 728 eV | −3043 V |
 | D+ 10 mA, 100 eV | +425 V | 96.9% | 1.3% | 0.7% | 0.29% | 796 eV | −3043 V |
 | D+ 10 mA, 100 eV, seed 2345 | +432 V | 96.9% | 1.3% | 0.7% | 0.29% | 799 eV | −3045 V |
+| D+ 10 mA, 100 eV, 60 kA-turn | +441 V | 95.7% | 2.8% | 0.3% | 0.29% | 669 eV | −3623 V |
 | D+ 10 mA, 1 keV | +367 V | 1.0% | 62% | 23% | 0.87% | 1515 eV | −2902 V |
 | D+ 10 mA, 100 eV, +5 kV casings | casings at +5 kV | 75% | 0.4% | 4% | 0.08% | 297 eV | +157 V |
 
@@ -401,6 +404,9 @@ the casings themselves. Core ion KE is the core-time-weighted mean over all ions
   opposite face (62%) and the casings (23%). Retention is 0.87% of injected charge, against
   1–3% for the D2+ transit cases, and the centre is 5% shallower than with no gun.
 - **Casing bias removes the well**, as with D2+: the centre sits at +157 V and retention is 0.08%.
+- **Stronger coils deepen the well but do not open the gun.** At 60 kA-turn the centre is 19%
+  deeper (−3623 V), the mouth hill is unchanged (+441 V) and retention stays 0.29%. Core ions are
+  slower (669 eV) because more gas ions are born deep in the stronger electron channel.
 - **Same conclusion as D2+.** Changing the ion species does not trap gun ions in a static well;
   the phase-gated capture campaign below tests injecting while the well is down.
 
