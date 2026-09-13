@@ -1,6 +1,8 @@
 import unittest
 from pathlib import Path
 
+from ion_pic import parser as ion_parser
+from ion_pic import validate_coupled
 from run_pic_campaign import commands
 from run_transient_pic import parser, validate
 
@@ -102,6 +104,23 @@ class CampaignTests(unittest.TestCase):
         for item in configurations:
             validate(item)
             self.assertEqual((item.gun_radius, item.box_bottom, item.kernels), (0.06, 1.95, "cuda"))
+
+    def test_ion_study_uses_the_casing_geometry(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "ions")
+        self.assertTrue(all(command[1].endswith("ion_pic.py") for command in argv))
+        configurations = [ion_parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        self.assertEqual([item.device for item in configurations], [f"cuda:{i}" for i in range(8)])
+        for item in configurations:
+            validate_coupled(item)
+            self.assertEqual(
+                (item.box_half_width, item.casing_radius, item.gun_radius, item.current_a, item.kernels),
+                (1.2, 0.15, 0.06, 1, "cuda"),
+            )
+        base, nocx, nosec, dense, *_ = configurations
+        self.assertEqual((base.gas_pa, base.cycles, base.cx_cross_section, base.secondaries), (1e-3, 40, 5e-20, True))
+        self.assertEqual((nocx.cx_cross_section, nosec.secondaries), (0, False))
+        self.assertEqual((dense.gas_pa, dense.cycle_duration), (1e-2, 1e-6))
 
 
 if __name__ == "__main__":

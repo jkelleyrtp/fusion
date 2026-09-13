@@ -28,9 +28,10 @@ class ReferenceKernels:
 
     def boris(
         self, velocity: torch.Tensor, electric: torch.Tensor, magnetic: torch.Tensor, h: float,
+        qm: float = QM,
     ) -> torch.Tensor:
-        minus = velocity + 0.5 * h * QM * electric
-        t = 0.5 * h * QM * magnetic
+        minus = velocity + 0.5 * h * qm * electric
+        t = 0.5 * h * qm * magnetic
         s = 2 * t / (1 + t.square().sum(dim=1, keepdim=True))
         prime = minus + torch.linalg.cross(minus, t)
-        return minus + torch.linalg.cross(prime, s) + 0.5 * h * QM * electric
+        return minus + torch.linalg.cross(prime, s) + 0.5 * h * qm * electric

@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from ion_pic import parser as ion_parser
+from ion_pic import validate_coupled
 from run_transient_pic import parser as pic_parser
 from run_transient_pic import validate as validate_config
 
@@ -45,6 +47,17 @@ COIL_CASINGS = {
     "pic_1A_casing_r015_t195": ((1.2, 1.95, 1.95), 0.15, 0.0, 1234),
 }
 CASING_GUN_RADIUS = 0.06
+
+ION_CASES = {
+    "ions_p1e-3": (),
+    "ions_p1e-3_nocx": ("--cx-cross-section", "0"),
+    "ions_p1e-3_nosec": ("--no-secondaries",),
+    "ions_p1e-2": ("--gas-pa", "1e-2", "--cycle-duration", "1e-6"),
+    "ions_p1e-3_dt05": ("--ion-dt", "5e-10"),
+    "ions_p1e-3_cycle5": ("--cycle-duration", "5e-6", "--cycles", "80", "--save-every-cycles", "8"),
+    "ions_p1e-3_window80": ("--electron-window", "8e-8"),
+    "ions_p1e-3_ions2x": ("--ions-per-cycle", "16384"),
+}
 
 
 def case_specs(
@@ -86,6 +99,7 @@ def case_specs(
             (name, 1, 4e-12, 8, 1, 7500, 65, seed, "cuda")
             for name, (_, _, _, seed) in COIL_CASINGS.items()
         ),
+        "ions": tuple((name, 1, 4e-12, 8, 1, 7500, 65, 1234, "cuda") for name in ION_CASES),
     }[study]
     return list(cases)
 
@@ -94,7 +108,7 @@ def commands(
     out: Path, revision: str, study: str = "startup", kernels: str = "reference",
 ) -> list[list[str]]:
     result = []
-    window = study in ("window", "domain", "gun", "casing")
+    window = study in ("window", "domain", "gun", "casing", "ions")
     for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
         case_specs(study, kernels),
     ):
@@ -104,8 +118,10 @@ def commands(
         ] if window else [
             "--duration", "3e-8", "--max-steps", "20000", "--max-live-particles", "150000",
         ]
+        if study == "ions":
+            limits = ["--max-live-particles", "3000000"]
         result.append([
-            sys.executable, str(Path(__file__).with_name("run_transient_pic.py")),
+            sys.executable, str(Path(__file__).with_name("ion_pic.py" if study == "ions" else "run_transient_pic.py")),
             "--out", str(out / name), "--device", f"cuda:{device}",
             "--kernels", backend, "--source-revision", revision,
             "--nodes", str(nodes), "--current-a", str(current),
@@ -127,13 +143,17 @@ def commands(
                 "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
                 "--gun-radius", str(radius),
             ]
-        if study == "casing":
-            (width, bottom, top), casing, voltage, _ = COIL_CASINGS[name]
+        if study in ("casing", "ions"):
+            (width, bottom, top), casing, voltage, _ = COIL_CASINGS[
+                "pic_1A_casing_r015" if study == "ions" else name
+            ]
             result[-1] += [
                 "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
                 "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(casing),
                 "--casing-voltage", str(voltage),
             ]
+        if study == "ions":
+            result[-1] += ["--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *ION_CASES[name]]
     return result
 
 
@@ -142,7 +162,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--case-timeout", type=float, default=900)
     parser.add_argument(
-        "--study", choices=("startup", "refinement", "acceptance", "window", "domain", "gun", "casing"),
+        "--study", choices=("startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions"),
         default="startup",
     )
     parser.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
@@ -151,10 +171,18 @@ def main() -> None:
         parser.error("case-timeout must be finite and positive")
     revision = os.environ["CUSP_SOURCE_REVISION"]
     argv = commands(args.out, revision, args.study, args.kernels)
-    targets = [validate_config(pic_parser().parse_args(command[2:])) for command in argv]
+    targets = []
+    for command in argv:
+        if args.study == "ions":
+            configuration = ion_parser().parse_args(command[2:])
+            validate_coupled(configuration)
+            targets.append(configuration.cycles)
+        else:
+            targets.append(validate_config(pic_parser().parse_args(command[2:])))
     args.out.mkdir(parents=True, exist_ok=False)
     manifest = {
-        "source_revision": revision, "commands": argv, "progress_unit": "steps",
+        "source_revision": revision, "commands": argv,
+        "progress_unit": "cycles" if args.study == "ions" else "steps",
         "step_targets": targets,
         "purpose": (
             "FP64 transient electron startup, 5 keV compact external gun, 30 kA-turn, "
@@ -194,6 +222,12 @@ def main() -> None:
             "1.2a and 1.275a boxes, 0.20a casings, casings at +1 kV and -1 kV, a second seed and "
             "a farther top wall. Tests whether the side-wall sensitivity survives once the box "
             "encloses the coils. Imposed two-coil field, electron-only."
+        ) if args.study == "casing" else (
+            "Coupled electron and H2+ PIC with electron-impact ionization in the 0.15a casing geometry "
+            "(1 A, 5 keV): 1e-3 Pa over 40 x 10 us cycles, with charge exchange off, secondaries off, "
+            "1e-2 Pa over 1 us cycles, half ion timestep, 5 us cycles, 80 ns electron windows and twice "
+            "the ion macroparticles. Tests how fast ions neutralize the electron well and whether the "
+            "operator-split cycle is converged. Imposed two-coil field, no Coulomb collisions."
         ),
         "study": args.study, "kernels": args.kernels,
         "cases": [

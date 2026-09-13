@@ -1,0 +1,483 @@
+"""Coupled electron and H2+ ion PIC with electron-impact ionization of a uniform gas.
+
+Cycles alternate a short external-gun electron window, run against the frozen ion charge, with a
+long ion push in the window-mean electron charge plus the live ion charge. See docs/ion-pic-design.md.
+"""
+
+import argparse
+import copy
+import dataclasses
+import json
+import math
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import cast
+
+import numpy as np
+import torch
+
+from cusp_sim import E_CHARGE, M_E
+from electrostatic import EPSILON_0
+from run_transient_pic import (
+    GunSource,
+    create_simulation,
+    source_geometry,
+    source_potential,
+    validate,
+)
+from run_transient_pic import parser as pic_parser
+
+AMU = 1.66053906660e-27
+K_B = 1.380649e-23
+LOTZ_A_M2_EV2 = 4.5e-18
+H2_IONIZATION_EV = 15.43
+H2_SHELL_ELECTRONS = 2
+SECONDARY_BATCH = 16
+
+
+def parser() -> argparse.ArgumentParser:
+    result = pic_parser()
+    result.description = __doc__
+    result.add_argument("--gas-pa", type=float, default=1e-3)
+    result.add_argument("--gas-temperature-k", type=float, default=300)
+    result.add_argument("--ionization-scale", type=float, default=1.0)
+    result.add_argument("--cx-cross-section", type=float, default=5e-20, help="m^2")
+    result.add_argument("--ion-mass-amu", type=float, default=2.016)
+    result.add_argument("--ion-temperature-ev", type=float, default=0.05)
+    result.add_argument("--secondaries", action=argparse.BooleanOptionalAction, default=True)
+    result.add_argument("--secondary-temperature-ev", type=float, default=3.0)
+    result.add_argument("--secondary-every", type=int, default=64, help="electron steps per secondary batch")
+    result.add_argument("--electron-startup", type=float, default=2e-7)
+    result.add_argument("--electron-window", type=float, default=4e-8)
+    result.add_argument("--electron-samples", type=int, default=16)
+    result.add_argument("--ion-dt", type=float, default=1e-9)
+    result.add_argument("--cycle-duration", type=float, default=1e-5)
+    result.add_argument("--cycles", type=int, default=40)
+    result.add_argument("--ions-per-cycle", type=int, default=8192)
+    result.add_argument("--ion-batches", type=int, default=64)
+    result.add_argument("--ion-field-every", type=int, default=10)
+    result.add_argument("--max-live-ions", type=int, default=2_000_000)
+    result.add_argument("--save-every-cycles", type=int, default=4)
+    return result
+
+
+def steps_for(duration: float, dt: float, name: str) -> int:
+    steps = round(duration / dt)
+    if steps < 1 or abs(steps * dt - duration) > 1e-9 * duration:
+        raise ValueError(f"{name} must be a positive integer multiple of its timestep")
+    return steps
+
+
+@dataclass(frozen=True)
+class Plan:
+    startup_steps: int
+    window_steps: int
+    ion_steps: int
+    batch_every: int
+    per_batch: int
+
+
+def validate_coupled(args: argparse.Namespace) -> Plan:
+    positive = (args.gas_pa, args.gas_temperature_k, args.ion_mass_amu, args.ion_dt, args.cycle_duration)
+    if not all(math.isfinite(value) and value > 0 for value in positive):
+        raise ValueError("Gas pressure and temperature, ion mass, ion timestep and cycle must be positive")
+    nonnegative = (args.ionization_scale, args.cx_cross_section, args.ion_temperature_ev,
+                   args.secondary_temperature_ev)
+    if not all(math.isfinite(value) and value >= 0 for value in nonnegative):
+        raise ValueError("Ionization scale, cross section and temperatures must be nonnegative")
+    if (args.cycles < 1 or args.electron_samples < 1 or args.ion_field_every < 1 or args.secondary_every < 1
+            or args.save_every_cycles < 1 or args.ions_per_cycle < 1 or args.ion_batches < 1
+            or args.ions_per_cycle % args.ion_batches or args.max_live_ions < 1):
+        raise ValueError("Invalid cycle, sampling or ion particle settings")
+    startup = steps_for(args.electron_startup, args.dt, "electron-startup")
+    window = steps_for(args.electron_window, args.dt, "electron-window")
+    ion_steps = steps_for(args.cycle_duration, args.ion_dt, "cycle-duration")
+    if window < 2 * args.electron_samples or ion_steps < args.ion_batches:
+        raise ValueError("Windows need two steps per electron sample and cycles one step per ion batch")
+    validate(electron_arguments(args, startup + args.cycles * window))
+    return Plan(startup, window, ion_steps, ion_steps // args.ion_batches, args.ions_per_cycle // args.ion_batches)
+
+
+def electron_arguments(args: argparse.Namespace, steps: int) -> argparse.Namespace:
+    """Gun and electron PIC settings spanning every electron window, as one continuous electron run."""
+    electron = copy.copy(args)
+    electron.duration = args.electron_startup + args.cycles * args.electron_window
+    electron.max_steps = steps
+    electron.save_every = steps
+    return electron
+
+
+def ionization_cross_section(energy_ev: torch.Tensor) -> torch.Tensor:
+    """Lotz electron-impact ionization cross section of H2 in m^2; zero below threshold."""
+    energy = energy_ev.clamp(min=H2_IONIZATION_EV)
+    return LOTZ_A_M2_EV2 * H2_SHELL_ELECTRONS * torch.log(energy / H2_IONIZATION_EV) / (energy * H2_IONIZATION_EV)
+
+
+@dataclass
+class Ions:
+    position: torch.Tensor
+    velocity: torch.Tensor
+    weight: torch.Tensor
+    birth: torch.Tensor
+    birth_potential: torch.Tensor
+    core_time: torch.Tensor
+    entries: torch.Tensor
+    exchanges: torch.Tensor
+
+    def tensors(self) -> tuple[torch.Tensor, ...]:
+        return (self.position, self.velocity, self.weight, self.birth, self.birth_potential,
+                self.core_time, self.entries, self.exchanges)
+
+    def select(self, keep: torch.Tensor) -> "Ions":
+        return Ions(*(tensor[keep] for tensor in self.tensors()))
+
+    def cat(self, other: "Ions") -> "Ions":
+        return Ions(*(torch.cat(pair) for pair in zip(self.tensors(), other.tensors(), strict=True)))
+
+
+class PopulationLimit(Exception):
+    pass
+
+
+class CoupledPIC:
+    def __init__(self, args: argparse.Namespace, plan: Plan) -> None:
+        self.args = args
+        self.plan = plan
+        electron_args = electron_arguments(args, plan.startup_steps + args.cycles * plan.window_steps)
+        self.electrons, self.configuration = create_simulation(electron_args)
+        self.mesh = self.electrons.mesh
+        self.kernels = self.electrons.kernels
+        self.conductors = self.electrons.conductors
+        device = self.mesh.lower.device
+        self.ion_mass = args.ion_mass_amu * AMU
+        self.qm = E_CHARGE / self.ion_mass
+        bmax = cast(float, self.configuration["magnetic_table_max_T"])
+        if self.qm * bmax * args.ion_dt > 2 * math.pi / 80:
+            raise ValueError("Ion timestep requires at least 80 steps per gyration")
+        self.gas_density = args.gas_pa / (K_B * args.gas_temperature_k)
+        self.generator = torch.Generator(device=device).manual_seed(args.seed + 7919)
+        self.source = GunSource(electron_args)
+        self.origin, _ = source_geometry(args)
+        self.electron_step = 0
+        self.time = 0.0
+        empty = self.mesh.lower.new_empty(0)
+        self.ions = Ions(
+            empty.reshape(0, 3), empty.reshape(0, 3), empty.clone(), empty.clone(), empty.clone(),
+            empty.clone(), empty.long(), empty.long(),
+        )
+        shapes = 0 if self.conductors is None else len(self.conductors.shapes)
+        self.ion_exit_counts = torch.zeros(6 + shapes, device=device, dtype=torch.int64)
+        self.ion_totals = empty.new_zeros(4)  # created charge, lost charge, lost kinetic, exchanged kinetic
+        self.ion_created = 0
+        self.ion_exchanges = torch.zeros((), device=device, dtype=torch.int64)
+        self.secondary_charge = 0.0
+        self.rate = 0.0
+        self.pool = empty.reshape(0, 3)
+        self.ion_conductor_charge = empty.new_zeros(shapes)
+
+    def ion_charge(self) -> torch.Tensor:
+        return self.kernels.deposit(self.ions.position, E_CHARGE * self.ions.weight)
+
+    def potential(self, charge: torch.Tensor) -> torch.Tensor:
+        if self.conductors is None:
+            return self.kernels.potential(charge)
+        potential, self.ion_conductor_charge = self.conductors.potential(charge)
+        return potential
+
+    def sample_electrons(self, count: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Deposited electron charge, ionizations per second, and `count` rate-weighted birth positions."""
+        p = self.electrons.particles
+        charge = self.kernels.deposit(p.position, -E_CHARGE * p.weight)
+        speed = p.velocity.norm(dim=1)
+        energy_ev = 0.5 * M_E * speed.square() / E_CHARGE
+        rates = self.gas_density * self.args.ionization_scale * p.weight * ionization_cross_section(energy_ev) * speed
+        total = rates.sum()
+        if not len(p.ids) or float(total) <= 0:
+            return charge, total, p.position.new_empty((0, 3))
+        index = torch.multinomial(rates, count, replacement=True, generator=self.generator)
+        return charge, total, p.position[index]
+
+    def inject_secondaries(self) -> None:
+        args = self.args
+        if not args.secondaries or not len(self.pool) or self.rate <= 0:
+            return
+        index = torch.randint(len(self.pool), (SECONDARY_BATCH,), generator=self.generator, device=self.pool.device)
+        thermal = math.sqrt(args.secondary_temperature_ev * E_CHARGE / M_E)
+        velocity = thermal * torch.randn(
+            (SECONDARY_BATCH, 3), generator=self.generator, dtype=torch.float64, device=self.pool.device,
+        )
+        weight = self.rate * args.secondary_every * args.dt / SECONDARY_BATCH
+        before = self.electrons.injected_charge
+        self.electrons.inject(self.pool[index], velocity, torch.full_like(velocity[:, 0], weight))
+        self.secondary_charge += self.electrons.injected_charge - before
+
+    def electron_window(self, steps: int) -> torch.Tensor:
+        """Advance electrons against the frozen ion charge; return the second-half mean electron charge."""
+        args = self.args
+        electrons = self.electrons
+        electrons.background_charge = self.ion_charge()
+        every = max(1, (steps // 2) // args.electron_samples)
+        sample_steps = {steps - 1 - k * every for k in range(args.electron_samples)}
+        per_sample = math.ceil(4 * args.ions_per_cycle / args.electron_samples)
+        charges, rates, pools = [], [], []
+        for index in range(steps):
+            if len(electrons.particles.ids) + args.inject_per_step + SECONDARY_BATCH > args.max_live_particles:
+                raise PopulationLimit("electron population reached max-live-particles")
+            self.source.inject(electrons, self.electron_step)
+            if self.electron_step % args.secondary_every == 0:
+                self.inject_secondaries()
+            electrons.advance(args.dt)
+            self.electron_step += 1
+            electrons.time = self.electron_step * args.dt
+            if index in sample_steps:
+                charge, rate, births = self.sample_electrons(per_sample)
+                charges.append(charge)
+                rates.append(rate)
+                pools.append(births)
+        self.rate = float(torch.stack(rates).mean())
+        self.pool = torch.cat(pools)
+        self.pool = self.pool[torch.randperm(len(self.pool), generator=self.generator, device=self.pool.device)]
+        return torch.stack(charges).mean(dim=0)
+
+    def create_ions(self, count: int, weight: float, potential: torch.Tensor, start: int) -> None:
+        args = self.args
+        if count == 0 or not len(self.pool) or weight <= 0:
+            return
+        if len(self.ions.weight) + count > args.max_live_ions:
+            raise PopulationLimit("ion population reached max-live-ions")
+        position = self.pool[(start + torch.arange(count, device=self.pool.device)) % len(self.pool)]
+        thermal = math.sqrt(args.ion_temperature_ev * E_CHARGE / self.ion_mass)
+        velocity = thermal * torch.randn((count, 3), generator=self.generator, dtype=torch.float64, device=position.device)
+        weights = position.new_full((count,), weight)
+        phi = self.mesh.gather(potential, position)[0]
+        zeros = torch.zeros_like(weights)
+        self.ions = self.ions.cat(Ions(
+            position, velocity, weights, position.new_full((count,), self.time), phi, zeros.clone(),
+            zeros.long(), zeros.long(),
+        ))
+        self.ion_totals[0] += E_CHARGE * weight * count
+        self.ion_created += count
+
+    def ion_kinetic_ev(self) -> torch.Tensor:
+        return 0.5 * self.ion_mass * self.ions.velocity.square().sum(dim=1) / E_CHARGE
+
+    def drift_ions(self, h: float) -> None:
+        ions = self.ions
+        if not len(ions.weight):
+            return
+        end, fraction, wall, inside, entered = self.kernels.drift(
+            ions.position, ions.velocity, h, self.electrons.core_radius,
+        )
+        hit = wall
+        absorbed = None
+        if self.conductors is not None:
+            absorbed = self.conductors.absorbing(end)
+            hit = wall | (absorbed >= 0)
+        ions.core_time += h * fraction * inside
+        ions.entries += entered.long()
+        ions.position = end
+        if not bool(hit.any()):
+            return
+        lost = ions.select(hit)
+        self.ion_totals[1] += E_CHARGE * lost.weight.sum()
+        self.ion_totals[2] += (0.5 * self.ion_mass * lost.weight * lost.velocity.square().sum(dim=1)).sum()
+        distances = torch.stack((
+            (lost.position - self.mesh.lower).abs() / self.mesh.h,
+            (lost.position - self.mesh.upper).abs() / self.mesh.h,
+        ), dim=2).flatten(start_dim=1)
+        faces = distances.argmin(dim=1)
+        if absorbed is not None:
+            faces = torch.where(wall[hit], faces, 6 + absorbed[hit])
+        self.ion_exit_counts.index_add_(0, faces, torch.ones_like(faces))
+        self.ions = ions.select(~hit)
+
+    def exchange(self, h: float) -> None:
+        args = self.args
+        ions = self.ions
+        if not args.cx_cross_section or not len(ions.weight):
+            return
+        speed = ions.velocity.norm(dim=1)
+        probability = -torch.expm1(-self.gas_density * args.cx_cross_section * speed * h)
+        exchanged = torch.rand(speed.shape, generator=self.generator, dtype=torch.float64, device=speed.device) < probability
+        thermal = math.sqrt(args.gas_temperature_k * K_B / self.ion_mass)
+        replacement = thermal * torch.randn(ions.velocity.shape, generator=self.generator, dtype=torch.float64,
+                                            device=speed.device)
+        mask = exchanged[:, None]
+        self.ion_totals[3] += (0.5 * self.ion_mass * ions.weight * exchanged * (
+            ions.velocity.square().sum(dim=1) - replacement.square().sum(dim=1))).sum()
+        ions.velocity = torch.where(mask, replacement, ions.velocity)
+        ions.exchanges += exchanged.long()
+        self.ion_exchanges += exchanged.sum()
+
+    def check_ions(self, h: float, charge: torch.Tensor) -> None:
+        if not len(self.ions.weight):
+            return
+        speed = self.ions.velocity.norm(dim=1).max()
+        omega = torch.sqrt(charge.clamp(min=0).max() / (self.mesh.volume * EPSILON_0) * self.qm)
+        speeding, oscillating, finite = torch.stack((
+            speed * h > 0.2 * self.mesh.h.min(), omega * h > 0.1, torch.isfinite(speed),
+        )).tolist()
+        if not finite:
+            raise ValueError("Nonfinite ion velocity")
+        if speeding:
+            raise ValueError("Ion timestep exceeds the 0.2-cell drift bound")
+        if oscillating:
+            raise ValueError("Ion timestep exceeds omega_pi * dt <= 0.1")
+
+    def ion_cycle(self, electron_charge: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Push ions over one cycle; returns final total potential and time-weighted core kinetic sums."""
+        args, plan = self.args, self.plan
+        h = args.ion_dt
+        weight = self.rate * args.cycle_duration / args.ions_per_cycle
+        core_kinetic = electron_charge.new_zeros(())
+        core_weight = electron_charge.new_zeros(())
+        potential = self.potential(electron_charge + self.ion_charge())
+        for step in range(plan.ion_steps):
+            if step % plan.batch_every == 0 and step // plan.batch_every < args.ion_batches:
+                self.create_ions(plan.per_batch, weight, potential, step // plan.batch_every * plan.per_batch)
+            self.drift_ions(h / 2)
+            if step % args.ion_field_every == 0:
+                ion_charge = self.ion_charge()
+                self.check_ions(h, ion_charge)
+                potential = self.potential(electron_charge + ion_charge)
+            ions = self.ions
+            if len(ions.weight):
+                electric = self.kernels.gather(potential, ions.position)
+                magnetic = self.electrons.magnetic_field(ions.position)
+                ions.velocity = self.kernels.boris(ions.velocity, electric, magnetic, h, self.qm)
+                self.exchange(h)
+            self.drift_ions(h / 2)
+            ions = self.ions
+            if len(ions.weight):
+                core = ions.position.square().sum(dim=1) < self.electrons.core_radius ** 2
+                core_weight += h * (ions.weight * core).sum()
+                core_kinetic += h * (ions.weight * core * self.ion_kinetic_ev()).sum()
+            self.time += h
+        return self.potential(electron_charge + self.ion_charge()), core_kinetic, core_weight
+
+    def record(
+        self, cycle: int, electron_charge: torch.Tensor, potential: torch.Tensor,
+        core_kinetic: torch.Tensor, core_weight: torch.Tensor, start: float,
+    ) -> dict[str, object]:
+        args = self.args
+        mesh = self.mesh
+        charge, electron_potential = self.electrons.fields()
+        electrons = self.electrons.diagnostics(charge, electron_potential)
+        ions = self.ions
+        ion_charge = self.ion_charge()
+        alive_ion_charge = float(E_CHARGE * ions.weight.sum())
+        created, lost, lost_kinetic, exchanged_kinetic = self.ion_totals.tolist()
+        axes = [torch.linspace(float(mesh.lower[i]), float(mesh.upper[i]), n, dtype=torch.float64,
+                               device=mesh.lower.device) for i, n in enumerate(mesh.shape)]
+        grid = torch.meshgrid(*axes, indexing="ij")
+        core_nodes = sum(axis.square() for axis in grid) < self.electrons.core_radius ** 2
+        mean_electron = float(electron_charge.sum())
+        core_electron = float(electron_charge[core_nodes].sum())
+        core_ion = float(ion_charge[core_nodes].sum())
+        in_core = ions.position.square().sum(dim=1) < self.electrons.core_radius ** 2
+        kinetic = self.ion_kinetic_ev()
+        record: dict[str, object] = {
+            "cycle": cycle, "time_s": self.time, "electron_time_s": self.electrons.time,
+            "electron_steps": self.electron_step,
+            "window_mean_electron_charge_C": mean_electron,
+            "window_mean_core_electron_charge_C": core_electron,
+            "electron_residence_s": abs(mean_electron) / args.current_a if args.current_a else None,
+            "secondary_injected_charge_C": self.secondary_charge,
+            "ionization_rate_s": self.rate,
+            "neutralization_time_s": abs(mean_electron) / (E_CHARGE * self.rate) if self.rate else None,
+            "ion_count": len(ions.weight), "ion_created_count": self.ion_created,
+            "ion_created_charge_C": created, "ion_lost_charge_C": lost, "ion_alive_charge_C": alive_ion_charge,
+            "ion_charge_balance_C": created - lost - alive_ion_charge,
+            "ion_deposition_error_C": float(ion_charge.sum()) - alive_ion_charge,
+            "ion_lost_kinetic_J": lost_kinetic, "ion_exchanged_kinetic_J": exchanged_kinetic,
+            "ion_exchange_events": int(self.ion_exchanges),
+            "ion_exit_counts": self.ion_exit_counts.tolist(),
+            "core_ion_charge_C": core_ion,
+            "neutralization_fraction": alive_ion_charge / abs(mean_electron) if mean_electron else None,
+            "core_neutralization_fraction": core_ion / abs(core_electron) if core_electron else None,
+            "ion_mean_kinetic_eV": float((ions.weight * kinetic).sum() / ions.weight.sum()) if len(ions.weight) else None,
+            "ion_core_count": int(in_core.sum()),
+            "ion_core_time_weighted_kinetic_eV": float(core_kinetic / core_weight) if float(core_weight) else None,
+            "potential_min_V": float(potential.min()),
+            "potential_max_V": float(potential.max()),
+            "potential_origin_V": float(mesh.gather(potential, mesh.lower.new_zeros((1, 3)))[0][0]),
+            "core_mean_potential_V": float(potential[core_nodes].mean()),
+            "source_potential_V": source_potential(self.electrons, potential, self.origin),
+            "field_energy_J": float(mesh.field_energy(potential)),
+            "ion_conductor_charge_C": self.ion_conductor_charge.tolist(),
+            "electrons": electrons,
+            "wall_s": time.perf_counter() - start,
+        }
+        return record
+
+    def save(self, directory: Path, cycle: int, electron_charge: torch.Tensor, potential: torch.Tensor) -> str:
+        ions = self.ions
+        arrays = {
+            "potential_V": potential, "electron_charge_C": electron_charge, "ion_charge_C": self.ion_charge(),
+            "ion_position_m": ions.position, "ion_velocity_m_s": ions.velocity, "ion_count": ions.weight,
+            "ion_birth_s": ions.birth, "ion_birth_potential_V": ions.birth_potential,
+            "ion_core_time_s": ions.core_time, "ion_core_entries": ions.entries, "ion_exchanges": ions.exchanges,
+            "lower_m": self.mesh.lower, "upper_m": self.mesh.upper,
+        }
+        name = f"cycle-{cycle:05d}.npz"
+        temporary = (directory / name).with_suffix(".tmp")
+        with temporary.open("wb") as stream:
+            np.savez_compressed(
+                stream, allow_pickle=False, time_s=self.time, cycle=cycle,
+                **{key: value.cpu().numpy() for key, value in arrays.items()},
+            )
+        temporary.replace(directory / name)
+        return f"snapshots/{name}"
+
+
+def run(args: argparse.Namespace) -> list[dict[str, object]]:
+    plan = validate_coupled(args)
+    simulation = CoupledPIC(args, plan)
+    args.out.mkdir(parents=True, exist_ok=False)
+    snapshots = args.out / "snapshots"
+    snapshots.mkdir()
+    configuration = {
+        **simulation.configuration,
+        "model": "coupled-electron-ion-pic-v1",
+        "coupling": "operator-split cycles: electron window on frozen ions, ion push on window-mean electrons",
+        "ionization": "electron impact on uniform H2, Lotz cross section",
+        "ion_species": "H2+",
+        "gas_density_m3": simulation.gas_density,
+        "ion_charge_to_mass_C_kg": simulation.qm,
+        "plan": dataclasses.asdict(plan),
+        "validation_scope": (
+            "numerical model; sub-sampled electron time, no Coulomb collisions, gas depletion, "
+            "recombination or plasma magnetic field"
+        ),
+    }
+    (args.out / "configuration.json").write_text(json.dumps(configuration, indent=2, allow_nan=False) + "\n")
+    history: list[dict[str, object]] = []
+    start = time.perf_counter()
+    stop_reason = "complete"
+    try:
+        simulation.electron_window(plan.startup_steps)
+        for cycle in range(1, args.cycles + 1):
+            electron_charge = simulation.electron_window(plan.window_steps)
+            potential, core_kinetic, core_weight = simulation.ion_cycle(electron_charge)
+            record = simulation.record(cycle, electron_charge, potential, core_kinetic, core_weight, start)
+            if cycle % args.save_every_cycles == 0 or cycle == args.cycles:
+                record["snapshot"] = simulation.save(snapshots, cycle, electron_charge, potential)
+            history.append(record)
+            temporary = args.out / "history.tmp"
+            temporary.write_text(json.dumps(history, indent=2, allow_nan=False) + "\n")
+            temporary.replace(args.out / "history.json")
+            print(json.dumps({key: value for key, value in record.items() if key != "electrons"},
+                             allow_nan=False), flush=True)
+    except PopulationLimit as error:
+        stop_reason = str(error)
+    (args.out / "DONE").write_text(stop_reason + "\n")
+    return history
+
+
+def main() -> None:
+    run(parser().parse_args())
+
+
+if __name__ == "__main__":
+    main()

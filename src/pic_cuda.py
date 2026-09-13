@@ -332,11 +332,12 @@ class CUDAKernels(ReferenceKernels):
 
     def boris(
         self, velocity: torch.Tensor, electric: torch.Tensor, magnetic: torch.Tensor, h: float,
+        qm: float = QM,
     ) -> torch.Tensor:
         shape = (len(velocity), 3)
         return self.extension.boris(
             self._tensor(velocity, shape), self._tensor(electric, shape),
-            self._tensor(magnetic, shape), 0.5 * h * QM,
+            self._tensor(magnetic, shape), 0.5 * h * qm,
         )
 
 

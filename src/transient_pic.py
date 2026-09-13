@@ -89,6 +89,7 @@ class PIC:
         shapes = 0 if conductors is None else len(conductors.shapes)
         self.exit_counts = torch.zeros(6 + shapes, device=empty.device, dtype=torch.int64)
         self.conductor_charge = empty.new_zeros(shapes)
+        self.background_charge: torch.Tensor | None = None
         self.tracked_position = empty.new_full((track, 3), math.nan)
         self.tracked_birth = empty.new_full((track,), math.nan)
         self.tracked_exit_time = empty.new_full((track,), math.nan)
@@ -196,11 +197,13 @@ class PIC:
         self._tracked_live += tracked
 
     def fields(self) -> tuple[torch.Tensor, torch.Tensor]:
+        """Deposited electron charge, and the potential of that charge plus any background charge."""
         p = self.particles
         charge = self.kernels.deposit(p.position, -E_CHARGE * p.weight)
+        total = charge if self.background_charge is None else charge + self.background_charge
         if self.conductors is None:
-            return charge, self.kernels.potential(charge)
-        potential, self.conductor_charge = self.conductors.potential(charge)
+            return charge, self.kernels.potential(total)
+        potential, self.conductor_charge = self.conductors.potential(total)
         return charge, potential
 
     def kinetic_energy(self) -> torch.Tensor:
