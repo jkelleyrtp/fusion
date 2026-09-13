@@ -201,3 +201,50 @@ What this does not establish: behaviour with ions (the next study), a mesh-conve
 mesh), a realistic gun (the emitter is defined as 5 keV at its node regardless of the local
 potential), or plasma magnetic feedback.
 
+## Casing-bias sweep (job `jonathan-pic-4324af3f08e7`, source `93848e7`)
+
+`run_pic_campaign.py --study six-coil-bias`: the saturated 1 µs reference with casings at +1,
++2.5, +5 and +10 kV (box and gun barrel stay grounded), plus at +5 kV a second seed, a 1 mA
+control, a 3 A gun and a 2 keV gun. All eight cases exited 0 with `DONE`; the job released its
+node. Raw output: `/public/devcontainer-shared/jonathan/cusp/runs/pic-4324af3f08e7/attempt-20260913-150801-178335492`.
+Summary: `docs/data/pic-six-coil-bias-93848e7.json` (`analyze_pic_window.py --study six-coil-bias`,
+last 20% of each run).
+
+![six-coil bias evolution](images/pic-six-coil-bias-evolution.png)
+
+![six-coil bias fields](images/pic-six-coil-bias-fields.png)
+
+"Ion escape barrier" is the lowest possible maximum potential along any node path from the origin
+to the grounded box, minus the origin potential: the energy an H2+ ion at rest at the centre
+must gain to reach a wall. It includes paths through the beam channel and the gun barrel, which
+the depth below the casings does not.
+
+| Case | Origin φ (V) | Depth below casings (V) | Core dwell (ns) | Core entries / e⁻ | Repeated entries | Losses | Ion escape barrier (V) | Saddle φ (V) | Saddle position (m) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 0 V (six-coil-long reference) | −3113 | 3113 | 6.3 | 1.10 | 26% | 84% | 3113 | 0 | box corner |
+| +1 kV | −2679 | 3679 | 6.8 | 1.23 | 29% | 84% | 2679 | 0 | x wall (−0.71, −0.21, −0.02) |
+| +2.5 kV | −1588 | 4088 | 6.6 | 1.32 | 31% | 84% | 1588 | 0 | +z wall (−0.04, −0.01, 0.73) |
+| +5 kV | +70 | 4930 | 6.7 | 1.51 | 37% | 85% | 338 | 408 | beam channel near gun mouth (0.01, 0.01, −0.53) |
+| +5 kV, seed 2345 | +59 | 4941 | 6.7 | 1.51 | 37% | 85% | 330 | 388 | same |
+| +5 kV, 1 mA | +2878 | 2122 | 6.7 | 1.58 | 37% | 88% | 0 | 2878 | origin is a potential maximum |
+| +5 kV, 3 A | −2035 | 7035 | 3.3 | 0.77 | 18% | 91% | 2035 | 0 | gun barrel (−0.03, 0.17, −0.97) |
+| +5 kV, 2 keV gun | −562 | 5562 | 6.4 | 1.06 | 27% | 81% | 562 | 0 | gun barrel |
+| +10 kV | +3236 | 6764 | 5.0 | 1.46 | 36% | 85% | 96 | 3332 | beam channel (0.02, −0.01, 0.30) |
+
+At 3 A the most negative node (−5.3 kV) is at the gun mouth, not the centre.
+
+Observations:
+
+- **Positive casings give electrons more core passes, not a deeper ion well.** Repeated core
+  entries rise from 26% at 0 V to 37% at +5 kV and saturate there. Core dwell barely changes.
+- **The ion escape barrier collapses as the casings go positive.** The casings lift the whole
+  interior potential, but the box and gun barrel stay grounded, so an ion can slide out along
+  the beam channel. The barrier falls from 3.1 kV at 0 V to 338 V at +5 kV and 96 V at +10 kV.
+  "Depth below casings" (4.9–6.8 kV) is not the ion confinement depth and should not be quoted as
+  one.
+- **The 1 mA control shows the vacuum bias alone makes a potential hill** (+2.9 kV at the centre,
+  58% of the casing voltage): without electron space charge the centre repels ions.
+- **3 A and the 2 keV gun still choke at the gun mouth.**
+
+What this does not establish: ion behaviour (the barrier is a static-field estimate on the node
+graph, electrons only), a biased chamber wall, a mesh-converged saddle, or plasma magnetic feedback.

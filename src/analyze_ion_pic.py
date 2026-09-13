@@ -40,12 +40,16 @@ PLOTS = (
 )
 
 
-def load(case: Path) -> tuple[dict[str, object], list[Record]]:
+def complete(case: Path, configuration: dict[str, object], history: list[Record]) -> bool:
+    done = (case / "DONE").read_text().strip() if (case / "DONE").is_file() else None
+    return done == "complete" and bool(history) and scalar(history[-1], "cycle") == configuration["cycles"]
+
+
+def load(case: Path, partial: bool) -> tuple[dict[str, object], list[Record]]:
     configuration = json.loads((case / "configuration.json").read_text())
     history = cast(list[Record], json.loads((case / "history.json").read_text()))
-    done = (case / "DONE").read_text().strip() if (case / "DONE").is_file() else None
-    if done != "complete" or not history or scalar(history[-1], "cycle") != configuration["cycles"]:
-        raise ValueError(f"Incomplete case: {case.name} ({done})")
+    if not history or not (partial or complete(case, configuration, history)):
+        raise ValueError(f"Incomplete case: {case.name}")
     for record in history:
         created = scalar(record, "ion_created_charge_C")
         assert abs(scalar(record, "ion_charge_balance_C")) <= 1e-12 * max(created, 1e-18)
@@ -61,12 +65,13 @@ def derived(record: Record) -> dict[str, float]:
     }
 
 
-def summarize(name: str, configuration: dict[str, object], history: list[Record]) -> dict[str, object]:
+def summarize(name: str, configuration: dict[str, object], history: list[Record], done: bool) -> dict[str, object]:
     tail = history[len(history) * 3 // 4:]
     means = {key: float(np.mean([derived(record)[key] for record in tail])) for key in derived(tail[0])}
     final = history[-1]
     return {
-        "name": name, "cycles": len(history), "time_s": scalar(final, "time_s"),
+        "name": name, "complete": done, "cycles": len(history), "requested_cycles": configuration["cycles"],
+        "time_s": scalar(final, "time_s"),
         "gas_pa": configuration["gas_pa"], "cycle_duration_s": configuration["cycle_duration"],
         "electron_window_s": configuration["electron_window"], "ion_dt_s": configuration["ion_dt"],
         "ions_per_cycle": configuration["ions_per_cycle"],
@@ -121,12 +126,16 @@ def main() -> None:
     parser.add_argument("run", type=Path)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--study", choices=tuple(STUDIES), default="two-coil")
+    parser.add_argument("--partial", action="store_true", help="summarize cases that are still running")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     physics, splitting, fields = STUDIES[args.study]
     reference_case = physics[0]
-    loaded = {name: load(args.run / name) for name in physics + splitting}
-    summaries = {name: summarize(name, *values) for name, values in loaded.items()}
+    loaded = {name: load(args.run / name, args.partial) for name in physics + splitting}
+    summaries = {
+        name: summarize(name, configuration, history, complete(args.run / name, configuration, history))
+        for name, (configuration, history) in loaded.items()
+    }
     reference = cast(dict[str, float], summaries[reference_case]["last_quarter_mean"])
 
     def relative(name: str) -> dict[str, float | None]:
@@ -134,7 +143,8 @@ def main() -> None:
         return {key: (means[key] - value) / abs(value) if value else None for key, value in reference.items()}
 
     result = {
-        "run": str(args.run), "reference": reference_case, "cases": summaries,
+        "run": str(args.run), "partial": not all(summary["complete"] for summary in summaries.values()),
+        "reference": reference_case, "cases": summaries,
         "relative_to_reference": {name: relative(name) for name in summaries if name != reference_case},
     }
     (args.out / "ion-pic-summary.json").write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
@@ -143,7 +153,7 @@ def main() -> None:
     plot_fields(args.run, args.out / "ion-pic-fields.png", fields)
     for name, summary in summaries.items():
         means = cast(dict[str, float], summary["last_quarter_mean"])
-        print(f"{name:22s} neut={means['neutralization_fraction']:.3f} "
+        print(f"{name:22s} {summary['cycles']}/{summary['requested_cycles']} neut={means['neutralization_fraction']:.3f} "
               f"origin={means['potential_origin_V']:8.1f} V core_ions={means['ion_core_count']:8.0f} "
               f"core_KE={means['ion_core_time_weighted_kinetic_eV']:7.1f} eV lost={means['ion_lost_fraction']:.3f}")
 

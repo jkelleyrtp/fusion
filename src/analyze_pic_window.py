@@ -1,6 +1,7 @@
 """Summarize the long-window, grounded-box, gun-barrel, coil-casing and six-coil transient PIC campaigns."""
 
 import argparse
+import heapq
 import json
 import math
 from pathlib import Path
@@ -111,6 +112,37 @@ def summarize(name: str, records: list[Record], window_start_s: float) -> dict[s
     }
 
 
+def escape_saddle(potential: np.ndarray, start: tuple[int, ...]) -> tuple[float, tuple[int, ...]]:
+    """Lowest node-path maximum potential from `start` to the box boundary, and the node setting it.
+
+    A positive ion at rest at `start` cannot reach the grounded box without climbing to this level.
+    """
+    shape = potential.shape
+    flat = potential.ravel()
+    level = np.full(flat.size, np.inf)
+    saddle = np.zeros(flat.size, dtype=np.int64)
+    origin = int(np.ravel_multi_index(start, shape))
+    level[origin], saddle[origin] = flat[origin], origin
+    strides = [int(np.prod(shape[axis + 1:])) for axis in range(3)]
+    heap = [(float(flat[origin]), origin)]
+    while heap:
+        current, node = heapq.heappop(heap)
+        if current > level[node]:
+            continue
+        index = np.unravel_index(node, shape)
+        if any(index[axis] in (0, shape[axis] - 1) for axis in range(3)):
+            return current, tuple(int(item) for item in np.unravel_index(saddle[node], shape))
+        for axis in range(3):
+            for sign in (-1, 1):
+                neighbour = node + sign * strides[axis]
+                candidate = max(current, float(flat[neighbour]))
+                if candidate < level[neighbour]:
+                    level[neighbour] = candidate
+                    saddle[neighbour] = saddle[node] if current >= flat[neighbour] else neighbour
+                    heapq.heappush(heap, (candidate, neighbour))
+    raise ValueError("No path to the box boundary")
+
+
 def core_field(case: Path, core_radius_m: float) -> dict[str, object]:
     """Final-snapshot potential at the origin node and its minimum inside the core sphere."""
     snapshot = max((case / "snapshots").glob("*.npz"))
@@ -122,7 +154,11 @@ def core_field(case: Path, core_radius_m: float) -> dict[str, object]:
     inside = x**2 + y**2 + z**2 <= core_radius_m**2
     minimum = np.unravel_index(np.where(inside, potential, np.inf).argmin(), potential.shape)
     minimum_all = np.unravel_index(potential.argmin(), potential.shape)
+    saddle, saddle_node = escape_saddle(potential, origin)
     return {
+        "origin_escape_saddle_V": saddle,
+        "origin_escape_barrier_V": saddle - float(potential[origin]),
+        "origin_escape_saddle_position_m": [float(axes[axis][saddle_node[axis]]) for axis in range(3)],
         "origin_node_m": [float(axes[axis][origin[axis]]) for axis in range(3)],
         "origin_potential_V": float(potential[origin]),
         "core_minimum_potential_V": float(potential[minimum]),

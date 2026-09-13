@@ -11,7 +11,7 @@ const pair = (name: string, what: string): Figure[] => [
 const studies: Study[] = [
   {
     id: "six-coil-bias", title: "Six-coil casing (magrid) bias sweep",
-    summary: "1 µs, 1 A, 5 keV gun, casings at +1 to +10 kV, with a second seed, a 1 mA control, 3 A and a 2 keV gun at +5 kV. Electrons only; imposed vacuum field.",
+    summary: "1 µs, 1 A, 5 keV gun, casings at +1 to +10 kV, with a second seed, a 1 mA control, 3 A and a 2 keV gun at +5 kV. Electrons only; imposed vacuum field. Positive casings raise repeated core entries from 26% to 37%, but the ion escape barrier (lowest path from the centre to the grounded walls) falls from 3.1 kV at 0 V to 338 V at +5 kV and 96 V at +10 kV.",
     doc: "six-coil-design.md", figures: pair("six-coil-bias", "Bias sweep"),
   },
   {
@@ -25,8 +25,13 @@ const studies: Study[] = [
     doc: "six-coil-design.md", figures: pair("six-coil", "Six-coil"),
   },
   {
+    id: "six-coil-ions", title: "Coupled electrons + H2+ ions (six-coil, partial)",
+    summary: "Six-coil trap at 1 A, 0 V casings with H2 gas at 1e-3 Pa (and 1e-2 Pa), ionization, ion space charge and charge exchange. Ions cancel the whole electron well within ~200 µs at 1e-3 Pa (~20 µs at 1e-2 Pa); the centre rises from −2.8 kV to ~0 V. Partial: 7 of 8 cases still running, 50–90% of cycles shown.",
+    doc: "ion-pic-design.md", figures: pair("six-coil-ions", "Six-coil coupled ions"),
+  },
+  {
     id: "ions", title: "Coupled electrons + H2+ ions (two-coil)",
-    summary: "H2 gas, electron-impact ionization, ion space charge and charge exchange. Ions neutralize most of the electron well. Six-coil ion runs are still in progress.",
+    summary: "H2 gas, electron-impact ionization, ion space charge and charge exchange. Ions cancel the electron well within 147 µs at 1e-3 Pa.",
     doc: "ion-pic-design.md", figures: pair("ions", "Coupled ions"),
   },
   {
