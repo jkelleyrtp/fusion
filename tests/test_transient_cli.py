@@ -127,10 +127,31 @@ class TransientCLITests(unittest.TestCase):
             ("--current-a", "-1"), ("--source-sigma", "-1"),
             ("--aim-deg", "100"), ("--divergence-deg", "90"),
             ("--save-every", "0"), ("--max-snapshots", "2"),
-            ("--diagnostic-every", "-1"),
+            ("--diagnostic-every", "-1"), ("--box-half-width", "0.25"),
+            ("--box-bottom", "1.2"), ("--box-top", "0.2"), ("--box-half-width", "0.5"),
         ]:
             with self.subTest(option=option, value=value), self.assertRaises(ValueError):
                 validate(arguments(Path("unused"), option, value))
+
+    def test_box_extensions_keep_reference_cells(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "box"
+            with contextlib.redirect_stdout(io.StringIO()):
+                history = run(arguments(
+                    root, "--box-half-width", "0.45", "--box-bottom", "1.625", "--box-top", "1.95",
+                ))
+            configuration = json.loads((root / "configuration.json").read_text())
+            self.assertEqual(configuration["mesh_shape"], [7, 7, 12])
+            np.testing.assert_allclose(configuration["box_lower_m"], [-0.225, -0.225, -0.8125])
+            np.testing.assert_allclose(configuration["box_upper_m"], [0.225, 0.225, 0.975])
+            z_rows, r_columns = configuration["magnetic_table_shape_z_r"]
+            self.assertEqual((z_rows, r_columns), (512 + 64 + 128, 193))
+            with np.load(root / history[-1]["snapshot"]) as state:
+                self.assertEqual(state["potential_V"].shape, (7, 7, 12))
+                np.testing.assert_allclose(
+                    (state["upper_m"] - state["lower_m"]) / (np.array([7, 7, 12]) - 1),
+                    [0.075, 0.075, 1.3 / 8],
+                )
 
     def test_backwards_sample_rejected(self):
         position = torch.tensor([[0, 0.004, -0.65]] * 2, dtype=torch.float64)

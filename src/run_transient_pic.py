@@ -30,6 +30,12 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--current-a", type=float, default=1e-8)
     result.add_argument("--coil-current", type=float, default=1000)
     result.add_argument("--radius", type=float, default=0.5)
+    result.add_argument("--box-half-width", type=float, default=0.6,
+                        help="transverse half-width in coil radii")
+    result.add_argument("--box-bottom", type=float, default=1.3,
+                        help="distance below the coil midplane in coil radii; the gun sits at 1.3")
+    result.add_argument("--box-top", type=float, default=1.3,
+                        help="distance above the coil midplane in coil radii")
     result.add_argument("--energy-ev", type=float, default=5000)
     result.add_argument("--temperature-ev", type=float, default=0.2)
     result.add_argument("--aim-deg", type=float, default=30)
@@ -66,6 +72,9 @@ def validate(args: argparse.Namespace) -> int:
         raise ValueError("Invalid output or step limits")
     if not 0 <= args.track <= 256 or args.seed < 0:
         raise ValueError("Invalid tracking count or seed")
+    if args.box_half_width <= 0.25 or args.box_top <= 0.25 or args.box_bottom < 1.3:
+        raise ValueError("Box must contain the core and the gun")
+    mesh_shape(args)
     ratio = args.duration / args.dt
     if not math.isfinite(ratio):
         raise ValueError("Duration exceeds max-steps")
@@ -113,6 +122,20 @@ def save_snapshot(
     return record
 
 
+def _cells(count: int, extent: float, reference: float) -> int:
+    cells = count * extent / reference
+    if abs(cells - round(cells)) > 1e-9:
+        raise ValueError("Box dimensions must keep the reference cell size")
+    return round(cells)
+
+
+def mesh_shape(args: argparse.Namespace) -> tuple[int, int, int]:
+    """Nodes per axis keeping the cells of `--nodes` over the reference 1.2a x 1.2a x 2.6a box."""
+    transverse = _cells(args.nodes - 1, args.box_half_width, 0.6) + 1
+    axial = _cells(args.nodes - 1, args.box_bottom + args.box_top, 2.6) + 1
+    return transverse, transverse, axial
+
+
 def source_geometry(args: argparse.Namespace) -> tuple[list[float], list[float]]:
     angle = math.radians(args.aim_deg)
     return [0.0, 0.008 * args.radius, -1.3 * args.radius], [0.0, -math.sin(angle), math.cos(angle)]
@@ -121,15 +144,23 @@ def source_geometry(args: argparse.Namespace) -> tuple[list[float], list[float]]
 def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]:
     device = torch.device(args.device)
     a = args.radius
+    width = args.box_half_width * a
     lower = torch.tensor(
-        [-0.6 * a, -0.6 * a, -1.3 * a], device=device, dtype=torch.float64,
+        [-width, -width, -args.box_bottom * a], device=device, dtype=torch.float64,
     )
-    mesh = ElectrostaticMesh(lower, -lower, (args.nodes,) * 3)
+    upper = torch.tensor(
+        [width, width, args.box_top * a], device=device, dtype=torch.float64,
+    )
+    mesh = ElectrostaticMesh(lower, upper, mesh_shape(args))
+    radial = math.ceil(255 * args.box_half_width / 0.6 - 1e-9)
+    below = math.ceil(511 * (args.box_bottom - 1.3) / 2.6 - 1e-9)
+    above = math.ceil(511 * (args.box_top - 1.3) / 2.6 - 1e-9)
     r = torch.linspace(
-        0, math.sqrt(2) * 0.6 * a, 256, device=device, dtype=torch.float64,
+        0, math.sqrt(2) * 0.6 * a * (radial / 255), radial + 1, device=device, dtype=torch.float64,
     )
     z = torch.linspace(
-        -1.3 * a, 1.3 * a, 512, device=device, dtype=torch.float64,
+        -1.3 * a - below * 2.6 * a / 511, 1.3 * a + above * 2.6 * a / 511, 512 + below + above,
+        device=device, dtype=torch.float64,
     )
     br, bz = ring_field_on_grid(
         r, z, a, [-0.5 * a, 0.5 * a],
@@ -174,9 +205,14 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         "source_nominal_pitch_deg": pitch,
         "source_B_T": source_field.cpu().tolist(),
         "magnetic_table_max_T": bmax,
-        "magnetic_table_shape_z_r": [512, 256],
+        "magnetic_table_shape_z_r": [len(z), len(r)],
+        "box_lower_m": lower.cpu().tolist(), "box_upper_m": upper.cpu().tolist(),
+        "mesh_shape": list(mesh.shape),
         "core_radius_m": simulation.core_radius,
-        "boundary": "grounded rectangular box; absorbing particle walls",
+        "boundary": (
+            "grounded rectangular box; absorbing particle walls"
+            + ("; gun inside the box, not on its lower wall" if args.box_bottom > 1.3 else "")
+        ),
         "charge_deposition": "instantaneous CIC; no residence weighting",
         "energy_balance": "K + U + lost kinetic - injected kinetic; not a power budget",
         "tracking": "first stable particle IDs; includes terminal wall positions",

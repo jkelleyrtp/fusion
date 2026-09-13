@@ -60,6 +60,23 @@ class CampaignTests(unittest.TestCase):
             refined.dt * refined.inject_every / refined.inject_per_step,
         )
 
+    def test_domain_study_varies_only_the_box(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "domain")
+        configurations = [parser().parse_args(command[2:]) for command in argv]
+        window = parser().parse_args(commands(Path("/campaign"), "a" * 40, "window")[2][2:])
+        self.assertEqual(len(configurations), 8)
+        self.assertEqual([item.device for item in configurations], [f"cuda:{i}" for i in range(8)])
+        boxes = {(item.box_half_width, item.box_bottom, item.box_top) for item in configurations}
+        self.assertEqual(len(boxes), 8)
+        self.assertIn((0.6, 1.3, 1.3), boxes)
+        box_options = ("out", "device", "box_half_width", "box_bottom", "box_top")
+        expected = {key: value for key, value in vars(window).items() if key not in box_options}
+        for item in configurations:
+            validate(item)
+            self.assertEqual(
+                {key: value for key, value in vars(item).items() if key not in box_options}, expected,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

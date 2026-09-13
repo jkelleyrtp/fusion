@@ -1,4 +1,4 @@
-"""Summarize the long-window transient PIC sensitivity campaign from scalar diagnostics."""
+"""Summarize the long-window and grounded-box transient PIC sensitivity campaigns."""
 
 import argparse
 import json
@@ -17,6 +17,10 @@ plt.switch_backend("Agg")
 REFERENCE_CASE = "pic_1A_n129"
 MESH_CASES = ("pic_1A_n33", "pic_1A_n49", "pic_1A_n65", "pic_1A_n97", "pic_1A_n129")
 VARIANT_CASES = ("pic_1A_n65_particles", "pic_1A_n65_dt", "pic_1A_n65_s2345")
+DOMAIN_CASES = (
+    "pic_1A_box", "pic_1A_box_w0525", "pic_1A_box_w045", "pic_1A_box_t195", "pic_1A_box_t26",
+    "pic_1A_box_b1625", "pic_1A_box_b195", "pic_1A_box_b195_t26",
+)
 WINDOW_METRICS = (
     "minimum_potential_V", "field_energy_J", "alive_electrons", "core_electron_count",
     "residence_s", "core_residence_s",
@@ -78,7 +82,30 @@ def summarize(name: str, records: list[Record], window_start_s: float) -> dict[s
     }
 
 
-def plot_histories(histories: dict[str, list[Record]], output: Path) -> None:
+def core_field(case: Path, core_radius_m: float) -> dict[str, object]:
+    """Final-snapshot potential at the origin node and its minimum inside the core sphere."""
+    snapshot = max((case / "snapshots").glob("*.npz"))
+    with np.load(snapshot, allow_pickle=False) as values:
+        potential, lower, upper = values["potential_V"], values["lower_m"], values["upper_m"]
+    axes = [np.linspace(lower[axis], upper[axis], potential.shape[axis]) for axis in range(3)]
+    origin = tuple(int(np.abs(axis).argmin()) for axis in axes)
+    x, y, z = np.meshgrid(*axes, indexing="ij")
+    inside = x**2 + y**2 + z**2 <= core_radius_m**2
+    minimum = np.unravel_index(np.where(inside, potential, np.inf).argmin(), potential.shape)
+    minimum_all = np.unravel_index(potential.argmin(), potential.shape)
+    return {
+        "origin_node_m": [float(axes[axis][origin[axis]]) for axis in range(3)],
+        "origin_potential_V": float(potential[origin]),
+        "core_minimum_potential_V": float(potential[minimum]),
+        "core_minimum_position_m": [float(axes[axis][minimum[axis]]) for axis in range(3)],
+        "minimum_potential_V": float(potential[minimum_all]),
+        "minimum_potential_position_m": [float(axes[axis][minimum_all[axis]]) for axis in range(3)],
+        "box_lower_m": lower.tolist(), "box_upper_m": upper.tolist(),
+        "mesh_shape": list(potential.shape),
+    }
+
+
+def plot_histories(histories: dict[str, list[Record]], output: Path, solid: tuple[str, ...]) -> None:
     figure, axes = plt.subplots(2, 2, figsize=(12, 7.5), constrained_layout=True)
     panels = (
         ("minimum_potential_V", 1, "Grounded-box minimum potential", "V"),
@@ -88,7 +115,7 @@ def plot_histories(histories: dict[str, list[Record]], output: Path) -> None:
     )
     for name, records in histories.items():
         time_ns = [scalar(record, "time_s") * 1e9 for record in records]
-        style = "-" if name in MESH_CASES else "--"
+        style = "-" if name in solid else "--"
         for axis, (key, scale, _, _) in zip(axes.flat, panels, strict=True):
             axis.plot(time_ns, [derived(record)[key] * scale for record in records], style, label=name, lw=1.2)
     for axis, (_, _, title, unit) in zip(axes.flat, panels, strict=True):
@@ -130,9 +157,11 @@ def main() -> None:
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--window-start", type=float, default=2e-7)
+    parser.add_argument("--study", choices=("window", "domain"), default="window")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
-    histories = {name: load(args.run / name) for name in (*MESH_CASES, *VARIANT_CASES)}
+    names = DOMAIN_CASES if args.study == "domain" else (*MESH_CASES, *VARIANT_CASES)
+    histories = {name: load(args.run / name) for name in names}
     summaries = {name: summarize(name, records, args.window_start) for name, records in histories.items()}
 
     def relative(name: str, reference: str) -> dict[str, float]:
@@ -140,6 +169,24 @@ def main() -> None:
         target = cast(dict[str, float], summaries[reference]["mean"])
         return {key: (current[key] - target[key]) / abs(target[key]) for key in WINDOW_METRICS}
 
+    if args.study == "domain":
+        core_radius = 0.25 * json.loads((args.run / DOMAIN_CASES[0] / "configuration.json").read_text())["radius"]
+        domain_report = {
+            "scope": "Grounded-box sensitivity of the 1 A external-gun CUDA PIC model at 65-cubed reference cells.",
+            "cases": list(summaries.values()),
+            "final_fields": {name: core_field(args.run / name, core_radius) for name in names},
+            "relative_to_reference_box": {name: relative(name, DOMAIN_CASES[0]) for name in DOMAIN_CASES[1:]},
+            "limitations": [
+                "Transverse walls can only move inward: the coil windings lie just outside the reference box.",
+                "A farther bottom wall leaves the gun inside the grounded volume rather than on a wall aperture.",
+                "One seed per box; 65-cubed cells are mesh-sensitive at the ~10% level for the minimum potential.",
+                "Grounded outer box, imposed two-coil magnetic field, electrons only.",
+            ],
+        }
+        (args.out / "analysis.json").write_text(json.dumps(domain_report, indent=2, allow_nan=False) + "\n")
+        plot_histories(histories, args.out / "evolution.png", DOMAIN_CASES[:1])
+        plot_fields(args.run, args.out / "fields.png", ("pic_1A_box", "pic_1A_box_w045", "pic_1A_box_b195_t26"))
+        return
     report = {
         "scope": "Long-window sensitivity of the 1 A external-gun CUDA PIC model; not a convergence certificate.",
         "cases": list(summaries.values()),
@@ -154,7 +201,7 @@ def main() -> None:
         ],
     }
     (args.out / "analysis.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
-    plot_histories(histories, args.out / "evolution.png")
+    plot_histories(histories, args.out / "evolution.png", MESH_CASES)
     plot_fields(args.run, args.out / "fields.png", ("pic_1A_n33", "pic_1A_n65", "pic_1A_n129"))
 
 

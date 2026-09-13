@@ -112,3 +112,39 @@ and 3.0 ms for the ½ dt case, which injects every second step. The isolated
 single-GPU profile at ~60k live particles measured 2.24 ms per step. The
 difference between concurrent long-window and isolated profile timings is being
 measured separately (see `docs/pic-cuda-evidence.md`).
+
+## Grounded-box sensitivity (design)
+
+`run_pic_campaign.py --study domain` repeats the 65³ long-window case (1 A,
+5 keV, 30 kA-turn, seed 1234, 4 ps, 300 ns, CUDA) in eight grounded boxes.
+`--box-half-width`, `--box-bottom` and `--box-top` are in coil radii; node
+counts scale so every case keeps the 65³ reference cells (9.4 mm transverse,
+20.3 mm axial) and a node at the origin, and the magnetic lookup table is
+extended to cover the box. Defaults reproduce the reference mesh and table
+bitwise.
+
+| Case | Half-width | Bottom | Top | Nodes |
+|---|---:|---:|---:|---|
+| `pic_1A_box` | 0.6 | 1.3 | 1.3 | 65×65×65 |
+| `pic_1A_box_w0525` | 0.525 | 1.3 | 1.3 | 57×57×65 |
+| `pic_1A_box_w045` | 0.45 | 1.3 | 1.3 | 49×49×65 |
+| `pic_1A_box_t195` | 0.6 | 1.3 | 1.95 | 65×65×81 |
+| `pic_1A_box_t26` | 0.6 | 1.3 | 2.6 | 65×65×97 |
+| `pic_1A_box_b1625` | 0.6 | 1.625 | 1.3 | 65×65×73 |
+| `pic_1A_box_b195` | 0.6 | 1.95 | 1.3 | 65×65×81 |
+| `pic_1A_box_b195_t26` | 0.6 | 1.95 | 2.6 | 65×65×113 |
+
+The gun stays at z = −1.3a with the same aim and local-B angle in every case.
+Two geometric constraints shape the matrix:
+
+- Transverse walls only move inward. The coil windings sit at r = a, outside
+  the reference box; a wider box would place mesh nodes next to the windings,
+  where the sampled field exceeds the 80-steps-per-gyration timestep guard.
+- Moving the bottom wall down leaves the gun inside the grounded volume instead
+  of on its wall, so the bottom-wall cases change what the gun sees as well as
+  the image-charge distance.
+
+`analyze_pic_window.py --study domain` reports window means relative to the
+reference box, the final-snapshot potential at the origin, the minimum inside
+the core sphere and the global minimum with their positions. This is a
+sensitivity check with one seed per box, not a convergence certificate.

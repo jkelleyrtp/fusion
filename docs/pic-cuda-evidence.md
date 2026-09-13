@@ -253,6 +253,28 @@ load. Data: `docs/data/pic-production-profile-0d113e7.json`. Artifacts:
   attempt-20260913-080800-314353209/
 ```
 
+Commit `f2effd4` skips revalidating particle positions whose tensor has not
+changed since the last check (keyed on the tensor's version counter, so any
+in-place update revalidates) and accumulates lost-particle totals on the device
+instead of reading them back after every loss. Rerun as job
+`jonathan-pic-cuda-a75edcfabeea-38f424` with the same load:
+
+| Process | Plain step | Injection | Advance |
+|---|---:|---:|---:|
+| Alone | 2.55 ms | 0.19 ms | 2.40 ms |
+| Eight concurrent, fastest | 2.47 ms | 0.19 ms | 2.34 ms |
+| Eight concurrent, median | 2.56 ms | — | — |
+| Eight concurrent, slowest | 2.80 ms | 0.21 ms | 2.64 ms |
+
+That is 7.6% off the isolated plain step. Host orchestration remains ~74% of
+the instrumented step, so the rest of the cost is still per-launch overhead.
+Data: `docs/data/pic-production-profile-f2effd4.json`. Artifacts:
+
+```text
+/public/devcontainer-shared/jonathan/cusp/runs/pic-cuda-a75edcfabeea/
+  attempt-20260913-082830-344767078/
+```
+
 An earlier submission of this job (`jonathan-pic-cuda-20364cb774fd-6b0612`)
 measured the isolated case (2.77 ms) but its concurrent stage never wrote
 output: the nested shell did not receive the output path. The generator now

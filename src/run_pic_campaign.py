@@ -12,6 +12,17 @@ from pathlib import Path
 from run_transient_pic import parser as pic_parser
 from run_transient_pic import validate as validate_config
 
+DOMAIN_BOXES = {
+    "pic_1A_box": (0.6, 1.3, 1.3),
+    "pic_1A_box_w0525": (0.525, 1.3, 1.3),
+    "pic_1A_box_w045": (0.45, 1.3, 1.3),
+    "pic_1A_box_t195": (0.6, 1.3, 1.95),
+    "pic_1A_box_t26": (0.6, 1.3, 2.6),
+    "pic_1A_box_b1625": (0.6, 1.625, 1.3),
+    "pic_1A_box_b195": (0.6, 1.95, 1.3),
+    "pic_1A_box_b195_t26": (0.6, 1.95, 2.6),
+}
+
 
 def case_specs(
     study: str, kernels: str,
@@ -41,6 +52,9 @@ def case_specs(
             ("pic_1A_n65_dt", 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda"),
             ("pic_1A_n65_s2345", 1, 4e-12, 8, 1, 7500, 65, 2345, "cuda"),
         ),
+        "domain": tuple(
+            (name, 1, 4e-12, 8, 1, 7500, 65, 1234, "cuda") for name in DOMAIN_BOXES
+        ),
     }[study]
     return list(cases)
 
@@ -49,7 +63,7 @@ def commands(
     out: Path, revision: str, study: str = "startup", kernels: str = "reference",
 ) -> list[list[str]]:
     result = []
-    window = study == "window"
+    window = study in ("window", "domain")
     for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
         case_specs(study, kernels),
     ):
@@ -71,6 +85,11 @@ def commands(
             "--divergence-deg", "10", "--aim-deg", "30", "--seed", str(seed),
             "--save-every", str(stride), "--track", "64", "--max-snapshots", "16",
         ])
+        if study == "domain":
+            width, bottom, top = DOMAIN_BOXES[name]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+            ]
     return result
 
 
@@ -79,7 +98,8 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--case-timeout", type=float, default=900)
     parser.add_argument(
-        "--study", choices=("startup", "refinement", "acceptance", "window"), default="startup",
+        "--study", choices=("startup", "refinement", "acceptance", "window", "domain"),
+        default="startup",
     )
     parser.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
     args = parser.parse_args()
@@ -113,6 +133,11 @@ def main() -> None:
             "plus at 65-cubed: twice the particles per packet, matched-packet half "
             "timestep and a second seed. Scalar diagnostics every 1 ns. One realization "
             "per setting; grounded box, imposed two-coil field, electron-only."
+        ) if args.study == "window" else (
+            "CUDA 1 A grounded-box sensitivity, 300 ns, cells of the 65-cubed reference box: "
+            "narrower transverse walls (the coils bound widening), a farther top wall, "
+            "and a farther bottom wall that leaves the gun inside the box. Same gun, "
+            "field, seed and packets. One realization per box; electron-only."
         ),
         "study": args.study, "kernels": args.kernels,
         "cases": [
