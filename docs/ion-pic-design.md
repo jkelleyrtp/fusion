@@ -2,7 +2,8 @@
 
 Scope: the next fidelity step after frozen test ions (`src/ion_orbits.py`). Ions carry charge,
 the field is solved from electrons plus ions, and ions are produced by electron-impact
-ionization of a uniform background gas. Implemented in `src/ion_pic.py`.
+ionization of neutral gas, either a uniform fill or a pumped background plus an inlet plume.
+Implemented in `src/ion_pic.py`.
 
 ## Why a two-timescale scheme
 
@@ -34,13 +35,27 @@ of ion-acoustic dynamics faster than the cycle.
 
 ## Physics
 
-- Gas: uniform H2 at `--gas-pa` and `--gas-temperature-k`, not depleted.
+- Fuel: `--fuel H2` or `D2` (molecular mass 2.016 or 4.028 amu, ionization energy 15.43 or
+  15.47 eV). Isotopes share the Lotz form; `--ion-mass-amu` overrides the ion mass.
+- Gas: static and not depleted, at `--gas-temperature-k`. The background is
+  `(--gas-pa + Q/S) / kT`: residual pressure plus inlet throughput `Q`
+  (`--gas-inlet-throughput`, Pa m³/s) over pump speed `S` (`--pump-speed`, m³/s). An inlet at
+  `--gas-inlet` adds a free-molecular cosine-law plume `n = (Q/kT) cos θ / (π v̄ r²)`, with
+  `v̄ = sqrt(8kT/πm)`, `θ` from `--gas-inlet-direction` (default: toward the origin) and `r`
+  clamped to `--gas-inlet-radius`. The plume flux over any enclosing hemisphere equals the
+  throughput. It ignores shadowing by the casings and wall reflection.
+  In steady state the pumped background `Q/S` usually exceeds the core plume density: a 1 m³/s
+  pump and an inlet 0.7 m from the centre give a background ~2000 times the plume at the
+  centre. A plume-dominated gas distribution therefore only represents an early-time puff
+  (`t < V/S`, before the vessel fills) or strong differential pumping, which the campaign
+  approximates with a large `S`. Ionization and charge exchange use the local density.
 - Ionization: electron-impact, Lotz form `σ = a q ln(E/P) / (E P)`, `a = 4.5e-18 m² eV²`,
   `q = 2`, `P = 15.43 eV`, scaled by `--ionization-scale`. Within ~10% of measured H2 totals
   at 0.1–1 keV. Primary electrons lose no energy to ionization (~5e-4 events per electron
   lifetime at 1e-3 Pa).
-- Ion species: H2+ (`--ion-mass-amu 2.016`), born with `--ion-temperature-ev` Maxwellian
-  velocity. Dissociative ionization and H3+ formation are omitted.
+- Ion species: the fuel molecular ion (H2+ or D2+), born with `--ion-temperature-ev`
+  Maxwellian velocity. Dissociative ionization and H3+/D3+ formation are omitted. There is no
+  external ion gun: every ion is born where an electron ionizes the gas.
 - Secondary electrons: injected into the electron PIC at the ionization rate from the same
   birth pool, Maxwellian at `--secondary-temperature-ev`; `--no-secondaries` disables them.
   Their population is only captured when their lifetime is short compared with the window.
@@ -61,7 +76,7 @@ of ion-acoustic dynamics faster than the cycle.
 ## Not modelled
 
 Collisions between charged particles, ion–ion or electron–ion instabilities faster than the
-cycle, gas depletion and neutral transport, recombination, wall secondary emission, ion
+cycle, gas depletion, neutral transport beyond the free-molecular plume, recombination, wall secondary emission, ion
 sputtering, magnetic field from plasma currents, and fusion reactions. The two-coil
 axisymmetric field remains imposed.
 

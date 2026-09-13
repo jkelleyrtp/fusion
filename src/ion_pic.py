@@ -1,7 +1,11 @@
-"""Coupled electron and H2+ ion PIC with electron-impact ionization of a uniform gas.
+"""Coupled electron and molecular-ion (H2+ or D2+) PIC with electron-impact ionization of neutral gas.
 
 Cycles alternate a short external-gun electron window, run against the frozen ion charge, with a
 long ion push in the window-mean electron charge plus the live ion charge. See docs/ion-pic-design.md.
+
+The neutral density is a static background, pumped residual plus inlet throughput over pump speed,
+plus an optional free-molecular effusive plume from a gas inlet: n(x) = Q cos(theta) / (pi vbar r^2)
+with Q the molecular throughput, theta the angle from the inlet axis and r clamped to the inlet radius.
 """
 
 import argparse
@@ -34,16 +38,24 @@ LOTZ_A_M2_EV2 = 4.5e-18
 H2_IONIZATION_EV = 15.43
 H2_SHELL_ELECTRONS = 2
 SECONDARY_BATCH = 16
+FUELS = {"H2": (2.016, 15.43), "D2": (4.028, 15.47)}  # molecular mass in amu, ionization energy in eV
 
 
 def parser() -> argparse.ArgumentParser:
     result = pic_parser()
     result.description = __doc__
-    result.add_argument("--gas-pa", type=float, default=1e-3)
+    result.add_argument("--fuel", choices=tuple(FUELS), default="H2")
+    result.add_argument("--gas-pa", type=float, default=1e-3, help="residual background pressure")
     result.add_argument("--gas-temperature-k", type=float, default=300)
+    result.add_argument("--gas-inlet", type=float, nargs=3, default=None, help="inlet position (m)")
+    result.add_argument("--gas-inlet-direction", type=float, nargs=3, default=None,
+                        help="plume axis; defaults to pointing at the origin")
+    result.add_argument("--gas-inlet-throughput", type=float, default=0.0, help="Pa m^3/s")
+    result.add_argument("--gas-inlet-radius", type=float, default=5e-3, help="m")
+    result.add_argument("--pump-speed", type=float, default=1.0, help="m^3/s")
     result.add_argument("--ionization-scale", type=float, default=1.0)
     result.add_argument("--cx-cross-section", type=float, default=5e-20, help="m^2")
-    result.add_argument("--ion-mass-amu", type=float, default=2.016)
+    result.add_argument("--ion-mass-amu", type=float, default=None, help="defaults to the fuel molecule")
     result.add_argument("--ion-temperature-ev", type=float, default=0.05)
     result.add_argument("--secondaries", action=argparse.BooleanOptionalAction, default=True)
     result.add_argument("--secondary-temperature-ev", type=float, default=3.0)
@@ -79,11 +91,17 @@ class Plan:
 
 
 def validate_coupled(args: argparse.Namespace) -> Plan:
-    positive = (args.gas_pa, args.gas_temperature_k, args.ion_mass_amu, args.ion_dt, args.cycle_duration)
+    positive = (args.gas_temperature_k, ion_mass_amu(args), args.ion_dt, args.cycle_duration,
+                args.gas_inlet_radius, args.pump_speed, args.gas_pa + args.gas_inlet_throughput)
     if not all(math.isfinite(value) and value > 0 for value in positive):
-        raise ValueError("Gas pressure and temperature, ion mass, ion timestep and cycle must be positive")
-    nonnegative = (args.ionization_scale, args.cx_cross_section, args.ion_temperature_ev,
-                   args.secondary_temperature_ev)
+        raise ValueError("Gas temperature and pressure, ion mass, ion timestep, cycle, inlet radius and pump "
+                         "speed must be positive")
+    if args.gas_inlet_throughput and args.gas_inlet is None:
+        raise ValueError("Gas inlet throughput requires --gas-inlet")
+    if args.gas_inlet is not None and math.dist(inlet_direction(args), (0, 0, 0)) == 0:
+        raise ValueError("Gas inlet direction must be nonzero")
+    nonnegative = (args.gas_pa, args.gas_inlet_throughput, args.ionization_scale, args.cx_cross_section,
+                   args.ion_temperature_ev, args.secondary_temperature_ev)
     if not all(math.isfinite(value) and value >= 0 for value in nonnegative):
         raise ValueError("Ionization scale, cross section and temperatures must be nonnegative")
     if (args.cycles < 1 or args.electron_samples < 1 or args.ion_field_every < 1 or args.secondary_every < 1
@@ -99,6 +117,14 @@ def validate_coupled(args: argparse.Namespace) -> Plan:
     return Plan(startup, window, ion_steps, ion_steps // args.ion_batches, args.ions_per_cycle // args.ion_batches)
 
 
+def ion_mass_amu(args: argparse.Namespace) -> float:
+    return FUELS[args.fuel][0] if args.ion_mass_amu is None else args.ion_mass_amu
+
+
+def inlet_direction(args: argparse.Namespace) -> tuple[float, ...]:
+    return tuple(-item for item in args.gas_inlet) if args.gas_inlet_direction is None else tuple(args.gas_inlet_direction)
+
+
 def electron_arguments(args: argparse.Namespace, steps: int) -> argparse.Namespace:
     """Gun and electron PIC settings spanning every electron window, as one continuous electron run."""
     electron = copy.copy(args)
@@ -108,11 +134,11 @@ def electron_arguments(args: argparse.Namespace, steps: int) -> argparse.Namespa
     return electron
 
 
-def ionization_cross_section(energy_ev: torch.Tensor) -> torch.Tensor:
-    """Lotz electron-impact ionization cross section of H2 in m^2; zero below threshold."""
-    energy = energy_ev.clamp(min=H2_IONIZATION_EV)
-    sigma = LOTZ_A_M2_EV2 * H2_SHELL_ELECTRONS * torch.log(energy / H2_IONIZATION_EV) / (energy * H2_IONIZATION_EV)
-    return torch.where(energy_ev > H2_IONIZATION_EV, sigma, 0.0)
+def ionization_cross_section(energy_ev: torch.Tensor, threshold_ev: float = H2_IONIZATION_EV) -> torch.Tensor:
+    """Lotz electron-impact ionization cross section of a two-electron molecule in m^2; zero below threshold."""
+    energy = energy_ev.clamp(min=threshold_ev)
+    sigma = LOTZ_A_M2_EV2 * H2_SHELL_ELECTRONS * torch.log(energy / threshold_ev) / (energy * threshold_ev)
+    return torch.where(energy_ev > threshold_ev, sigma, 0.0)
 
 
 @dataclass
@@ -151,12 +177,20 @@ class CoupledPIC:
         self.kernels = self.electrons.kernels
         self.conductors = self.electrons.conductors
         device = self.mesh.lower.device
-        self.ion_mass = args.ion_mass_amu * AMU
+        self.ion_mass = ion_mass_amu(args) * AMU
         self.qm = E_CHARGE / self.ion_mass
         bmax = cast(float, self.configuration["magnetic_table_max_T"])
         if self.qm * bmax * args.ion_dt > 2 * math.pi / 80:
             raise ValueError("Ion timestep requires at least 80 steps per gyration")
-        self.gas_density = args.gas_pa / (K_B * args.gas_temperature_k)
+        kt = K_B * args.gas_temperature_k
+        self.gas_density = (args.gas_pa + args.gas_inlet_throughput / args.pump_speed) / kt
+        self.inlet: tuple[torch.Tensor, torch.Tensor, float] | None = None
+        if args.gas_inlet is not None:
+            axis = torch.tensor(inlet_direction(args), dtype=torch.float64, device=device)
+            molecule = FUELS[args.fuel][0] * AMU
+            speed = math.sqrt(8 * kt / (math.pi * molecule))
+            strength = args.gas_inlet_throughput / kt / (math.pi * speed)
+            self.inlet = (torch.tensor(args.gas_inlet, dtype=torch.float64, device=device), axis / axis.norm(), strength)
         self.generator = torch.Generator(device=device).manual_seed(args.seed + 7919)
         self.source = GunSource(electron_args)
         self.origin, _ = source_geometry(args)
@@ -177,6 +211,17 @@ class CoupledPIC:
         self.pool = empty.reshape(0, 3)
         self.ion_conductor_charge = empty.new_zeros(shapes)
 
+    def neutral_density(self, position: torch.Tensor) -> torch.Tensor:
+        """Background plus effusive inlet-plume neutral molecule density at `position` in m^-3."""
+        density = position.new_full((len(position),), self.gas_density)
+        if self.inlet is None:
+            return density
+        origin, axis, strength = self.inlet
+        offset = position - origin
+        distance = offset.norm(dim=1).clamp(min=self.args.gas_inlet_radius)
+        cosine = (offset @ axis / distance).clamp(min=0, max=1)
+        return density + strength * cosine / distance.square()
+
     def ion_charge(self) -> torch.Tensor:
         return self.kernels.deposit(self.ions.position, E_CHARGE * self.ions.weight)
 
@@ -192,7 +237,8 @@ class CoupledPIC:
         charge = self.kernels.deposit(p.position, -E_CHARGE * p.weight)
         speed = p.velocity.norm(dim=1)
         energy_ev = 0.5 * M_E * speed.square() / E_CHARGE
-        rates = self.gas_density * self.args.ionization_scale * p.weight * ionization_cross_section(energy_ev) * speed
+        sigma = ionization_cross_section(energy_ev, FUELS[self.args.fuel][1])
+        rates = self.neutral_density(p.position) * self.args.ionization_scale * p.weight * sigma * speed
         total = rates.sum()
         if bool((rates < 0).any()):
             raise ValueError("Ionization rates must be nonnegative")
@@ -301,7 +347,7 @@ class CoupledPIC:
         if not args.cx_cross_section or not len(ions.weight):
             return
         speed = ions.velocity.norm(dim=1)
-        probability = -torch.expm1(-self.gas_density * args.cx_cross_section * speed * h)
+        probability = -torch.expm1(-self.neutral_density(ions.position) * args.cx_cross_section * speed * h)
         exchanged = torch.rand(speed.shape, generator=self.generator, dtype=torch.float64, device=speed.device) < probability
         thermal = math.sqrt(args.gas_temperature_k * K_B / self.ion_mass)
         replacement = thermal * torch.randn(ions.velocity.shape, generator=self.generator, dtype=torch.float64,
@@ -447,9 +493,11 @@ def run(args: argparse.Namespace) -> list[dict[str, object]]:
         **simulation.configuration,
         "model": "coupled-electron-ion-pic-v1",
         "coupling": "operator-split cycles: electron window on frozen ions, ion push on window-mean electrons",
-        "ionization": "electron impact on uniform H2, Lotz cross section",
-        "ion_species": "H2+",
+        "ionization": f"electron impact on {args.fuel}: static background plus effusive inlet plume, Lotz cross section",
+        "ion_species": f"{args.fuel}+",
+        "ion_mass_amu": ion_mass_amu(args),
         "gas_density_m3": simulation.gas_density,
+        "gas_density_at_origin_m3": float(simulation.neutral_density(simulation.mesh.lower.new_zeros((1, 3)))[0]),
         "ion_charge_to_mass_C_kg": simulation.qm,
         "plan": dataclasses.asdict(plan),
         "validation_scope": (

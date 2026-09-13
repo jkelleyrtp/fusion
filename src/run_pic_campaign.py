@@ -114,7 +114,22 @@ SIX_COIL_FEED = {
     "feed_30A_10keV_10kAt": (30, 10000, 10000, 2e-12, 2),
     "feed_100A_10keV_10kAt": (100, 10000, 10000, 2e-12, 2),
 }
-COUPLED = ("ions", "six-coil-ions", "six-coil-feed")
+FACE_INLET, CORNER_INLET, GUN_INLET = ("0.7", "0", "0"), ("0.68", "0.68", "0.68"), ("0.1", "0", "-0.95")
+SIX_COIL_GAS = {
+    "d2_uniform_p1e-3": ("--gas-pa", "1e-3"),
+    "d2_uniform_p1e-4": ("--gas-pa", "1e-4"),
+    "d2_inlet_face_Q1e-3_S1": ("--gas-pa", "0", "--gas-inlet", *FACE_INLET, "--gas-inlet-throughput", "1e-3"),
+    "d2_inlet_face_Q1e-4_S1": ("--gas-pa", "0", "--gas-inlet", *FACE_INLET, "--gas-inlet-throughput", "1e-4"),
+    "d2_puff_face_Q1e-2_S1e3": ("--gas-pa", "0", "--gas-inlet", *FACE_INLET, "--gas-inlet-throughput", "1e-2",
+                                "--pump-speed", "1e3"),
+    "d2_puff_face_Q1e-1_S1e3": ("--gas-pa", "0", "--gas-inlet", *FACE_INLET, "--gas-inlet-throughput", "1e-1",
+                                "--pump-speed", "1e3"),
+    "d2_puff_corner_Q1e-1_S1e3": ("--gas-pa", "0", "--gas-inlet", *CORNER_INLET, "--gas-inlet-throughput", "1e-1",
+                                  "--pump-speed", "1e3"),
+    "d2_puff_gun_Q1e-1_S1e3": ("--gas-pa", "0", "--gas-inlet", *GUN_INLET, "--gas-inlet-throughput", "1e-1",
+                               "--pump-speed", "1e3"),
+}
+COUPLED = ("ions", "six-coil-ions", "six-coil-feed", "six-coil-gas")
 
 
 def case_specs(
@@ -169,6 +184,7 @@ def case_specs(
             (name, current, dt, 8, interval, 15000, 65, 1234, "cuda")
             for name, (current, _, _, dt, interval) in SIX_COIL_FEED.items()
         ),
+        "six-coil-gas": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_GAS),
         **{
             long: tuple(
                 (name, current, dt, 8, interval, math.ceil(duration / dt / 15), 65, seed, "cuda")
@@ -240,7 +256,7 @@ def commands(
                 "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
                 "--casing-voltage", str(voltage), "--coils", str(count), "--coil-offset", str(offset),
             ]
-        if study in ("six-coil-ions", "six-coil-feed"):
+        if study in ("six-coil-ions", "six-coil-feed", "six-coil-gas"):
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
             result[-1] += [
                 "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
@@ -255,6 +271,8 @@ def commands(
                 "--coil-current", str(coil_current), "--energy-ev", str(energy), "--gas-pa", "1e-2",
                 "--cycle-duration", "1e-6", "--cycles", "32", "--save-every-cycles", "4",
             ]
+        if study == "six-coil-gas":
+            result[-1] += ["--fuel", "D2", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_GAS[name]]
         if study in LONG:
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
             _, coil_current, voltage, _, _, _, _, energy = LONG[study][name]
@@ -277,7 +295,7 @@ def main() -> None:
         "--study",
         choices=(
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
-            "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed",
+            "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-gas",
         ),
         default="startup",
     )
@@ -373,6 +391,15 @@ def main() -> None:
             "magnetic pressure. Non-relativistic pusher (10 keV: gamma 1.02). No Coulomb collisions, gas "
             "depletion or plasma magnetic feedback."
         ) if args.study == "six-coil-feed" else (
+            "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV gun, 30 kA-turn, 40 x 10 us cycles) "
+            "comparing fuel delivery: uniform D2 at 1e-3 and 1e-4 Pa; a steady face inlet (0.7, 0, 0) m at 1e-3 "
+            "and 1e-4 Pa m^3/s with a 1 m^3/s pump, where the pumped background Q/S dominates the plume; and "
+            "early-time puffs (pump speed 1e3 m^3/s standing in for t < V/S before the vessel fills) from the "
+            "face, the (0.68, 0.68, 0.68) m corner and next to the gun at (0.1, 0, -0.95) m. Free-molecular "
+            "cosine-law plume without conductor shadowing. Tests where ions are born, their energy in the well, "
+            "and the neutralization rate per unit fuel. No gas depletion, Coulomb collisions or plasma magnetic "
+            "feedback."
+        ) if args.study == "six-coil-gas" else (
             "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel and box), 1 us "
             "at 2 ps: casing (magrid) bias +1, +2.5, +5 and +10 kV at 1 A with a second +5 kV seed, a +5 kV 1 mA "
             "vacuum-potential control, +5 kV at 3 A, and +5 kV with a 2 keV gun. Tests whether a positive magrid "
