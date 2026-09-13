@@ -169,6 +169,21 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(sorted({item.casing_voltage for item in configurations}), [1000, 2500, 5000, 10000])
         self.assertEqual(sorted({item.energy_ev for item in configurations}), [2000, 5000])
 
+    def test_six_coil_track_study_records_settled_electron_paths(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-tracks")
+        configurations = [parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        for item in configurations:
+            steps = validate(item)
+            self.assertLessEqual(steps, item.max_steps)
+            self.assertEqual((item.coils, item.coil_offset, item.casing_radius, item.duration), (6, 1.2, 0.1, 8e-7))
+            self.assertEqual((item.track, item.track_after, item.track_samples), (256, 5e-7, 2048))
+            self.assertAlmostEqual(item.track_every * item.dt, 2e-10, delta=1e-22)
+            self.assertLessEqual((steps - round(item.track_after / item.dt)) // item.track_every, item.track_samples)
+            self.assertEqual(item.dt * item.inject_every, 4e-12)
+        self.assertEqual(sorted({item.casing_voltage for item in configurations}), [-1000, 0, 5000, 10000])
+        self.assertEqual(sorted({item.current_a for item in configurations}), [1, 3])
+
     def test_six_coil_feed_study_scales_current_energy_and_field_at_matched_packet_timing(self) -> None:
         argv = commands(Path("/campaign"), "a" * 40, "six-coil-feed")
         configurations = [ion_parser().parse_args(command[2:]) for command in argv]

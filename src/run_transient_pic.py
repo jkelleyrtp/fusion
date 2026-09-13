@@ -60,6 +60,12 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--diagnostic-every", type=int, default=0)
     result.add_argument("--max-snapshots", type=int, default=128)
     result.add_argument("--track", type=int, default=64)
+    result.add_argument("--track-after", type=float, default=0.0,
+                        help="track the first --track electrons injected at or after this time in seconds")
+    result.add_argument("--track-every", type=int, default=0,
+                        help="record tracked positions every N steps into tracks.npz; 0 disables paths")
+    result.add_argument("--track-samples", type=int, default=2048,
+                        help="maximum recorded path samples; recording stops when full")
     result.add_argument("--seed", type=int, default=1234)
     result.add_argument("--source-revision", default="unversioned")
     return result
@@ -83,6 +89,8 @@ def validate(args: argparse.Namespace) -> int:
         raise ValueError("Invalid output or step limits")
     if not 0 <= args.track <= 256 or args.seed < 0:
         raise ValueError("Invalid tracking count or seed")
+    if args.track_after < 0 or args.track_every < 0 or not 1 <= args.track_samples <= 16384:
+        raise ValueError("Invalid tracking start, cadence or sample limit")
     if args.box_half_width <= 0.25 or args.box_top <= 0.25 or args.box_bottom < 1.3:
         raise ValueError("Box must contain the core and the gun")
     if args.gun_radius < 0 or (args.gun_radius > 0 and args.box_bottom == 1.3):
@@ -134,12 +142,14 @@ def save_snapshot(
         "tracked_exit_time_s": simulation.tracked_exit_time,
         "tracked_exit_face": simulation.tracked_exit_face,
     }
+    first_id = -1 if simulation.tracked_first_id is None else simulation.tracked_first_id
     name = f"step-{step:08d}.npz"
     path = directory / name
     temporary = path.with_suffix(".tmp")
     with temporary.open("wb") as stream:
         np.savez_compressed(
             stream, allow_pickle=False, time_s=simulation.time, step=step, dt_s=h,
+            tracked_first_id=first_id,
             **{key: value.cpu().numpy() for key, value in arrays.items()},
         )
     temporary.replace(path)
@@ -334,7 +344,7 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         raise ValueError("A conductor is unresolved on this mesh")
     simulation = PIC(
         mesh, magnetic_field, 0.25 * a, args.max_live_particles, args.track, kernels=kernels,
-        conductors=conductors,
+        conductors=conductors, track_after=args.track_after,
     )
     counts = [] if conductors is None else conductors.node_counts
     origin, direction = source_geometry(args)
@@ -391,10 +401,48 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         ],
         "charge_deposition": "instantaneous CIC; no residence weighting",
         "energy_balance": "K + U + lost kinetic - injected kinetic; not a power budget",
-        "tracking": "first stable particle IDs; includes terminal wall positions",
+        "tracking": (
+            f"first {args.track} stable particle IDs injected at or after {args.track_after:g} s; "
+            "includes terminal wall positions"
+            + (f"; tracks.npz samples every {args.track_every} steps, at most {args.track_samples}"
+               if args.track_every else "")
+        ),
         "validation_scope": "numerical model; physical source/mesh convergence pending",
     })
     return simulation, configuration
+
+
+class TrackRecorder:
+    """Bounded on-device path samples of the tracked electrons, written as float32."""
+
+    def __init__(self, simulation: PIC, samples: int) -> None:
+        self.simulation = simulation
+        self.positions = simulation.tracked_position.new_full(
+            (samples, *simulation.tracked_position.shape), math.nan,
+        )
+        self.times: list[float] = []
+
+    def record(self) -> None:
+        if len(self.times) < len(self.positions):
+            self.positions[len(self.times)].copy_(self.simulation.tracked_position)
+            self.times.append(self.simulation.time)
+
+    def save(self, path: Path) -> None:
+        simulation = self.simulation
+        count = len(self.times)
+        temporary = path.with_suffix(".tmp")
+        with temporary.open("wb") as stream:
+            np.savez_compressed(
+                stream, allow_pickle=False,
+                time_s=np.array(self.times, dtype=np.float64),
+                position_m=self.positions[:count].float().cpu().numpy(),
+                birth_s=simulation.tracked_birth.cpu().numpy(),
+                exit_time_s=simulation.tracked_exit_time.cpu().numpy(),
+                exit_face=simulation.tracked_exit_face.cpu().numpy(),
+                first_id=-1 if simulation.tracked_first_id is None else simulation.tracked_first_id,
+                full=count == len(self.positions),
+            )
+        temporary.replace(path)
 
 
 class GunSource:
@@ -461,8 +509,12 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | li
     )
     history: list[dict[str, float | int | list[int] | list[float] | str]] = []
 
+    recorder = TrackRecorder(simulation, args.track_samples) if args.track_every and args.track else None
+
     def publish(step: int, h: float) -> None:
         record = save_snapshot(simulation, snapshots, step, h, origin)
+        if recorder is not None:
+            recorder.save(args.out / "tracks.npz")
         record["wall_s"] = time.perf_counter() - start
         history.append(record)
         temporary = args.out / "history.tmp"
@@ -489,6 +541,8 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | li
         source.inject(simulation, step)
         simulation.advance(h)
         simulation.time = args.duration if step + 1 == steps else (step + 1) * args.dt
+        if recorder is not None and simulation.tracked_first_id is not None and (step + 1) % args.track_every == 0:
+            recorder.record()
         if (step + 1) % args.save_every == 0 or step + 1 == steps:
             publish(step + 1, h)
         if args.diagnostic_every and (step + 1) % args.diagnostic_every == 0:

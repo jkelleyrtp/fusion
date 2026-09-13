@@ -53,6 +53,38 @@ class TransientPICTests(unittest.TestCase):
         self.assertEqual(simulation.exit_counts.tolist(), [0, 2, 0, 0, 0, 0])
         self.assertAlmostEqual(float(simulation.particles.core_dwell[0]), 1e-8)
 
+    def test_delayed_tracking_follows_later_particles(self):
+        simulation = PIC(mesh(), zero_field, 0.2, 10, track=2, track_after=1e-8)
+        early = torch.tensor([[0.999, 0, 0], [0, 0, 0]], dtype=torch.float64)
+        simulation.inject(early, early.new_tensor([[1e6, 0, 0], [0, 0, 0]]), early.new_zeros(2))
+        simulation.advance(1e-8)
+        simulation.time = 1e-8
+        self.assertIsNone(simulation.tracked_first_id)
+        self.assertTrue(simulation.tracked_position.isnan().all())
+        later = torch.tensor(
+            [[-0.999, 0, 0], [0.1, 0, 0], [0.2, 0, 0]], dtype=torch.float64,
+        )
+        velocity = later.new_tensor([[-1e6, 0, 0], [1e6, 0, 0], [0, 0, 0]])
+        simulation.inject(later, velocity, later.new_zeros(3))
+        self.assertEqual(simulation.tracked_first_id, 2)
+        simulation.advance(1e-8)
+        self.assertEqual(simulation.particles.ids.tolist(), [1, 3, 4])
+        torch.testing.assert_close(
+            simulation.tracked_birth, later.new_full((2,), 1e-8), rtol=0, atol=0,
+        )
+        self.assertEqual(simulation.tracked_exit_face.tolist(), [0, -1])
+        torch.testing.assert_close(
+            simulation.tracked_exit_time, later.new_tensor([1.1e-8, math.nan]),
+            rtol=0, atol=1e-21, equal_nan=True,
+        )
+        torch.testing.assert_close(
+            simulation.tracked_position[1], later.new_tensor([0.11, 0, 0]), rtol=0, atol=1e-15,
+        )
+        simulation.advance(1e-8)
+        torch.testing.assert_close(
+            simulation.tracked_position[1], later.new_tensor([0.12, 0, 0]), rtol=0, atol=1e-15,
+        )
+
     def test_empty_population(self):
         simulation = PIC(mesh(), zero_field, 0.2, 10)
         simulation.advance(1e-8)

@@ -69,7 +69,18 @@ SIX_COIL_BIAS = {
     "six_bias_p5kV_3A": (3, 30000, 5000.0, 1234, 2e-12, 2, 1e-6, 5000),
     "six_bias_p5kV_2keV": (1, 30000, 5000.0, 1234, 2e-12, 2, 1e-6, 2000),
 }
-LONG = {"six-coil-long": SIX_COIL_LONG, "six-coil-bias": SIX_COIL_BIAS}
+SIX_COIL_TRACKS = {
+    "track_0V": (1.0, 30000, 0.0, 1234, 2e-12, 2, 8e-7, 5000),
+    "track_0V_s2345": (1.0, 30000, 0.0, 2345, 2e-12, 2, 8e-7, 5000),
+    "track_p5kV": (1.0, 30000, 5000.0, 1234, 2e-12, 2, 8e-7, 5000),
+    "track_p10kV": (1.0, 30000, 10000.0, 1234, 2e-12, 2, 8e-7, 5000),
+    "track_m1kV": (1.0, 30000, -1000.0, 1234, 2e-12, 2, 8e-7, 5000),
+    "track_3A": (3.0, 30000, 0.0, 1234, 2e-12, 2, 8e-7, 5000),
+    "track_p5kV_2keV": (1.0, 30000, 5000.0, 1234, 2e-12, 2, 8e-7, 2000),
+    "track_60kAt": (1.0, 60000, 0.0, 1234, 1e-12, 4, 8e-7, 5000),
+}
+TRACK_AFTER, TRACK_SAMPLE_INTERVAL = 5e-7, 2e-10
+LONG = {"six-coil-long": SIX_COIL_LONG, "six-coil-bias": SIX_COIL_BIAS, "six-coil-tracks": SIX_COIL_TRACKS}
 
 COIL_CASINGS = {
     "pic_1A_casing_none": ((0.6, 1.95, 1.3), 0.0, 0.0, 1234),
@@ -320,6 +331,11 @@ def commands(
                 "--casing-voltage", str(voltage), "--coils", "6", "--coil-offset", "1.2",
                 "--coil-current", str(coil_current), "--energy-ev", str(energy),
             ]
+        if study == "six-coil-tracks":
+            result[-1] += [
+                "--track", "256", "--track-after", str(TRACK_AFTER),
+                "--track-every", str(round(TRACK_SAMPLE_INTERVAL / dt)), "--track-samples", "2048",
+            ]
         if study == "ions":
             result[-1] += ["--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *ION_CASES[name]]
     return result
@@ -334,7 +350,7 @@ def main() -> None:
         choices=(
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
             "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-gas",
-            "six-coil-ion-gun", "six-coil-deuteron",
+            "six-coil-ion-gun", "six-coil-deuteron", "six-coil-tracks",
         ),
         default="startup",
     )
@@ -454,6 +470,12 @@ def main() -> None:
             "charge-exchange product is a thermal D2+ ion; electron-impact dissociation of D2+, the neutral D "
             "atoms, extraction optics, gas depletion and plasma magnetic feedback are not modelled."
         ) if args.study == "six-coil-deuteron" else (
+            "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel), 800 ns at 2 ps, "
+            "recording paths of the first 256 electrons injected after 500 ns, once the trap has saturated, every "
+            "200 ps into tracks.npz (float32, at most 2048 samples): 1 A at 0 V with a second seed, casings at +5 kV, "
+            "+10 kV and -1 kV, 3 A, +5 kV with a 2 keV gun, and 60 kA-turn at 1 ps. Shows how settled electrons "
+            "bounce, where they leave and how many core passes they make. No plasma magnetic feedback, no ions."
+        ) if args.study == "six-coil-tracks" else (
             "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel and box), 1 us "
             "at 2 ps: casing (magrid) bias +1, +2.5, +5 and +10 kV at 1 A with a second +5 kV seed, a +5 kV 1 mA "
             "vacuum-potential control, +5 kV at 3 A, and +5 kV with a 2 keV gun. Tests whether a positive magrid "

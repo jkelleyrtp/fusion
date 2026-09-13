@@ -248,3 +248,20 @@ Observations:
 
 What this does not establish: ion behaviour (the barrier is a static-field estimate on the node
 graph, electrons only), a biased chamber wall, a mesh-converged saddle, or plasma magnetic feedback.
+
+## Settled-electron paths (study `six-coil-tracks`)
+
+The earlier runs tracked the first 64 electrons injected, which leave within nanoseconds, long before
+the cube saturates. `--track-after T` instead tracks the first `--track` electrons injected at or
+after `T`; `--track-every N` copies their positions on the device every N steps and writes
+`tracks.npz` (float32 positions `[samples, electrons, 3]`, sample times, birth and exit times, exit
+face, `first_id`) at each snapshot. `--track-samples` caps the file, so a 256-electron, 2048-sample
+track is at most ~6 MB. Positions are NaN before birth and hold the last in-domain sample after exit.
+Tracking is bookkeeping only: particle arithmetic, sampling and charge are unchanged, and the default
+`--track-after 0 --track-every 0` reproduces the previous snapshots.
+
+The campaign runs 800 ns at 2 ps (60 kA-turn at 1 ps), tracks 256 electrons injected from 500 ns, once
+the population has saturated, and samples every 200 ps (~1500 samples): 1 A at 0 V with a second seed,
+casings at +5 kV, +10 kV and −1 kV, 3 A, +5 kV with a 2 keV gun, and 60 kA-turn. The 256 electrons come
+from 32 consecutive packets, a ~128 ps slice of injection, so they sample one gun phase-space slice,
+not the whole trapped population.

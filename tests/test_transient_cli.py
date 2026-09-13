@@ -69,6 +69,30 @@ class TransientCLITests(unittest.TestCase):
                     rtol=0, atol=0,
                 )
 
+    def test_delayed_track_paths_are_bounded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "tracks"
+            with contextlib.redirect_stdout(io.StringIO()):
+                run(arguments(
+                    root, "--track", "3", "--track-after", "1e-11", "--track-every", "1",
+                    "--track-samples", "2",
+                ))
+            with np.load(root / "tracks.npz") as tracks, np.load(root / "snapshots/step-00000003.npz") as state:
+                self.assertEqual(int(tracks["first_id"]), 2)
+                self.assertEqual(int(state["tracked_first_id"]), 2)
+                self.assertTrue(bool(tracks["full"]))
+                self.assertEqual(tracks["position_m"].shape, (2, 3, 3))
+                self.assertEqual(tracks["position_m"].dtype, np.float32)
+                np.testing.assert_allclose(tracks["time_s"], [2e-11, 2.5e-11], rtol=0, atol=1e-26)
+                np.testing.assert_array_equal(tracks["birth_s"], state["tracked_birth_s"])
+                np.testing.assert_allclose(tracks["birth_s"], [1e-11, 1e-11, 2e-11], rtol=0, atol=0)
+                self.assertTrue(np.isnan(tracks["position_m"][0, 2]).all())
+                np.testing.assert_allclose(
+                    tracks["position_m"][1], state["tracked_position_m"], rtol=1e-7, atol=0,
+                )
+            configuration = json.loads((root / "configuration.json").read_text())
+            self.assertIn("tracks.npz samples every 1 steps", configuration["tracking"])
+
     def test_scalar_diagnostics_match_snapshot_records(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "diagnostics"

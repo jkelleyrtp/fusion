@@ -59,11 +59,14 @@ class PIC:
         self, mesh: ElectrostaticMesh, magnetic_field: MagneticField,
         core_radius: float, max_live: int, track: int = 0,
         *, kernels: ReferenceKernels | None = None, conductors: Conductors | None = None,
+        track_after: float = 0.0,
     ) -> None:
         if not math.isfinite(core_radius) or core_radius <= 0 or max_live < 1:
             raise ValueError("Positive core radius and live-particle limit required")
         if not 0 <= track <= 256:
             raise ValueError("Track count must be between 0 and 256")
+        if not math.isfinite(track_after) or track_after < 0:
+            raise ValueError("Tracking start time must be finite and nonnegative")
         self.mesh = mesh
         self.kernels = ReferenceKernels(mesh) if kernels is None else kernels
         if self.kernels.mesh is not mesh:
@@ -97,6 +100,8 @@ class PIC:
             (track,), -1, device=empty.device, dtype=torch.int64,
         )
         self._tracked_live = 0
+        self.track_after = track_after
+        self.tracked_first_id: int | None = None
 
     def lost_totals(self) -> dict[str, float]:
         """Charge, kinetic energy, dwell and entry sums over lost particles."""
@@ -188,12 +193,17 @@ class PIC:
             torch.cat((p.core_dwell, zeros)), torch.cat((p.entries, zeros.long())),
         )
         start = self.injected_count
-        tracked = max(0, min(count, len(self.tracked_birth) - start))
+        if self.tracked_first_id is None and self.time >= self.track_after:
+            self.tracked_first_id = start
+        local = 0 if self.tracked_first_id is None else start - self.tracked_first_id
+        tracked = 0 if self.tracked_first_id is None else max(
+            0, min(count, len(self.tracked_birth) - local),
+        )
         self.injected_count += count
         self.injected_charge += charge
         self.injected_kinetic += kinetic
-        self.tracked_birth[start:start + tracked] = self.time
-        self.tracked_position[start:start + tracked] = position[:tracked]
+        self.tracked_birth[local:local + tracked] = self.time
+        self.tracked_position[local:local + tracked] = position[:tracked]
         self._tracked_live += tracked
 
     def fields(self) -> tuple[torch.Tensor, torch.Tensor]:
@@ -224,13 +234,16 @@ class PIC:
         if self.conductors is not None:
             absorbed = self.conductors.absorbing(end)
             hit = wall | (absorbed >= 0)
-        (lost_count,) = self._raise_first(checks, hit.sum())
+        live = self._tracked_live
+        first = self.tracked_first_id or 0
+        older = ((p.ids < first).sum(),) if live and first else ()
+        lost_count, *offset = self._raise_first(checks, hit.sum(), *older)
         elapsed = h * fraction
         p.dwell += elapsed
         p.core_dwell += elapsed * inside
         p.entries += entered.long()
-        live = self._tracked_live
-        self.tracked_position[p.ids[:live]] = end[:live]
+        lower = int(offset[0]) if offset else 0
+        self.tracked_position[p.ids[lower:lower + live] - first] = end[lower:lower + live]
         p.position = end
         if not lost_count:
             return
@@ -258,13 +271,14 @@ class PIC:
             faces = torch.where(wall[removed], faces, 6 + absorbed[removed])
         self.exit_counts.index_add_(0, faces, torch.ones_like(faces))
         if live:
-            tracked = int((lost.ids < len(self.tracked_birth)).sum())
+            before = int((lost.ids < first).sum()) if first else 0
+            tracked = int((lost.ids < first + len(self.tracked_birth)).sum()) - before
             self._tracked_live = live - tracked
-            tracked_ids = lost.ids[:tracked]
+            tracked_ids = lost.ids[before:before + tracked] - first
             self.tracked_exit_time[tracked_ids] = (
-                start_time + elapsed[order[survivors:survivors + tracked]]
+                start_time + elapsed[order[survivors + before:survivors + before + tracked]]
             )
-            self.tracked_exit_face[tracked_ids] = faces[:tracked]
+            self.tracked_exit_face[tracked_ids] = faces[before:before + tracked]
         self.particles = kept
 
     def _speed_checks(self, h: float) -> list[tuple[torch.Tensor, str]]:
