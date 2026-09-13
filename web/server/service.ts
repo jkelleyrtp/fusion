@@ -241,13 +241,15 @@ export class JobService {
     return created;
   }
 
-  async register(brokerJobId: string, runDirectory: string, campaignId: string | null, title: string, profileId: string = POISSON_PROFILE.id): Promise<SimulationJob> {
+  async register(brokerJobId: string, runDirectory: string, campaignId: string | null, title: string, profileId: string = POISSON_PROFILE.id, gpus?: number): Promise<SimulationJob> {
     validateBrokerId(brokerJobId); validateName(runDirectory, "runDirectory");
     if (campaignId !== null) validateName(campaignId, "campaignId");
     if (typeof title !== "string" || !title.trim() || title.length > 200) fail("Invalid title");
     if (!Object.hasOwn(PROFILES, profileId)) fail("Invalid profile");
     const profile = PROFILES[profileId as keyof typeof PROFILES];
     if (!profile) fail("Invalid profile");
+    if (gpus !== undefined && (!Number.isInteger(gpus) || gpus < 1 || gpus > 8)) fail("Invalid GPU count");
+    const allocated = gpus ?? profile.gpus;
     const existing = (await this.jobs()).jobs.find((job) => job.brokerJobId === brokerJobId);
     if (existing) {
       await this.mutate(existing.id, (stored) => {
@@ -255,7 +257,7 @@ export class JobService {
         stored.title = title;
         stored.purpose = profile.purpose;
         stored.nodes = profile.nodes;
-        stored.gpus = profile.gpus;
+        stored.gpus = allocated;
         stored.runDirectory = runDirectory;
         stored.campaignId = campaignId;
       });
@@ -265,7 +267,7 @@ export class JobService {
     const job: StoredJob = {
       id: randomUUID(), profile: profile.id, title, purpose: profile.purpose,
       createdAt: now, updatedAt: now, sourceRevision: null, brokerJobId, phase: "REGISTERED",
-      submissionState: "submitted", cluster: CLUSTER, priority: 1, nodes: profile.nodes, gpus: profile.gpus,
+      submissionState: "submitted", cluster: CLUSTER, priority: 1, nodes: profile.nodes, gpus: allocated,
       runDirectory, campaignId, progress: null, brokerCheckedAt: null, progressCheckedAt: null,
       brokerError: null, progressError: null, launchError: null, restartCount: 0, preemptedCount: 0,
       brokerMessage: "Registered existing broker job", requestId: null, templateYaml: null, templatePath: null,

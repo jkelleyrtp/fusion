@@ -33,7 +33,7 @@ export interface SimulationJob {
   cluster: "aws-usw2";
   priority: 1;
   nodes: 1;
-  gpus: 1 | 4 | 8;
+  gpus: number;
   runDirectory: string;
   campaignId: string | null;
   progress: RunProgress | null;
