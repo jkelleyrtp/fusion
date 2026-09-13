@@ -128,13 +128,13 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(len(configurations), 8)
         control, *six = configurations
         self.assertEqual((control.coils, control.coil_offset), (2, 0.5))
-        self.assertTrue(all(item.coils == 6 and item.coil_offset >= 1 for item in six))
+        self.assertTrue(all(item.coils == 6 and item.coil_offset >= 1.2 for item in six))
         self.assertEqual(sorted({item.current_a for item in six}), [1e-3, 1])
         for item in configurations:
             validate(item)
             self.assertEqual(
                 (item.dt, item.inject_every, item.inject_per_step, item.duration, item.casing_radius),
-                (2e-12, 2, 8, 3e-7, 0.15),
+                (2e-12, 2, 8, 3e-7, 0.1),
             )
 
 

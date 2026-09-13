@@ -99,7 +99,7 @@ def validate(args: argparse.Namespace) -> int:
         extent = args.coil_offset + args.casing_radius
         if not args.casing_radius or min(args.box_half_width, args.box_top, args.box_bottom) <= extent:
             raise ValueError("Six coils need casings inside the box on every axis")
-        if math.sqrt(2) * (args.coil_offset - 1 / math.sqrt(2)) <= 2 * args.casing_radius:
+        if math.sqrt(2) * (args.coil_offset - 1) <= 2 * args.casing_radius:
             raise ValueError("Adjacent coil casings overlap")
     mesh_shape(args)
     ratio = args.duration / args.dt

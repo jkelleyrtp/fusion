@@ -36,15 +36,16 @@ GUN_BARRELS = {
     "pic_1A_gun_b195_n97": ((0.6, 1.95, 1.3), 0.06, 97, 1234),
 }
 
+SIX_COIL_CASING = 0.1
 SIX_COILS = {
-    "pic_1A_two_coil_dt2": (2, 0.5, (1.2, 1.95, 1.3), 0.0, 1, 1234),
-    "pic_1A_six_d100": (6, 1.0, (1.2, 1.95, 1.3), 0.0, 1, 1234),
-    "pic_1A_six_d100_1mA": (6, 1.0, (1.2, 1.95, 1.3), 0.0, 1e-3, 1234),
-    "pic_1A_six_d110": (6, 1.1, (1.275, 1.95, 1.3), 0.0, 1, 1234),
-    "pic_1A_six_d100_w1275": (6, 1.0, (1.275, 1.95, 1.3), 0.0, 1, 1234),
-    "pic_1A_six_d100_t195": (6, 1.0, (1.2, 1.95, 1.95), 0.0, 1, 1234),
-    "pic_1A_six_d100_p1kV": (6, 1.0, (1.2, 1.95, 1.3), 1000.0, 1, 1234),
-    "pic_1A_six_d100_s2345": (6, 1.0, (1.2, 1.95, 1.3), 0.0, 1, 2345),
+    "pic_1A_two_coil_c010": (2, 0.5, (1.425, 1.95, 1.4625), 0.0, 1, 1234),
+    "pic_1A_six_d120": (6, 1.2, (1.425, 1.95, 1.4625), 0.0, 1, 1234),
+    "pic_1A_six_d120_1mA": (6, 1.2, (1.425, 1.95, 1.4625), 0.0, 1e-3, 1234),
+    "pic_1A_six_d130": (6, 1.3, (1.5, 1.95, 1.54375), 0.0, 1, 1234),
+    "pic_1A_six_d120_w1575": (6, 1.2, (1.575, 1.95, 1.4625), 0.0, 1, 1234),
+    "pic_1A_six_d120_t195": (6, 1.2, (1.425, 1.95, 1.95), 0.0, 1, 1234),
+    "pic_1A_six_d120_p1kV": (6, 1.2, (1.425, 1.95, 1.4625), 1000.0, 1, 1234),
+    "pic_1A_six_d120_s2345": (6, 1.2, (1.425, 1.95, 1.4625), 0.0, 1, 2345),
 }
 
 COIL_CASINGS = {
@@ -171,7 +172,7 @@ def commands(
             count, offset, (width, bottom, top), voltage, _, _ = SIX_COILS[name]
             result[-1] += [
                 "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
-                "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", "0.15",
+                "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
                 "--casing-voltage", str(voltage), "--coils", str(count), "--coil-offset", str(offset),
             ]
         if study == "ions":
@@ -252,11 +253,12 @@ def main() -> None:
             "the ion macroparticles. Tests how fast ions neutralize the electron well and whether the "
             "operator-split cycle is converged. Imposed two-coil field, no Coulomb collisions."
         ) if args.study == "ions" else (
-            "CUDA electron-only PIC, 300 ns at 2 ps with matched packets, 0.15a casings and the grounded "
+            "CUDA electron-only PIC, 300 ns at 2 ps with matched packets, 0.10a casings and the grounded "
             "0.06a gun barrel: two-coil cusp versus a six-coil cube (one coil per face, imposed vacuum "
-            "field, coil planes 1.0a or 1.1a from the centre), a 1 mA six-coil control, a wider box, a "
-            "farther top wall, casings at +1 kV and a second seed. Tests whether the six-coil geometry "
-            "changes the potential structure and core dwell. No plasma magnetic feedback, no ions."
+            "field, coil planes 1.2a or 1.3a from the centre so adjacent casings stay separated), a 1 mA "
+            "six-coil control, a wider box, a farther top wall, casings at +1 kV and a second seed. Tests "
+            "whether the six-coil geometry changes the potential structure and core dwell. No plasma "
+            "magnetic feedback, no ions."
         ),
         "study": args.study, "kernels": args.kernels,
         "cases": [

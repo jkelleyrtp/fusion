@@ -140,6 +140,9 @@ class TransientCLITests(unittest.TestCase):
             ("--box-half-width", "0.75"), ("--box-half-width", "1.2", "--casing-radius", "0.2"),
             ("--coil-offset", "1"), six, (*six, "--casing-radius", "0.15", "--box-top", "1.1"),
             (*six, "--casing-radius", "0.15", "--box-top", "1.3", "--coil-offset", "0.8"),
+            (*six, "--casing-radius", "0.1", "--box-top", "1.3", "--coil-offset", "1.0"),
+            (*six, "--casing-radius", "0.15", "--box-half-width", "1.425", "--box-top", "1.4625",
+             "--coil-offset", "1.2"),
         ):
             with self.subTest(extra=extra), self.assertRaises(ValueError):
                 validate(arguments(Path("unused"), *extra))
@@ -219,12 +222,14 @@ class TransientCLITests(unittest.TestCase):
 
     def test_six_coil_field_matches_closed_form_loops(self):
         args = parser().parse_args([
-            "--out", "unused", "--coils", "6", "--coil-offset", "1", "--casing-radius", "0.15",
-            "--box-half-width", "1.2", "--box-bottom", "1.95", "--box-top", "1.3",
-            "--coil-current", "30000", "--nodes", "5",
+            "--out", "unused", "--coils", "6", "--coil-offset", "1.2", "--casing-radius", "0.1",
+            "--box-half-width", "1.425", "--box-bottom", "1.95", "--box-top", "1.4625",
+            "--coil-current", "30000", "--nodes", "17",
         ])
-        lower = torch.tensor([-0.6, -0.6, -0.975], dtype=torch.float64)
-        _, field, bmax, _ = six_coil_field(args, torch.device("cpu"), -lower.abs(), lower.abs())
+        validate(args)
+        lower = torch.tensor([-0.7125, -0.7125, -0.975], dtype=torch.float64)
+        upper = torch.tensor([0.7125, 0.7125, 0.73125], dtype=torch.float64)
+        _, field, bmax, _ = six_coil_field(args, torch.device("cpu"), lower, upper)
         self.assertGreater(bmax, 0)
         generator = torch.Generator().manual_seed(3)
         points = (2 * torch.rand(24, 3, generator=generator, dtype=torch.float64) - 1) * 0.4
@@ -251,8 +256,9 @@ class TransientCLITests(unittest.TestCase):
             root = Path(directory) / "six"
             with contextlib.redirect_stdout(io.StringIO()):
                 history = run(arguments(
-                    root, "--nodes", "17", "--coils", "6", "--coil-offset", "1", "--casing-radius", "0.15",
-                    "--box-half-width", "1.2", "--box-bottom", "1.95", "--gun-radius", "0.06",
+                    root, "--nodes", "17", "--coils", "6", "--coil-offset", "1.2", "--casing-radius", "0.1",
+                    "--box-half-width", "1.425", "--box-bottom", "1.95", "--box-top", "1.4625",
+                    "--gun-radius", "0.06",
                     "--casing-voltage", "-500", "--coil-current", "30000", "--dt", "2e-12",
                     "--duration", "4e-12", "--current-a", "1e-3",
                 ))
@@ -275,7 +281,7 @@ class TransientCLITests(unittest.TestCase):
             for axis in range(3):
                 first, second = (other for other in range(3) if other != axis)
                 radial = np.hypot(grid[..., first], grid[..., second]) - 0.5
-                tube |= radial ** 2 + np.minimum((grid[..., axis] + 0.5) ** 2, (grid[..., axis] - 0.5) ** 2) <= 0.075 ** 2
+                tube |= radial ** 2 + np.minimum((grid[..., axis] + 0.6) ** 2, (grid[..., axis] - 0.6) ** 2) <= 0.05 ** 2
             self.assertTrue(tube.any())
             np.testing.assert_allclose(potential[tube], -500, atol=1e-8)
 

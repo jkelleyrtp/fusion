@@ -119,8 +119,8 @@ def compare_states(out: Path, name: str, reference: PIC, actual: PIC) -> None:
 def six_coil_control(device: torch.device) -> dict[str, object]:
     """CUDA table lookup of the rotated six-coil superposition against the CPU reference field."""
     args = parser().parse_args([
-        "--out", "unused", "--nodes", "17", "--radius", "0.5", "--coils", "6", "--coil-offset", "1.0",
-        "--casing-radius", "0.15", "--box-half-width", "1.2", "--box-bottom", "1.95", "--box-top", "1.3",
+        "--out", "unused", "--nodes", "17", "--radius", "0.5", "--coils", "6", "--coil-offset", "1.2",
+        "--casing-radius", "0.1", "--box-half-width", "1.425", "--box-bottom", "1.95", "--box-top", "1.4625",
         "--coil-current", "30000",
     ])
     fields = []
