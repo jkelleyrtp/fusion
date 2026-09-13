@@ -34,6 +34,13 @@ def case_specs(
             for seed in (1234, 2345, 3456, 4567)
             for backend in ("reference", "cuda")
         ),
+        "window": (
+            *((f"pic_1A_n{nodes}", 1, 4e-12, 8, 1, 7500, nodes, 1234, "cuda")
+              for nodes in (33, 49, 65, 97, 129)),
+            ("pic_1A_n65_particles", 1, 4e-12, 16, 1, 7500, 65, 1234, "cuda"),
+            ("pic_1A_n65_dt", 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda"),
+            ("pic_1A_n65_s2345", 1, 4e-12, 8, 1, 7500, 65, 2345, "cuda"),
+        ),
     }[study]
     return list(cases)
 
@@ -42,21 +49,27 @@ def commands(
     out: Path, revision: str, study: str = "startup", kernels: str = "reference",
 ) -> list[list[str]]:
     result = []
+    window = study == "window"
     for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
         case_specs(study, kernels),
     ):
+        limits = [
+            "--duration", "3e-7", "--diagnostic-every", str(stride // 30),
+            "--max-steps", "160000", "--max-live-particles", "3000000",
+        ] if window else [
+            "--duration", "3e-8", "--max-steps", "20000", "--max-live-particles", "150000",
+        ]
         result.append([
             sys.executable, str(Path(__file__).with_name("run_transient_pic.py")),
             "--out", str(out / name), "--device", f"cuda:{device}",
             "--kernels", backend, "--source-revision", revision,
             "--nodes", str(nodes), "--current-a", str(current),
-            "--dt", str(dt), "--duration", "3e-8", "--inject-per-step", str(packet),
+            "--dt", str(dt), *limits, "--inject-per-step", str(packet),
             "--inject-every", str(interval),
             "--coil-current", "30000", "--radius", "0.5", "--energy-ev", "5000",
             "--temperature-ev", "0.2", "--source-sigma", "5e-5",
             "--divergence-deg", "10", "--aim-deg", "30", "--seed", str(seed),
-            "--save-every", str(stride), "--track", "64",
-            "--max-steps", "20000", "--max-live-particles", "150000", "--max-snapshots", "16",
+            "--save-every", str(stride), "--track", "64", "--max-snapshots", "16",
         ])
     return result
 
@@ -65,7 +78,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--case-timeout", type=float, default=900)
-    parser.add_argument("--study", choices=("startup", "refinement", "acceptance"), default="startup")
+    parser.add_argument(
+        "--study", choices=("startup", "refinement", "acceptance", "window"), default="startup",
+    )
     parser.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
     args = parser.parse_args()
     if not math.isfinite(args.case_timeout) or args.case_timeout <= 0:
@@ -92,6 +107,12 @@ def main() -> None:
             "FP64 reference and CUDA operators (1 A, 5 keV, 30 kA-turn, 33-cubed, "
             "30 ns). Paired differences are judged against reference seed-to-seed "
             "spread; not bitwise parity, not physical convergence."
+        ) if args.study == "acceptance" else (
+            "CUDA 1 A long-window sensitivity: 300 ns (10x startup) to test whether the "
+            "electron population, potential and losses saturate. Meshes 33/49/65/97/129, "
+            "plus at 65-cubed: twice the particles per packet, matched-packet half "
+            "timestep and a second seed. Scalar diagnostics every 1 ns. One realization "
+            "per setting; grounded box, imposed two-coil field, electron-only."
         ),
         "study": args.study, "kernels": args.kernels,
         "cases": [

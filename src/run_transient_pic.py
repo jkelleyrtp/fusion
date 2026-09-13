@@ -38,6 +38,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--max-steps", type=int, default=10000)
     result.add_argument("--max-live-particles", type=int, default=100000)
     result.add_argument("--save-every", type=int, default=10)
+    result.add_argument("--diagnostic-every", type=int, default=0)
     result.add_argument("--max-snapshots", type=int, default=128)
     result.add_argument("--track", type=int, default=64)
     result.add_argument("--seed", type=int, default=1234)
@@ -59,7 +60,7 @@ def validate(args: argparse.Namespace) -> int:
         raise ValueError("Aim must point into the box")
     if args.nodes < 3 or args.inject_per_step < 1 or args.inject_every < 1 or args.max_live_particles < 1:
         raise ValueError("Invalid mesh size or particle limits")
-    if args.save_every < 1 or args.max_snapshots < 2 or args.max_steps < 1:
+    if args.save_every < 1 or args.max_snapshots < 2 or args.max_steps < 1 or args.diagnostic_every < 0:
         raise ValueError("Invalid output or step limits")
     if not 0 <= args.track <= 256 or args.seed < 0:
         raise ValueError("Invalid tracking count or seed")
@@ -223,6 +224,14 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
         temporary.replace(args.out / "history.json")
         print(json.dumps(record, allow_nan=False), flush=True)
 
+    def record_diagnostics(step: int, h: float) -> None:
+        record = {
+            **simulation.diagnostics(*simulation.fields()),
+            "step": step, "dt_s": h, "wall_s": time.perf_counter() - start,
+        }
+        with (args.out / "diagnostics.jsonl").open("a") as stream:
+            stream.write(json.dumps(record, allow_nan=False) + "\n")
+
     start = time.perf_counter()
     publish(0, 0)
     for step in range(steps):
@@ -232,6 +241,8 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
         simulation.time = args.duration if step + 1 == steps else (step + 1) * args.dt
         if (step + 1) % args.save_every == 0 or step + 1 == steps:
             publish(step + 1, h)
+        if args.diagnostic_every and (step + 1) % args.diagnostic_every == 0:
+            record_diagnostics(step + 1, h)
     (args.out / "DONE").write_text("complete\n")
     return history
 

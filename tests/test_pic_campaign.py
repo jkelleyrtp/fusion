@@ -32,6 +32,34 @@ class CampaignTests(unittest.TestCase):
             self.assertEqual(item.source_revision, "a" * 40)
             self.assertEqual(1 + validate(item) // item.save_every, 13)
 
+    def test_long_window_study_is_bounded_and_matched(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "window")
+        configurations = [parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        self.assertEqual([item.device for item in configurations], [f"cuda:{i}" for i in range(8)])
+        self.assertEqual([item.nodes for item in configurations], [33, 49, 65, 97, 129, 65, 65, 65])
+        baseline = configurations[2]
+        for item in configurations:
+            steps = validate(item)
+            self.assertEqual(item.kernels, "cuda")
+            self.assertEqual(item.duration, 3e-7)
+            self.assertEqual(1 + steps // item.save_every, 11)
+            self.assertEqual(item.save_every * item.dt, baseline.save_every * baseline.dt)
+            self.assertEqual(
+                item.diagnostic_every * item.dt, baseline.diagnostic_every * baseline.dt,
+            )
+            self.assertEqual(item.diagnostic_every * item.dt, 1e-9)
+            self.assertLessEqual(
+                steps // item.inject_every * item.inject_per_step, item.max_live_particles,
+            )
+            self.assertEqual(item.source_sigma, 5e-5)
+            self.assertEqual(item.current_a, 1)
+        refined = configurations[6]
+        self.assertEqual(
+            baseline.dt * baseline.inject_every / baseline.inject_per_step,
+            refined.dt * refined.inject_every / refined.inject_per_step,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

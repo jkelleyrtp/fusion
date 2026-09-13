@@ -10,7 +10,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from steady_space_charge import parser, thermal_source
 
-
 ORIGIN = [0.0, 0.0, -1.0]
 AIM = [0.0, -0.5, math.sqrt(0.75)]
 DEVICE = torch.device("cpu")

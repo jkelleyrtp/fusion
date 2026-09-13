@@ -69,6 +69,25 @@ class TransientCLITests(unittest.TestCase):
                     rtol=0, atol=0,
                 )
 
+    def test_scalar_diagnostics_match_snapshot_records(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "diagnostics"
+            with contextlib.redirect_stdout(io.StringIO()):
+                history = run(arguments(root, "--diagnostic-every", "2"))
+            lines = (root / "diagnostics.jsonl").read_text().splitlines()
+            self.assertEqual(len(lines), 1)
+            record = json.loads(lines[0])
+            expected = history[2]
+            self.assertEqual(record["step"], 2)
+            for key, value in expected.items():
+                if key not in ("snapshot", "wall_s"):
+                    self.assertEqual(record[key], value, key)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "no-diagnostics"
+            with contextlib.redirect_stdout(io.StringIO()):
+                run(arguments(root))
+            self.assertFalse((root / "diagnostics.jsonl").exists())
+
     def test_nominal_duration_ulp_does_not_add_pulse(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "ten-steps"
@@ -108,6 +127,7 @@ class TransientCLITests(unittest.TestCase):
             ("--current-a", "-1"), ("--source-sigma", "-1"),
             ("--aim-deg", "100"), ("--divergence-deg", "90"),
             ("--save-every", "0"), ("--max-snapshots", "2"),
+            ("--diagnostic-every", "-1"),
         ]:
             with self.subTest(option=option, value=value), self.assertRaises(ValueError):
                 validate(arguments(Path("unused"), option, value))
