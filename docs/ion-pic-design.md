@@ -87,7 +87,7 @@ cells, 1.2a box, 0.06a barrel, 0.15a grounded casings):
 `/public/jonathan/cusp/runs/pic-ed7b7f62b292/attempt-20260913-095532-962632006/`. Preflight
 controls passed; seven of eight cases stopped in the first ionization sample with the CUDA
 assertion `!(val < zero)` inside `torch.multinomial`, before writing any history. The
-secondaries-off case was still running when the job was stopped through the broker CLI.
+secondaries-off case, which samples fewer births, wrote partial cycle history before the job ended.
 The Lotz cross section was evaluated on energies clamped to the threshold and then multiplied
 by a logarithm that rounds to a tiny negative number just below threshold, so some electrons
 contributed negative rates. The output is kept unchanged as evidence.
