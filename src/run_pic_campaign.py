@@ -178,9 +178,19 @@ SIX_COIL_DEUTERON = {  # coil kA-turn, electron dt, inject interval, seed, extra
     "dplus_10mA_100eV_60kAt": (60000, 1e-12, 4, 1234, ("--ion-gun-current", "1e-2", *DEUTERON_GUN)),
     "d2plus_10mA_100eV": (30000, 2e-12, 2, 1234, ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP)),
 }
+SIX_COIL_PULSE = {  # gun period and on cycles (10 us each), seed, extra arguments
+    "pulse_continuous": (0, 0, 1234, ()),
+    "pulse_on150_off50": (20, 15, 1234, ()),
+    "pulse_on150_off20": (17, 15, 1234, ()),
+    "pulse_on50_off50": (10, 5, 1234, ()),
+    "pulse_on300_off100": (40, 30, 1234, ()),
+    "pulse_on50_off50_p1e-3": (10, 5, 1234, ("--gas-pa", "1e-3")),
+    "pulse_on150_off50_s2345": (20, 15, 2345, ()),
+    "pulse_on150_off50_settle400": (20, 15, 1234, ("--gun-settle", "4e-7")),
+}
 COUPLED = (
     "ions", "six-coil-ions", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas", "six-coil-ion-gun",
-    "six-coil-deuteron",
+    "six-coil-deuteron", "six-coil-pulse",
 )
 
 
@@ -245,6 +255,9 @@ def case_specs(
         "six-coil-deuteron": tuple(
             (name, 1, dt, 8, interval, 15000, 65, seed, "cuda")
             for name, (_, dt, interval, seed, _) in SIX_COIL_DEUTERON.items()
+        ),
+        "six-coil-pulse": tuple(
+            (name, 1, 2e-12, 8, 2, 15000, 65, seed, "cuda") for name, (_, _, seed, _) in SIX_COIL_PULSE.items()
         ),
         **{
             long: tuple(
@@ -342,6 +355,11 @@ def commands(
             coil_current, _, _, _, extra = SIX_COIL_DEUTERON[name]
             result[-1] += ["--coil-current", str(coil_current), "--fuel", "D2", "--gas-pa", "1e-5",
                            "--dissociative-fraction", "0.05", "--cycles", "40", "--save-every-cycles", "4", *extra]
+        if study == "six-coil-pulse":
+            period, on, _, extra = SIX_COIL_PULSE[name]
+            result[-1] += ["--fuel", "D2", "--gas-pa", "1e-4", "--cycles", "60", "--save-every-cycles", "5",
+                           "--gun-period-cycles", str(period), "--gun-on-cycles", str(on), "--gun-settle", "2e-7",
+                           *extra]
         if study in LONG:
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
             _, coil_current, voltage, _, _, _, _, energy = LONG[study][name]
@@ -370,7 +388,7 @@ def main() -> None:
         choices=(
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
             "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas",
-            "six-coil-ion-gun", "six-coil-deuteron", "six-coil-tracks",
+            "six-coil-ion-gun", "six-coil-deuteron", "six-coil-pulse", "six-coil-tracks",
         ),
         default="startup",
     )
@@ -497,6 +515,14 @@ def main() -> None:
             "charge-exchange product is a thermal D2+ ion; electron-impact dissociation of D2+, the neutral D "
             "atoms, extraction optics, gas depletion and plasma magnetic feedback are not modelled."
         ) if args.study == "six-coil-deuteron" else (
+            "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV electron gun, D2 at 1e-4 Pa, 60 x 10 us "
+            "cycles) with the electron gun switched on and off at cycle boundaries: continuous, 150/50, 150/20, "
+            "50/50 and 300/100 us on/off, 50/50 at 1e-3 Pa, a second 150/50 seed, and a 400 ns settle-window "
+            "control. Tests whether gun-off intervals let trapped ions leave so the well rebuilds against less "
+            "neutralizing charge. Each switch advances electrons 200 ns on frozen ions; electron time is "
+            "subsampled (40 ns per 10 us cycle), so drain in the off phase is not resolved in real time. "
+            "No coil pulsing, induced fields, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-pulse" else (
             "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel), 800 ns at 2 ps, "
             "recording paths of the first 64 electrons injected after 500 ns, once the trap has saturated, every "
             "2 ps into tracks.npz (float32, at most 65536 samples = 131 ns): 1 A at 0 V with a second seed, casings at +5 kV, "

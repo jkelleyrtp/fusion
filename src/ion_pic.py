@@ -16,6 +16,7 @@ injects either species as a monoenergetic beam with Gaussian spot radius and ang
 import argparse
 import copy
 import dataclasses
+import itertools
 import json
 import math
 import time
@@ -78,6 +79,11 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--secondaries", action=argparse.BooleanOptionalAction, default=True)
     result.add_argument("--secondary-temperature-ev", type=float, default=3.0)
     result.add_argument("--secondary-every", type=int, default=64, help="electron steps per secondary batch")
+    result.add_argument("--gun-period-cycles", type=int, default=0,
+                        help="electron-gun on/off period in cycles; 0 injects every cycle")
+    result.add_argument("--gun-on-cycles", type=int, default=0, help="leading cycles of each period with the gun on")
+    result.add_argument("--gun-settle", type=float, default=2e-7,
+                        help="electron time advanced when the gun switches, before the cycle's window (s)")
     result.add_argument("--electron-startup", type=float, default=2e-7)
     result.add_argument("--electron-window", type=float, default=4e-8)
     result.add_argument("--electron-samples", type=int, default=16)
@@ -106,6 +112,7 @@ class Plan:
     ion_steps: int
     batch_every: int
     per_batch: int
+    settle_steps: int
 
 
 def validate_coupled(args: argparse.Namespace) -> Plan:
@@ -138,13 +145,28 @@ def validate_coupled(args: argparse.Namespace) -> Plan:
             or args.save_every_cycles < 1 or args.ions_per_cycle < 1 or args.ion_batches < 1
             or args.ions_per_cycle % args.ion_batches or args.max_live_ions < 1):
         raise ValueError("Invalid cycle, sampling or ion particle settings")
+    if not (0 < args.gun_on_cycles < args.gun_period_cycles or args.gun_on_cycles == args.gun_period_cycles == 0):
+        raise ValueError("A pulsed gun needs 0 < gun-on-cycles < gun-period-cycles; continuous needs both 0")
     startup = steps_for(args.electron_startup, args.dt, "electron-startup")
     window = steps_for(args.electron_window, args.dt, "electron-window")
     ion_steps = steps_for(args.cycle_duration, args.ion_dt, "cycle-duration")
     if window < 2 * args.electron_samples or ion_steps < args.ion_batches:
         raise ValueError("Windows need two steps per electron sample and cycles one step per ion batch")
-    validate(electron_arguments(args, startup + args.cycles * window))
-    return Plan(startup, window, ion_steps, ion_steps // args.ion_batches, args.ions_per_cycle // args.ion_batches)
+    settle = steps_for(args.gun_settle, args.dt, "gun-settle") if args.gun_period_cycles else 0
+    validate(electron_arguments(args, startup + args.cycles * window + gun_transitions(args) * settle))
+    return Plan(startup, window, ion_steps, ion_steps // args.ion_batches, args.ions_per_cycle // args.ion_batches,
+                settle)
+
+
+def gun_schedule(args: argparse.Namespace) -> list[bool]:
+    """Electron-gun state per cycle; index 0 is the startup window, which always injects."""
+    period, on = args.gun_period_cycles, args.gun_on_cycles
+    return [True] + [not period or (cycle - 1) % period < on for cycle in range(1, args.cycles + 1)]
+
+
+def gun_transitions(args: argparse.Namespace) -> int:
+    schedule = gun_schedule(args)
+    return sum(before != after for before, after in itertools.pairwise(schedule))
 
 
 def ion_mass_amu(args: argparse.Namespace) -> float:
@@ -177,6 +199,8 @@ def electron_arguments(args: argparse.Namespace, steps: int) -> argparse.Namespa
     """Gun and electron PIC settings spanning every electron window, as one continuous electron run."""
     electron = copy.copy(args)
     electron.duration = args.electron_startup + args.cycles * args.electron_window
+    if args.gun_period_cycles:
+        electron.duration += gun_transitions(args) * args.gun_settle
     electron.max_steps = steps
     electron.save_every = steps
     return electron
@@ -222,6 +246,7 @@ class CoupledPIC:
         self.plan = plan
         electron_args = electron_arguments(args, plan.startup_steps + args.cycles * plan.window_steps)
         self.electrons, self.configuration = create_simulation(electron_args)
+        self.gun_on = True
         self.mesh = self.electrons.mesh
         self.kernels = self.electrons.kernels
         self.conductors = self.electrons.conductors
@@ -333,7 +358,8 @@ class CoupledPIC:
         for index in range(steps):
             if len(electrons.particles.ids) + args.inject_per_step + SECONDARY_BATCH > args.max_live_particles:
                 raise PopulationLimit("electron population reached max-live-particles")
-            self.source.inject(electrons, self.electron_step)
+            if self.gun_on:
+                self.source.inject(electrons, self.electron_step)
             if self.electron_step % args.secondary_every == 0:
                 self.inject_secondaries()
             electrons.advance(args.dt)
@@ -531,7 +557,7 @@ class CoupledPIC:
         kinetic = self.ion_kinetic_ev()
         record: dict[str, object] = {
             "cycle": cycle, "time_s": self.time, "electron_time_s": self.electrons.time,
-            "electron_steps": self.electron_step,
+            "electron_steps": self.electron_step, "electron_gun_on": self.gun_on,
             "window_mean_electron_charge_C": mean_electron,
             "window_mean_core_electron_charge_C": core_electron,
             "electron_residence_s": abs(mean_electron) / args.current_a if args.current_a else None,
@@ -619,6 +645,11 @@ def run(args: argparse.Namespace) -> list[dict[str, object]]:
             "pump_speed_m3_s": args.pump_speed, "temperature_K": args.gas_temperature_k,
             "model": "free-molecular cosine-law plume, no shadowing or wall reflection",
         },
+        "electron_gun_pulse": None if not args.gun_period_cycles else {
+            "period_s": args.gun_period_cycles * args.cycle_duration, "on_s": args.gun_on_cycles * args.cycle_duration,
+            "settle_s": args.gun_settle, "transitions": gun_transitions(args),
+            "model": "gun switched at cycle boundaries; electrons advance gun-settle on frozen ions at each switch",
+        },
         "ion_mass_amu": ion_mass_amu(args),
         "gas_density_m3": simulation.gas_density,
         "gas_density_at_origin_m3": float(simulation.neutral_density(simulation.mesh.lower.new_zeros((1, 3)))[0]),
@@ -635,7 +666,11 @@ def run(args: argparse.Namespace) -> list[dict[str, object]]:
     stop_reason = "complete"
     try:
         simulation.electron_window(plan.startup_steps)
+        schedule = gun_schedule(args)
         for cycle in range(1, args.cycles + 1):
+            if schedule[cycle] != simulation.gun_on:
+                simulation.gun_on = schedule[cycle]
+                simulation.electron_window(plan.settle_steps)
             electron_charge = simulation.electron_window(plan.window_steps)
             potential, core_kinetic, core_weight = simulation.ion_cycle(electron_charge)
             record = simulation.record(cycle, electron_charge, potential, core_kinetic, core_weight, start)

@@ -179,6 +179,24 @@ class IonPICTests(unittest.TestCase):
             self.assertLess(final["ion_mean_kinetic_eV"], 1)
             self.assertEqual(final["secondary_injected_charge_C"], 0)
 
+    def test_pulsed_gun_stops_injection_and_settles_at_switches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "case"
+            with contextlib.redirect_stdout(io.StringIO()):
+                history = run(arguments(root, "--cycles", "4", "--gun-period-cycles", "2", "--gun-on-cycles", "1",
+                                        "--gun-settle", "4e-10"))
+            configuration = json.loads((root / "configuration.json").read_text())
+            self.assertEqual(configuration["electron_gun_pulse"]["transitions"], 3)
+            self.assertEqual([record["electron_gun_on"] for record in history], [True, False, True, False])
+            self.assertAlmostEqual(history[-1]["electron_time_s"], 2e-10 + 4 * 2e-10 + 3 * 4e-10, delta=1e-18)
+            injected = [record["electrons"]["injected_charge_C"] - record["secondary_injected_charge_C"]
+                        for record in history]
+            self.assertEqual(injected[1], injected[0])
+            self.assertLess(injected[2], injected[1])
+            self.assertEqual(injected[3], injected[2])
+            for record in history:
+                self.assertLess(abs(record["ion_charge_balance_C"]), 1e-9 * record["ion_created_charge_C"])
+
     def test_population_limit_stops_cleanly(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "case"

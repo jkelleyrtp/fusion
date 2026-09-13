@@ -3,6 +3,7 @@
 import argparse
 import json
 import math
+from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
@@ -48,6 +49,12 @@ STUDIES = {
         (),
         ("diss5_gun_none", "d2plus_10mA_100eV", "dplus_10mA_100eV"),
     ),
+    "six-coil-pulse": (
+        ("pulse_continuous", "pulse_on150_off50", "pulse_on150_off20", "pulse_on50_off50", "pulse_on300_off100",
+         "pulse_on50_off50_p1e-3", "pulse_on150_off50_s2345"),
+        ("pulse_on150_off50_settle400",),
+        ("pulse_continuous", "pulse_on150_off50", "pulse_on50_off50_p1e-3"),
+    ),
 }
 SOURCE_KEYS = (
     "ion_species", "current_a", "energy_ev", "coil_current", "casing_voltage", "gas_pa", "gas_density_m3",
@@ -86,10 +93,41 @@ def load(case: Path, partial: bool) -> tuple[dict[str, object], list[Record]]:
 
 
 def derived(record: Record) -> dict[str, float]:
+    """Scalar metrics, NaN where a record has none (for example neutralization with the gun off and no electrons)."""
     created = scalar(record, "ion_created_charge_C")
     return {
-        **{name: scalar(record, name) for name in METRICS},
+        **{name: math.nan if record[name] is None else scalar(record, name) for name in METRICS},
+        "ion_alive_charge_C": scalar(record, "ion_alive_charge_C"),
         "ion_lost_fraction": scalar(record, "ion_lost_charge_C") / created if created else 0.0,
+    }
+
+
+def finite_stats(records: list[Record], reduce: Callable[[list[float]], np.floating] = np.mean) -> dict[str, float | None]:
+    """Per-metric `reduce` over the records where the metric exists."""
+    values = [derived(record) for record in records]
+    result: dict[str, float | None] = {}
+    for key in values[0]:
+        finite = [value[key] for value in values if math.isfinite(value[key])]
+        result[key] = float(reduce(finite)) if finite else None
+    return result
+
+
+def pulse_summary(configuration: dict[str, object], history: list[Record]) -> dict[str, object] | None:
+    """Duty-averaged and gun-on means over the last complete gun period."""
+    pulse = cast(dict[str, float] | None, configuration.get("electron_gun_pulse"))
+    if pulse is None:
+        return None
+    period = round(pulse["period_s"] / cast(float, configuration["cycle_duration"]))
+    periods = len(history) // period
+    if not periods:
+        return None
+    last = history[(periods - 1) * period:periods * period]
+    on = [record for record in last if record["electron_gun_on"]]
+    return {
+        "period_cycles": period, "last_period_cycles": [scalar(record, "cycle") for record in (last[0], last[-1])],
+        "duty_mean": finite_stats(last), "gun_on_mean": finite_stats(on),
+        "peak_neutralization_fraction": finite_stats(on, np.max)["neutralization_fraction"],
+        "alive_ion_charge_at_period_end_C": scalar(last[-1], "ion_alive_charge_C"),
     }
 
 
@@ -107,7 +145,6 @@ def birth_potential(case: Path) -> float | None:
 def summarize(case: Path, configuration: dict[str, object], history: list[Record], done: bool) -> dict[str, object]:
     name = case.name
     tail = history[len(history) * 3 // 4:]
-    means = {key: float(np.mean([derived(record)[key] for record in tail])) for key in derived(tail[0])}
     final = history[-1]
     return {
         "name": name, "complete": done, "cycles": len(history), "requested_cycles": configuration["cycles"],
@@ -119,11 +156,10 @@ def summarize(case: Path, configuration: dict[str, object], history: list[Record
         "cycle_duration_s": configuration["cycle_duration"],
         "electron_window_s": configuration["electron_window"], "ion_dt_s": configuration["ion_dt"],
         "ions_per_cycle": configuration["ions_per_cycle"],
-        "final": derived(final), "last_quarter_mean": means,
-        "last_quarter_spread": {
-            key: float(np.std([derived(record)[key] for record in tail])) for key in derived(tail[0])
-        },
-        "neutralization_time_s": scalar(final, "neutralization_time_s"),
+        "final": {key: value if math.isfinite(value) else None for key, value in derived(final).items()},
+        "last_quarter_mean": finite_stats(tail), "last_quarter_spread": finite_stats(tail, np.std),
+        "electron_gun_pulse": pulse_summary(configuration, history),
+        "neutralization_time_s": final["neutralization_time_s"],
         "ion_exit_counts": final["ion_exit_counts"], "ion_exchange_events": final["ion_exchange_events"],
         "max_ion_charge_balance_C": max(abs(scalar(record, "ion_charge_balance_C")) for record in history),
         "wall_s": scalar(final, "wall_s"),
@@ -135,9 +171,10 @@ def plot_histories(histories: dict[str, list[Record]], physics: tuple[str, ...],
     for axis, (key, label) in zip(axes.flat, PLOTS):
         for name, history in histories.items():
             time = [1e3 * scalar(record, "time_s") for record in history]
+            off = [index for index, record in enumerate(history) if not record.get("electron_gun_on", True)]
             axis.plot(time, [derived(record)[key] for record in history], label=name,
-                      linestyle="-" if name in physics else "--")
-        axis.set_xlabel("time (ms)")
+                      linestyle="-" if name in physics else "--", marker=".", markersize=4, markevery=off)
+        axis.set_xlabel("time (ms, dots: electron gun off)")
         axis.set_ylabel(label)
         axis.grid(alpha=0.3)
     axes.flat[0].legend(fontsize=7)
@@ -149,8 +186,8 @@ def plot_scan(summaries: dict[str, dict[str, object]], output: Path) -> None:
     names = list(summaries)
     figure, axes = plt.subplots(2, 3, figsize=(15, 8), constrained_layout=True)
     for axis, (key, label) in zip(axes.flat, PLOTS):
-        values = [cast(dict[str, float], summaries[name]["last_quarter_mean"])[key] for name in names]
-        spread = [cast(dict[str, float], summaries[name]["last_quarter_spread"])[key] for name in names]
+        values, spread = ([math.nan if (value := cast(dict[str, float | None], summaries[name][field])[key]) is None
+                           else value for name in names] for field in ("last_quarter_mean", "last_quarter_spread"))
         axis.bar(range(len(names)), values, yerr=spread, color=["C0" if summaries[name]["complete"] else "C7"
                                                                 for name in names])
         axis.set_xticks(range(len(names)), names, rotation=60, ha="right", fontsize=7)
@@ -202,11 +239,12 @@ def main() -> None:
         name: summarize(args.run / name, configuration, history, complete(args.run / name, configuration, history))
         for name, (configuration, history) in loaded.items()
     }
-    reference = cast(dict[str, float], summaries[reference_case]["last_quarter_mean"])
+    reference = cast(dict[str, float | None], summaries[reference_case]["last_quarter_mean"])
 
     def relative(name: str) -> dict[str, float | None]:
-        means = cast(dict[str, float], summaries[name]["last_quarter_mean"])
-        return {key: (means[key] - value) / abs(value) if value else None for key, value in reference.items()}
+        means = cast(dict[str, float | None], summaries[name]["last_quarter_mean"])
+        return {key: (mean - value) / abs(value) if value and (mean := means[key]) is not None else None
+                for key, value in reference.items()}
 
     result = {
         "run": str(args.run), "partial": not all(summary["complete"] for summary in summaries.values()),
@@ -219,7 +257,8 @@ def main() -> None:
     plot_fields(args.run, args.out / "ion-pic-fields.png", fields)
     plot_scan(summaries, args.out / "ion-pic-scan.png")
     for name, summary in summaries.items():
-        means = cast(dict[str, float], summary["last_quarter_mean"])
+        means = {key: math.nan if value is None else value
+                 for key, value in cast(dict[str, float | None], summary["last_quarter_mean"]).items()}
         print(f"{name:22s} {summary['cycles']}/{summary['requested_cycles']} neut={means['neutralization_fraction']:.3f} "
               f"origin={means['potential_origin_V']:8.1f} V core_ions={means['ion_core_count']:8.0f} "
               f"core_KE={means['ion_core_time_weighted_kinetic_eV']:7.1f} eV lost={means['ion_lost_fraction']:.3f}")
