@@ -1,0 +1,1744 @@
+{
+  "scope": "Six-coil imposed cube field, 1 us saturation study: current scaling, casing bias, seed and 60 kA-turn coils; window is the last 20% of each run.",
+  "cases": [
+    {
+      "case": "six_long",
+      "window_s": [
+        8.02142e-07,
+        1e-06
+      ],
+      "window_samples": 91,
+      "mean": {
+        "minimum_potential_V": -4103.8659285002595,
+        "field_energy_J": 0.00015824425338189298,
+        "alive_electrons": 994059978489.0325,
+        "core_electron_count": 39170064839.03237,
+        "residence_s": 1.592657912701443e-07,
+        "core_residence_s": 6.275729332384804e-09
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0023618198462054233,
+        "field_energy_J": 0.0008098564636878731,
+        "alive_electrons": 0.0004192537629940616,
+        "core_electron_count": 0.005735482963969807,
+        "residence_s": 0.00041921484405041675,
+        "core_residence_s": 0.0057353259770575975
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": 0.0007552201673583173,
+        "field_energy_J": 0.00029445821042414956,
+        "alive_electrons": 0.00011631970488451662,
+        "core_electron_count": -0.0012562158271875597,
+        "residence_s": 0.000116511441127184,
+        "core_residence_s": -0.0012560243316713366
+      },
+      "final_loss_fraction": 0.8408215,
+      "final_core_entries_per_injected_particle": 1.104717,
+      "final_repeated_entry_particle_fraction": 0.261299,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.16761411019069328,
+        0.206396981153055,
+        0.18418024128537278,
+        0.20074845721910267,
+        0.05310641018513371,
+        0.18795379996664258
+      ],
+      "max_abs_charge_balance_C": 2.970915122935255e-18,
+      "max_abs_deposition_error_C": 5.293955920339377e-23,
+      "wall_s_per_step": 0.008435553467926104
+    },
+    {
+      "case": "six_long_s2345",
+      "window_s": [
+        8.02142e-07,
+        1e-06
+      ],
+      "window_samples": 91,
+      "mean": {
+        "minimum_potential_V": -4107.387549116416,
+        "field_energy_J": 0.00015822250146122933,
+        "alive_electrons": 993664225660.9044,
+        "core_electron_count": 39182616445.1931,
+        "residence_s": 1.5920238475796896e-07,
+        "core_residence_s": 6.277740325115388e-09
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.002400833526358131,
+        "field_energy_J": 0.001760671186172782,
+        "alive_electrons": 0.0007232424433546185,
+        "core_electron_count": 0.006776848810349627,
+        "residence_s": 0.0007233177263493572,
+        "core_residence_s": 0.006776854098619101
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": 0.0009173423719935075,
+        "field_energy_J": 0.002263309607027814,
+        "alive_electrons": 0.0009847601480919442,
+        "core_electron_count": 0.0009144462987094461,
+        "residence_s": 0.0009849519888532091,
+        "core_residence_s": 0.0009146386703686214
+      },
+      "final_loss_fraction": 0.8404965,
+      "final_core_entries_per_injected_particle": 1.105276,
+      "final_repeated_entry_particle_fraction": 0.2616785,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.16666052559679032,
+        0.2070553245509082,
+        0.18502881320464432,
+        0.20058217342427678,
+        0.0533807284884695,
+        0.18729243473491086
+      ],
+      "max_abs_charge_balance_C": 2.942698337879846e-18,
+      "max_abs_deposition_error_C": 5.293955920339377e-23,
+      "wall_s_per_step": 0.008713042278415989
+    },
+    {
+      "case": "six_long_1mA",
+      "window_s": [
+        8.02142e-07,
+        1e-06
+      ],
+      "window_samples": 91,
+      "mean": {
+        "minimum_potential_V": -3.8817417673248973,
+        "field_energy_J": 1.7407687494131386e-10,
+        "alive_electrons": 1054683516.0712287,
+        "core_electron_count": 51421118.33202174,
+        "residence_s": 1.6897874210989065e-07,
+        "core_residence_s": 8.238562337022248e-09
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0017334775464275553,
+        "field_energy_J": 0.0017396489461280074,
+        "alive_electrons": 0.001064542005167155,
+        "core_electron_count": 0.005434100285427243,
+        "residence_s": 0.001064641786123901,
+        "core_residence_s": 0.00543410556769423
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.00046500173316098764,
+        "field_energy_J": 0.0020998750273696306,
+        "alive_electrons": 0.0014214446679849159,
+        "core_electron_count": -0.0003066395080884132,
+        "residence_s": 0.0014216364534091726,
+        "core_residence_s": -0.000306447698415727
+      },
+      "final_loss_fraction": 0.8307185,
+      "final_core_entries_per_injected_particle": 1.7217325,
+      "final_repeated_entry_particle_fraction": 0.437105,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.13781968466213415,
+        0.25144399765299913,
+        0.17220513110368252,
+        0.17402863233370477,
+        0.08282329129187324,
+        0.18167926295560616
+      ],
+      "max_abs_charge_balance_C": 7.322021836560405e-21,
+      "max_abs_deposition_error_C": 6.462348535570529e-26,
+      "wall_s_per_step": 0.008711030211987904
+    },
+    {
+      "case": "six_long_300mA",
+      "window_s": [
+        8.02142e-07,
+        1e-06
+      ],
+      "window_samples": 91,
+      "mean": {
+        "minimum_potential_V": -1008.0137419260399,
+        "field_energy_J": 1.2556788920465378e-05,
+        "alive_electrons": 284117930713.8178,
+        "core_electron_count": 14553474173.145548,
+        "residence_s": 1.5173553586346426e-07,
+        "core_residence_s": 7.77240350897996e-09
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0015512118766407646,
+        "field_energy_J": 0.0021110044766823356,
+        "alive_electrons": 0.0011855907365680724,
+        "core_electron_count": 0.005782710340410981,
+        "residence_s": 0.0011856880274488566,
+        "core_residence_s": 0.005782676747694146
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.0006885147110812628,
+        "field_energy_J": 0.0027592125301728497,
+        "alive_electrons": 0.0018331546746412524,
+        "core_electron_count": 0.0009144328701886985,
+        "residence_s": 0.0018333464685017036,
+        "core_residence_s": 0.0009146240495630271
+      },
+      "final_loss_fraction": 0.8480465,
+      "final_core_entries_per_injected_particle": 1.5201325,
+      "final_repeated_entry_particle_fraction": 0.341377,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.10945840816631748,
+        0.22751632332047234,
+        0.15105614540054285,
+        0.14471507491607116,
+        0.05958192358705049,
+        0.3076721246095456
+      ],
+      "max_abs_charge_balance_C": 2.6602393197501387e-18,
+      "max_abs_deposition_error_C": 1.9852334701272664e-23,
+      "wall_s_per_step": 0.008520579478694126
+    },
+    {
+      "case": "six_long_3A",
+      "window_s": [
+        8.02142e-07,
+        1e-06
+      ],
+      "window_samples": 91,
+      "mean": {
+        "minimum_potential_V": -5687.098319506672,
+        "field_energy_J": 0.00019524850543983403,
+        "alive_electrons": 1118296359266.0247,
+        "core_electron_count": 46384666331.00865,
+        "residence_s": 5.972354398074672e-08,
+        "core_residence_s": 2.477211552070688e-09
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.004397355865163692,
+        "field_energy_J": 0.002966996018577617,
+        "alive_electrons": 0.001197015684307594,
+        "core_electron_count": 0.009824772078309547,
+        "residence_s": 0.0011970036785593494,
+        "core_residence_s": 0.009824777527008343
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.0008055138897286691,
+        "field_energy_J": -0.002317616382798483,
+        "alive_electrons": -0.0010063822037291762,
+        "core_electron_count": 0.0005119333697261044,
+        "residence_s": -0.0010061905103323958,
+        "core_residence_s": 0.000512124230657256
+      },
+      "final_loss_fraction": 0.9403395,
+      "final_core_entries_per_injected_particle": 0.484101,
+      "final_repeated_entry_particle_fraction": 0.115337,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.1814663216654452,
+        0.184921319446868,
+        0.18042267635196108,
+        0.19583140142620448,
+        0.05276723884354793,
+        0.20459104226597333
+      ],
+      "max_abs_charge_balance_C": 1.0574544601979897e-17,
+      "max_abs_deposition_error_C": 3.441071348220595e-22,
+      "wall_s_per_step": 0.008291238043770193
+    },
+    {
+      "case": "six_long_m1kV",
+      "window_s": [
+        8.02142e-07,
+        1e-06
+      ],
+      "window_samples": 91,
+      "mean": {
+        "minimum_potential_V": -4357.728902323105,
+        "field_energy_J": 0.0003799796866456951,
+        "alive_electrons": 888300282154.7554,
+        "core_electron_count": 37081971407.57211,
+        "residence_s": 1.4232123854957812e-07,
+        "core_residence_s": 5.9411802555626395e-09
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.002791280561004372,
+        "field_energy_J": 0.0004506748683879023,
+        "alive_electrons": 0.0007361674068739436,
+        "core_electron_count": 0.007794624258131365,
+        "residence_s": 0.0007362244377335004,
+        "core_residence_s": 0.007794601235283829
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": 0.0002921649605982392,
+        "field_energy_J": 0.00029288210902762645,
+        "alive_electrons": 0.0007695038074707713,
+        "core_electron_count": -0.001815310795189983,
+        "residence_s": 0.0007696955197684354,
+        "core_residence_s": -0.0018151194400312213
+      },
+      "final_loss_fraction": 0.857659,
+      "final_core_entries_per_injected_particle": 0.9984265,
+      "final_repeated_entry_particle_fraction": 0.2382225,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.16846726669794437,
+        0.20381295073280173,
+        0.18537801411013966,
+        0.20208495017012254,
+        0.05089449205815098,
+        0.18936232623084073
+      ],
+      "max_abs_charge_balance_C": 3.209566655824154e-18,
+      "max_abs_deposition_error_C": 5.293955920339377e-23,
+      "wall_s_per_step": 0.008348348987225909
+    },
+    {
+      "case": "six_long_60kAt",
+      "window_s": [
+        4.81213e-07,
+        6e-07
+      ],
+      "window_samples": 91,
+      "mean": {
+        "minimum_potential_V": -4018.8329721326154,
+        "field_energy_J": 0.0001861333210945459,
+        "alive_electrons": 977868680893.7395,
+        "core_electron_count": 47560573499.438225,
+        "residence_s": 1.5667139701615188e-07,
+        "core_residence_s": 7.620022641917593e-09
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.004807150083402129,
+        "field_energy_J": 0.011997385717934251,
+        "alive_electrons": 0.006286835879429479,
+        "core_electron_count": 0.005856374938614421,
+        "residence_s": 0.006287089653382654,
+        "core_residence_s": 0.0058565614947336826
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.010487275570850094,
+        "field_energy_J": 0.03415829234136038,
+        "alive_electrons": 0.01787507484249228,
+        "core_electron_count": 0.0077472692364661125,
+        "residence_s": 0.017875796757530964,
+        "core_residence_s": 0.007747992677955122
+      },
+      "final_loss_fraction": 0.7361716666666667,
+      "final_core_entries_per_injected_particle": 1.2399416666666667,
+      "final_repeated_entry_particle_fraction": 0.31649333333333335,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.16485967733568502,
+        0.23668727964181005,
+        0.1772542944691995,
+        0.19680054665824737,
+        0.04368972851334358,
+        0.1807084733817145
+      ],
+      "max_abs_charge_balance_C": 1.6639432853218696e-18,
+      "max_abs_deposition_error_C": 5.293955920339377e-23,
+      "wall_s_per_step": 0.008387027896133561
+    },
+    {
+      "case": "six_long_60kAt_1mA",
+      "window_s": [
+        4.81213e-07,
+        6e-07
+      ],
+      "window_samples": 91,
+      "mean": {
+        "minimum_potential_V": -4.434394444409531,
+        "field_energy_J": 2.0480532046358663e-10,
+        "alive_electrons": 1050205541.956356,
+        "core_electron_count": 64411893.532352425,
+        "residence_s": 1.6826100776226726e-07,
+        "core_residence_s": 1.0319894211675995e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.008783467537066533,
+        "field_energy_J": 0.022060947249099405,
+        "alive_electrons": 0.013379111693335204,
+        "core_electron_count": 0.0070566160018312556,
+        "residence_s": 0.013379363617159534,
+        "core_residence_s": 0.0070567776908734585
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.024456784898734648,
+        "field_energy_J": 0.06289685468476726,
+        "alive_electrons": 0.03817044801964577,
+        "core_electron_count": 0.013122621657895754,
+        "residence_s": 0.03817116878891238,
+        "core_residence_s": 0.013123340457219137
+      },
+      "final_loss_fraction": 0.7137225,
+      "final_core_entries_per_injected_particle": 1.8868416666666668,
+      "final_repeated_entry_particle_fraction": 0.4975733333333333,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.1262460491125699,
+        0.22871526436978876,
+        0.13849558787774774,
+        0.17027252184608344,
+        0.06755481185909812,
+        0.26871576493471205
+      ],
+      "max_abs_charge_balance_C": 2.3432475789978737e-21,
+      "max_abs_deposition_error_C": 6.462348535570529e-26,
+      "wall_s_per_step": 0.007975315200631739
+    }
+  ],
+  "conductors": {
+    "six_long": {
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        }
+      ],
+      "conductor_setup_s": 29.77711871592328,
+      "coils": [
+        {
+          "axis": "x",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "x",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        }
+      ],
+      "coil_offset": 1.2,
+      "source_B_T": [
+        -4.336808689942018e-19,
+        6.608116471420455e-06,
+        0.017606123421261055
+      ],
+      "source_nominal_pitch_deg": 30.021504857003737,
+      "source_potential_V_window_mean": -398.8073761455563,
+      "final_conductor_charge_C": {
+        "gun_barrel": 6.04672690602243e-09,
+        "casing_x-": 1.3230072149255758e-08,
+        "casing_x+": 1.446694912452282e-08,
+        "casing_y-": 1.3757799425313343e-08,
+        "casing_y+": 1.392760951149501e-08,
+        "casing_z-": 1.8856508522824952e-08,
+        "casing_z+": 1.3732671264022493e-08
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.8556869680425632,
+        "gun_barrel": 0.14431303195743686,
+        "casing_x-": 0.0,
+        "casing_x+": 0.0,
+        "casing_y-": 0.0,
+        "casing_y+": 0.0,
+        "casing_z-": 0.0,
+        "casing_z+": 0.0
+      }
+    },
+    "six_long_s2345": {
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ],
+      "seed": 2345,
+      "coil_casings": [
+        {
+          "center_z_m": -0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        }
+      ],
+      "conductor_setup_s": 29.923881080932915,
+      "coils": [
+        {
+          "axis": "x",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "x",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        }
+      ],
+      "coil_offset": 1.2,
+      "source_B_T": [
+        -4.336808689942018e-19,
+        6.608116471420455e-06,
+        0.017606123421261055
+      ],
+      "source_nominal_pitch_deg": 30.021504857003737,
+      "source_potential_V_window_mean": -399.0968020440461,
+      "final_conductor_charge_C": {
+        "gun_barrel": 6.0742639679576445e-09,
+        "casing_x-": 1.3272267114688314e-08,
+        "casing_x+": 1.4490652002697154e-08,
+        "casing_y-": 1.380828475594227e-08,
+        "casing_y+": 1.3926846692337191e-08,
+        "casing_z-": 1.8873444749108102e-08,
+        "casing_z+": 1.3744231432105214e-08
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.8556864900686677,
+        "gun_barrel": 0.14431350993133227,
+        "casing_x-": 0.0,
+        "casing_x+": 0.0,
+        "casing_y-": 0.0,
+        "casing_y+": 0.0,
+        "casing_z-": 0.0,
+        "casing_z+": 0.0
+      }
+    },
+    "six_long_1mA": {
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        }
+      ],
+      "conductor_setup_s": 29.892787408083677,
+      "coils": [
+        {
+          "axis": "x",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "x",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        }
+      ],
+      "coil_offset": 1.2,
+      "source_B_T": [
+        -4.336808689942018e-19,
+        6.608116471420455e-06,
+        0.017606123421261055
+      ],
+      "source_nominal_pitch_deg": 30.021504857003737,
+      "source_potential_V_window_mean": -0.3370329925878443,
+      "final_conductor_charge_C": {
+        "gun_barrel": 5.016166785601028e-12,
+        "casing_x-": 1.3636173540464002e-11,
+        "casing_x+": 1.600894252146797e-11,
+        "casing_y-": 1.4822064316814462e-11,
+        "casing_y+": 1.4448800356187786e-11,
+        "casing_z-": 1.907542773735959e-11,
+        "casing_z+": 1.5345428955715508e-11
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.8944979556853495,
+        "gun_barrel": 0.10550204431465052,
+        "casing_x-": 0.0,
+        "casing_x+": 0.0,
+        "casing_y-": 0.0,
+        "casing_y+": 0.0,
+        "casing_z-": 0.0,
+        "casing_z+": 0.0
+      }
+    },
+    "six_long_300mA": {
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        }
+      ],
+      "conductor_setup_s": 29.794897309038788,
+      "coils": [
+        {
+          "axis": "x",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "x",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        }
+      ],
+      "coil_offset": 1.2,
+      "source_B_T": [
+        -4.336808689942018e-19,
+        6.608116471420455e-06,
+        0.017606123421261055
+      ],
+      "source_nominal_pitch_deg": 30.021504857003737,
+      "source_potential_V_window_mean": -100.06355468039168,
+      "final_conductor_charge_C": {
+        "gun_barrel": 1.3901063654315526e-09,
+        "casing_x-": 3.4653439900269737e-09,
+        "casing_x+": 4.530037061608078e-09,
+        "casing_y-": 3.916761468784368e-09,
+        "casing_y+": 3.879042299304875e-09,
+        "casing_z-": 5.023421863152883e-09,
+        "casing_z+": 4.180397031741624e-09
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.8988339672411831,
+        "gun_barrel": 0.10116603275881689,
+        "casing_x-": 0.0,
+        "casing_x+": 0.0,
+        "casing_y-": 0.0,
+        "casing_y+": 0.0,
+        "casing_z-": 0.0,
+        "casing_z+": 0.0
+      }
+    },
+    "six_long_3A": {
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        }
+      ],
+      "conductor_setup_s": 29.711096214829013,
+      "coils": [
+        {
+          "axis": "x",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "x",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        }
+      ],
+      "coil_offset": 1.2,
+      "source_B_T": [
+        -4.336808689942018e-19,
+        6.608116471420455e-06,
+        0.017606123421261055
+      ],
+      "source_nominal_pitch_deg": 30.021504857003737,
+      "source_potential_V_window_mean": -1256.0401157799317,
+      "final_conductor_charge_C": {
+        "gun_barrel": 1.1023554773857094e-08,
+        "casing_x-": 1.503175025051359e-08,
+        "casing_x+": 1.519262286462985e-08,
+        "casing_y-": 1.495613834780146e-08,
+        "casing_y+": 1.520161049167396e-08,
+        "casing_z-": 2.0815050821430322e-08,
+        "casing_z+": 1.5166037770674744e-08
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.3199573132895087,
+        "gun_barrel": 0.6800426867104913,
+        "casing_x-": 0.0,
+        "casing_x+": 0.0,
+        "casing_y-": 0.0,
+        "casing_y+": 0.0,
+        "casing_z-": 0.0,
+        "casing_z+": 0.0
+      }
+    },
+    "six_long_m1kV": {
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": -1000.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": -1000.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": -1000.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": -1000.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": -1000.0,
+          "nodes": 8688
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": -1000.0,
+          "nodes": 8688
+        }
+      ],
+      "conductor_setup_s": 29.731438466114923,
+      "coils": [
+        {
+          "axis": "x",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "x",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "y",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": -0.6,
+          "ampere_turns": 30000.0
+        },
+        {
+          "axis": "z",
+          "center_m": 0.6,
+          "ampere_turns": -30000.0
+        }
+      ],
+      "coil_offset": 1.2,
+      "source_B_T": [
+        -4.336808689942018e-19,
+        6.608116471420455e-06,
+        0.017606123421261055
+      ],
+      "source_nominal_pitch_deg": 30.021504857003737,
+      "source_potential_V_window_mean": -506.15728473801823,
+      "final_conductor_charge_C": {
+        "gun_barrel": 9.34083307445507e-09,
+        "casing_x-": -8.143296355797762e-08,
+        "casing_x+": -8.04519626724124e-08,
+        "casing_y-": -8.104267911594397e-08,
+        "casing_y+": -8.087952817814654e-08,
+        "casing_z-": -3.2298687204001076e-08,
+        "casing_z+": -6.490962634114455e-08
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.7294023615446232,
+        "gun_barrel": 0.27059763845537677,
+        "casing_x-": 0.0,
+        "casing_x+": 0.0,
+        "casing_y-": 0.0,
+        "casing_y+": 0.0,
+        "casing_z-": 0.0,
+        "casing_z+": 0.0
+      }
+    },
+    "six_long_60kAt": {
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        }
+      ],
+      "conductor_setup_s": 29.75419263681397,
+      "coils": [
+        {
+          "axis": "x",
+          "center_m": -0.6,
+          "ampere_turns": 60000.0
+        },
+        {
+          "axis": "x",
+          "center_m": 0.6,
+          "ampere_turns": -60000.0
+        },
+        {
+          "axis": "y",
+          "center_m": -0.6,
+          "ampere_turns": 60000.0
+        },
+        {
+          "axis": "y",
+          "center_m": 0.6,
+          "ampere_turns": -60000.0
+        },
+        {
+          "axis": "z",
+          "center_m": -0.6,
+          "ampere_turns": 60000.0
+        },
+        {
+          "axis": "z",
+          "center_m": 0.6,
+          "ampere_turns": -60000.0
+        }
+      ],
+      "coil_offset": 1.2,
+      "source_B_T": [
+        -8.673617379884035e-19,
+        1.321623294284091e-05,
+        0.03521224684252211
+      ],
+      "source_nominal_pitch_deg": 30.021504857003737,
+      "source_potential_V_window_mean": -353.6770744268194,
+      "final_conductor_charge_C": {
+        "gun_barrel": 5.783562963273605e-09,
+        "casing_x-": 1.3315559836382479e-08,
+        "casing_x+": 1.4535753057185354e-08,
+        "casing_y-": 1.349978836358733e-08,
+        "casing_y+": 1.4146234604809025e-08,
+        "casing_z-": 1.9020537272892042e-08,
+        "casing_z+": 1.329179213960133e-08
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.6328154891408934,
+        "gun_barrel": 0.3671845108591067,
+        "casing_x-": 0.0,
+        "casing_x+": 0.0,
+        "casing_y-": 0.0,
+        "casing_y+": 0.0,
+        "casing_z-": 0.0,
+        "casing_z+": 0.0
+      }
+    },
+    "six_long_60kAt_1mA": {
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ],
+      "seed": 1234,
+      "coil_casings": [
+        {
+          "center_z_m": -0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "x",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "y",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8742
+        },
+        {
+          "center_z_m": -0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        },
+        {
+          "center_z_m": 0.6,
+          "axis": "z",
+          "major_radius_m": 0.5,
+          "minor_radius_m": 0.05,
+          "voltage_V": 0.0,
+          "nodes": 8688
+        }
+      ],
+      "conductor_setup_s": 29.669300625100732,
+      "coils": [
+        {
+          "axis": "x",
+          "center_m": -0.6,
+          "ampere_turns": 60000.0
+        },
+        {
+          "axis": "x",
+          "center_m": 0.6,
+          "ampere_turns": -60000.0
+        },
+        {
+          "axis": "y",
+          "center_m": -0.6,
+          "ampere_turns": 60000.0
+        },
+        {
+          "axis": "y",
+          "center_m": 0.6,
+          "ampere_turns": -60000.0
+        },
+        {
+          "axis": "z",
+          "center_m": -0.6,
+          "ampere_turns": 60000.0
+        },
+        {
+          "axis": "z",
+          "center_m": 0.6,
+          "ampere_turns": -60000.0
+        }
+      ],
+      "coil_offset": 1.2,
+      "source_B_T": [
+        -8.673617379884035e-19,
+        1.321623294284091e-05,
+        0.03521224684252211
+      ],
+      "source_nominal_pitch_deg": 30.021504857003737,
+      "source_potential_V_window_mean": -0.2882450672676661,
+      "final_conductor_charge_C": {
+        "gun_barrel": 4.883665626181792e-12,
+        "casing_x-": 1.4260055427206614e-11,
+        "casing_x+": 1.600130301394924e-11,
+        "casing_y-": 1.475344395241221e-11,
+        "casing_y+": 1.548222472631714e-11,
+        "casing_z-": 1.9969719679162218e-11,
+        "casing_z+": 1.4833284052800607e-11
+      },
+      "final_exit_fractions": {
+        "outer_box": 0.6531109780061578,
+        "gun_barrel": 0.34688902199384214,
+        "casing_x-": 0.0,
+        "casing_x+": 0.0,
+        "casing_y-": 0.0,
+        "casing_y+": 0.0,
+        "casing_z-": 0.0,
+        "casing_z+": 0.0
+      }
+    }
+  },
+  "final_fields": {
+    "six_long": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3112.5192726819537,
+      "core_minimum_potential_V": -3265.511031002731,
+      "core_minimum_position_m": [
+        0.018749999999999933,
+        0.018749999999999933,
+        -0.12187500000000007
+      ],
+      "minimum_potential_V": -4092.328737287807,
+      "minimum_potential_position_m": [
+        0.009374999999999911,
+        0.0,
+        -0.5687500000000001
+      ],
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ]
+    },
+    "six_long_s2345": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3114.02033952942,
+      "core_minimum_potential_V": -3272.9228659218365,
+      "core_minimum_position_m": [
+        0.018749999999999933,
+        0.018749999999999933,
+        -0.12187500000000007
+      ],
+      "minimum_potential_V": -4089.82328360835,
+      "minimum_potential_position_m": [
+        0.009374999999999911,
+        0.0,
+        -0.5687500000000001
+      ],
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ]
+    },
+    "six_long_1mA": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3.4283450192557554,
+      "core_minimum_potential_V": -3.8840784320941246,
+      "core_minimum_position_m": [
+        0.06562499999999993,
+        -0.018750000000000044,
+        -0.04062500000000013
+      ],
+      "minimum_potential_V": -3.8840784320941246,
+      "minimum_potential_position_m": [
+        0.06562499999999993,
+        -0.018750000000000044,
+        -0.04062500000000013
+      ],
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ]
+    },
+    "six_long_300mA": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "origin_potential_V": -927.1950899398943,
+      "core_minimum_potential_V": -1004.5761750238267,
+      "core_minimum_position_m": [
+        0.03749999999999998,
+        0.0,
+        -0.10156250000000011
+      ],
+      "minimum_potential_V": -1007.0595404324101,
+      "minimum_potential_position_m": [
+        0.028124999999999956,
+        0.0,
+        -0.14218750000000013
+      ],
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ]
+    },
+    "six_long_3A": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3437.337685660202,
+      "core_minimum_potential_V": -3583.4232847240414,
+      "core_minimum_position_m": [
+        0.0,
+        0.009374999999999911,
+        -0.12187500000000007
+      ],
+      "minimum_potential_V": -5710.871437866275,
+      "minimum_potential_position_m": [
+        0.009374999999999911,
+        0.0,
+        -0.6296875
+      ],
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ]
+    },
+    "six_long_m1kV": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3398.9232950808246,
+      "core_minimum_potential_V": -3569.1670831560295,
+      "core_minimum_position_m": [
+        0.018749999999999933,
+        0.018749999999999933,
+        -0.12187500000000007
+      ],
+      "minimum_potential_V": -4343.595992860607,
+      "minimum_potential_position_m": [
+        0.0,
+        0.0,
+        -0.5890625
+      ],
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ]
+    },
+    "six_long_60kAt": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3660.0182872588693,
+      "core_minimum_potential_V": -3886.4480232673573,
+      "core_minimum_position_m": [
+        0.018749999999999933,
+        0.018749999999999933,
+        -0.12187500000000007
+      ],
+      "minimum_potential_V": -4043.2632053587904,
+      "minimum_potential_position_m": [
+        0.009374999999999911,
+        0.009374999999999911,
+        -0.32500000000000007
+      ],
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ]
+    },
+    "six_long_60kAt_1mA": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "origin_potential_V": -4.203747703156543,
+      "core_minimum_potential_V": -4.504886913436405,
+      "core_minimum_position_m": [
+        0.046875,
+        0.018749999999999933,
+        -0.04062500000000013
+      ],
+      "minimum_potential_V": -4.504886913436405,
+      "minimum_potential_position_m": [
+        0.046875,
+        0.018749999999999933,
+        -0.04062500000000013
+      ],
+      "box_lower_m": [
+        -0.7125,
+        -0.7125,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.7125,
+        0.7125,
+        0.73125
+      ],
+      "mesh_shape": [
+        153,
+        153,
+        85
+      ]
+    }
+  },
+  "relative_to_six_long": {
+    "six_long_s2345": {
+      "minimum_potential_V": -0.0008581227256231749,
+      "field_energy_J": -0.00013745788677176516,
+      "alive_electrons": -0.0003981176555660098,
+      "core_electron_count": 0.0003204387384169191,
+      "residence_s": -0.00039811758488546083,
+      "core_residence_s": 0.0003204396850269428
+    },
+    "six_long_1mA": {
+      "minimum_potential_V": 0.9990541255891507,
+      "field_energy_J": -0.9999988999482053,
+      "alive_electrons": -0.9989390142054865,
+      "core_electron_count": -0.9986872342809915,
+      "residence_s": 0.060985794641056267,
+      "core_residence_s": 0.312765720234075
+    },
+    "six_long_300mA": {
+      "minimum_potential_V": 0.7543745922775761,
+      "field_energy_J": -0.920649321210029,
+      "alive_electrons": -0.7141843179868522,
+      "core_electron_count": -0.6284541720073124,
+      "residence_s": -0.04728105983479736,
+      "core_residence_s": 0.23848609417742578
+    },
+    "six_long_3A": {
+      "minimum_potential_V": -0.3857904762461375,
+      "field_energy_J": 0.23384262788133095,
+      "alive_electrons": 0.12497875728367118,
+      "core_electron_count": 0.18418661091382826,
+      "residence_s": -0.6250070809026119,
+      "core_residence_s": -0.6052711293191899
+    },
+    "six_long_m1kV": {
+      "minimum_potential_V": -0.06185947061765215,
+      "field_energy_J": 1.4012226575374276,
+      "alive_electrons": -0.10639166511363977,
+      "core_electron_count": -0.053308398646802986,
+      "residence_s": -0.10639166506148878,
+      "core_residence_s": -0.053308397973090185
+    },
+    "six_long_60kAt": {
+      "minimum_potential_V": 0.020720208176664066,
+      "field_energy_J": 0.17624063507284432,
+      "alive_electrons": -0.01628804895646607,
+      "core_electron_count": 0.21420716802196454,
+      "residence_s": -0.016289714403213185,
+      "core_residence_s": 0.2142051127979338
+    },
+    "six_long_60kAt_1mA": {
+      "minimum_potential_V": 0.9989194592314495,
+      "field_energy_J": -0.9999987057645627,
+      "alive_electrons": -0.9989435189378083,
+      "core_electron_count": -0.9983555836887928,
+      "residence_s": 0.05647927543250898,
+      "core_residence_s": 0.6444135279101323
+    }
+  },
+  "limitations": [
+    "Conductor absorption tests step endpoints only.",
+    "Casings are tori at the coil radius; the windings, supports and feedthroughs are not modelled.",
+    "Imposed vacuum magnetic field without plasma currents; electrons only; one seed except the reference."
+  ]
+}

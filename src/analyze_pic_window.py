@@ -50,6 +50,9 @@ def load(case: Path) -> list[Record]:
         cast(Record, json.loads(line))
         for line in (case / "diagnostics.jsonl").read_text().splitlines()
     ]
+    final = cast(list[Record], json.loads((case / "history.json").read_text()))[-1]
+    if records and scalar(final, "time_s") > scalar(records[-1], "time_s"):
+        records.append(final)
     if (not (case / "DONE").is_file() or not records
             or not math.isclose(scalar(records[-1], "time_s"), configuration["duration"], rel_tol=1e-12)):
         raise ValueError(f"Incomplete case: {case.name}")
@@ -191,7 +194,7 @@ def plot_saturation(histories: dict[str, list[Record]], output: Path) -> None:
         growth = (alive[smooth:] - alive[:-smooth]) / (injected[smooth:] - injected[:-smooth])
         axes[1, 1].plot(time_s[smooth:] * 1e9, growth, kind, label=name)
     panels = (
-        ("Minimum potential per injected ampere", "V / A"), ("Live / injected macroparticles", "fraction"),
+        ("Box minimum potential per injected ampere", "V / A"), ("Live / injected macroparticles", "fraction"),
         ("Core electrons / injection rate", "ns"), ("d(live) / d(injected): 0 at saturation", "fraction"),
     )
     for axis, (title, unit) in zip(axes.flat, panels, strict=True):
@@ -275,7 +278,7 @@ def main() -> None:
             "cases": list(summaries.values()),
             "conductors": conductors,
             "final_fields": {name: core_field(args.run / name, core_radius) for name in names},
-            "relative_to_six_d120" if six else "relative_to_r015": {name: relative(name, names[0]) for name in names[1:]},
+            f"relative_to_{names[0]}" if six else "relative_to_r015": {name: relative(name, names[0]) for name in names[1:]},
             "limitations": [
                 "Conductor absorption tests step endpoints only." if six else
                 "Conductor absorption tests step endpoints only; no casing received an electron in any case.",

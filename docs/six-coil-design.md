@@ -142,3 +142,61 @@ Cases: 1 A with seeds 1234 and 2345, 1 mA control, 0.3 A and 3 A current scaling
 −1 kV, and 60 kA-turn coils at 1 ps with packets every 4 steps (same injected current per
 unit time) for 600 ns, at 1 A and 1 mA. 16 snapshots per case, 6 h per-case timeout.
 
+All eight cases exited 0 with `DONE` markers; the broker job succeeded and released its node.
+Raw output: `/public/devcontainer-shared/jonathan/cusp/runs/pic-1baf1e989ae7/attempt-20260913-121929-912770156`.
+Summary: `docs/data/pic-six-coil-long-d88f4cf.json`, from `analyze_pic_window.py --study
+six-coil-long` (window: last 20% of each run).
+
+![six-coil saturation evolution](images/pic-six-coil-long-evolution.png)
+
+![six-coil saturation fields](images/pic-six-coil-long-fields.png)
+
+Window means, final-snapshot potentials. "Box min" is the most negative node anywhere; at 1 A
+and above it sits in the beam at the gun mouth (z ≈ −0.57 m), so the origin value is the
+central well. Live electrons per ampere compare cases at different currents.
+
+| Case | Origin φ (V) | Origin φ per A | Box min (V) | Live e⁻ per A | Dwell (ns) | Core dwell (ns) | Core entries / e⁻ | Barrel share of losses | Drift /100 ns |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 A | −3113 | −3113 | −4092 | 9.9e11 | 159 | 6.3 | 1.10 | 14% | <0.1% |
+| 1 A, seed 2345 | −3114 | −3114 | −4090 | 9.9e11 | 159 | 6.3 | 1.10 | 14% | <0.1% |
+| 1 mA | −3.4 | −3428 | −3.9 | 1.06e12 | 169 | 8.2 | 1.72 | 11% | <0.1% |
+| 0.3 A | −927 | −3091 | −1007 | 9.5e11 | 152 | 7.8 | 1.52 | 10% | 0.2% |
+| 3 A | −3437 | −1146 | −5711 | 3.7e11 | 60 | 2.5 | 0.48 | 68% | 0.1% |
+| 1 A, casings −1 kV | −3399 | −3399 | −4344 | 8.9e11 | 142 | 5.9 | 1.00 | 27% | 0.1% |
+| 1 A, 60 kA-turn (600 ns) | −3660 | −3660 | −4043 | 9.8e11 | 157 | 7.6 | 1.24 | 37% | +1.8% |
+| 1 mA, 60 kA-turn (600 ns) | −4.2 | −4204 | −4.5 | 1.05e12 | 168 | 10.3 | 1.89 | 35% | +3.8% |
+
+Dwell is live charge over injection rate, valid now that the population is stationary. Charge
+balance stayed below 1.1e-17 C; no electron reached a casing; steps took 8.0–8.7 ms.
+
+Observations:
+
+- **The 30 kA-turn runs saturate by about 450 ns.** Over the last 200 ns live electrons,
+  potential and field energy drift by less than 0.2% per 100 ns and fluctuate by 0.2–0.4%.
+  The two seeds agree to 0.1%. The 300 ns runs above were 85% of the way to the stationary
+  population.
+- **Electrons stay about 160 ns but barely revisit the core.** At 5 keV that is roughly 6.7 m
+  of path, a handful of crossings of the cube, yet each injected electron enters the 0.125 m
+  core 1.1 times and only 26% enter it more than once. The trap holds electrons in the outer
+  cube, not in repeated passes through the centre.
+- **The central well is nearly linear in current up to 1 A, then the gun limits it.** The
+  origin potential per ampere is −3428 V at 1 mA, −3091 V at 0.3 A and −3113 V at 1 A:
+  space charge costs about 9%. It does reshape the orbits: at 1 A core dwell is 25% shorter and
+  repeated core entries are 40% fewer than at 1 mA. At 3 A the beam's own charge at the gun
+  mouth reaches −5.7 kV, comparable to the 5 keV beam energy; 68% of losses return to the
+  barrel and the centre only reaches −3.4 kV. More current needs different gun optics, not a
+  stronger trap.
+- **Doubling the coil current deepens the centre 18% and lengthens core dwell 21%**, with
+  the same live population. More electrons are reflected back into the barrel (37% versus
+  14% of losses). These runs are still drifting at 600 ns and need a longer window before
+  their numbers are final.
+- **−1 kV casings deepen the centre by 286 V** but hold 11% fewer electrons and send twice as
+  many back to the barrel.
+- **The density is a diffuse cube fill with a bright beam.** Outside the beam the deposited
+  density is 1e12–1e13 m⁻³, with lanes towards the face cusps (clearest at 60 kA-turn).
+  Average density over the cube is about 1e12 m⁻³.
+
+What this does not establish: behaviour with ions (the next study), a mesh-converged well (one
+mesh), a realistic gun (the emitter is defined as 5 keV at its node regardless of the local
+potential), or plasma magnetic feedback.
+
