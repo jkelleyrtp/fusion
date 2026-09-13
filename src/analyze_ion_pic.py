@@ -1,4 +1,4 @@
-"""Summarize the coupled electron and H2+ PIC campaign: neutralization, well depth, ion occupancy and splitting sensitivity."""
+"""Summarize coupled electron and molecular-ion PIC campaigns: neutralization, well depth, ion occupancy and sources."""
 
 import argparse
 import json
@@ -24,7 +24,29 @@ STUDIES = {
         ("ions6_p1e-3_dt05", "ions6_p1e-3_cycle5", "ions6_p1e-3_window80", "ions6_p1e-3_ions2x"),
         ("ions6_p1e-3", "ions6_p1e-3_300mA", "ions6_p1e-2"),
     ),
+    "six-coil-feed": (
+        ("feed_1A_5keV", "feed_10A_5keV", "feed_10A_10keV", "feed_30A_10keV", "feed_100A_10keV",
+         "feed_30A_10keV_60kAt", "feed_30A_10keV_10kAt", "feed_100A_10keV_10kAt"),
+        (),
+        ("feed_1A_5keV", "feed_30A_10keV", "feed_100A_10keV"),
+    ),
+    "six-coil-gas": (
+        ("d2_uniform_p1e-3", "d2_uniform_p1e-4", "d2_inlet_face_Q1e-3_S1", "d2_inlet_face_Q1e-4_S1",
+         "d2_puff_face_Q1e-2_S1e3", "d2_puff_face_Q1e-1_S1e3", "d2_puff_corner_Q1e-1_S1e3", "d2_puff_gun_Q1e-1_S1e3"),
+        (),
+        ("d2_uniform_p1e-3", "d2_puff_face_Q1e-1_S1e3", "d2_puff_gun_Q1e-1_S1e3"),
+    ),
+    "six-coil-ion-gun": (
+        ("gun_none", "gun_1mA_100eV", "gun_10mA_100eV", "gun_100mA_100eV", "gun_10mA_10eV", "gun_10mA_1keV",
+         "gun_corner_10mA_100eV", "gun_10mA_100eV_bias5kV"),
+        (),
+        ("gun_none", "gun_10mA_100eV", "gun_100mA_100eV"),
+    ),
 }
+SOURCE_KEYS = (
+    "ion_species", "current_a", "energy_ev", "coil_current", "casing_voltage", "gas_pa", "gas_density_m3",
+    "gas_density_at_origin_m3", "gas_inlet", "ion_gun",
+)
 METRICS = (
     "neutralization_fraction", "core_neutralization_fraction", "potential_origin_V", "potential_min_V",
     "core_mean_potential_V", "window_mean_electron_charge_C", "window_mean_core_electron_charge_C",
@@ -65,14 +87,29 @@ def derived(record: Record) -> dict[str, float]:
     }
 
 
-def summarize(name: str, configuration: dict[str, object], history: list[Record], done: bool) -> dict[str, object]:
+def last_snapshot(case: Path) -> Path:
+    return max((case / "snapshots").glob("cycle-*.npz"))
+
+
+def birth_potential(case: Path) -> float | None:
+    """Charge-weighted mean potential at the birth point of the ions alive in the last snapshot."""
+    with np.load(last_snapshot(case), allow_pickle=False) as values:
+        weight, potential = values["ion_count"], values["ion_birth_potential_V"]
+    return float((weight * potential).sum() / weight.sum()) if weight.sum() else None
+
+
+def summarize(case: Path, configuration: dict[str, object], history: list[Record], done: bool) -> dict[str, object]:
+    name = case.name
     tail = history[len(history) * 3 // 4:]
     means = {key: float(np.mean([derived(record)[key] for record in tail])) for key in derived(tail[0])}
     final = history[-1]
     return {
         "name": name, "complete": done, "cycles": len(history), "requested_cycles": configuration["cycles"],
         "time_s": scalar(final, "time_s"),
-        "gas_pa": configuration["gas_pa"], "cycle_duration_s": configuration["cycle_duration"],
+        "sources": {key: configuration[key] for key in SOURCE_KEYS if key in configuration},
+        "ion_gun_injected_charge_C": final.get("ion_gun_injected_charge_C"),
+        "alive_ion_mean_birth_potential_V": birth_potential(case),
+        "cycle_duration_s": configuration["cycle_duration"],
         "electron_window_s": configuration["electron_window"], "ion_dt_s": configuration["ion_dt"],
         "ions_per_cycle": configuration["ions_per_cycle"],
         "final": derived(final), "last_quarter_mean": means,
@@ -101,12 +138,34 @@ def plot_histories(histories: dict[str, list[Record]], physics: tuple[str, ...],
     plt.close(figure)
 
 
+def plot_scan(summaries: dict[str, dict[str, object]], output: Path) -> None:
+    names = list(summaries)
+    figure, axes = plt.subplots(2, 3, figsize=(15, 8), constrained_layout=True)
+    for axis, (key, label) in zip(axes.flat, PLOTS):
+        values = [cast(dict[str, float], summaries[name]["last_quarter_mean"])[key] for name in names]
+        spread = [cast(dict[str, float], summaries[name]["last_quarter_spread"])[key] for name in names]
+        axis.bar(range(len(names)), values, yerr=spread, color=["C0" if summaries[name]["complete"] else "C7"
+                                                                for name in names])
+        axis.set_xticks(range(len(names)), names, rotation=60, ha="right", fontsize=7)
+        axis.set_ylabel(f"{label}, last-quarter mean")
+        axis.grid(alpha=0.3, axis="y")
+    figure.suptitle("grey bars: incomplete (partial) cases", fontsize=9)
+    figure.savefig(output, dpi=140)
+    plt.close(figure)
+
+
 def plot_fields(run: Path, output: Path, names: tuple[str, ...]) -> None:
-    figure, axes = plt.subplots(len(names), 2, figsize=(10, 3.6 * len(names)), constrained_layout=True)
+    figure, axes = plt.subplots(len(names), 3, figsize=(15, 3.6 * len(names)), constrained_layout=True)
     for row, name in zip(axes, names):
-        snapshot = max((run / name / "snapshots").glob("*.npz"))
+        snapshot = last_snapshot(run / name)
         with np.load(snapshot, allow_pickle=False) as values:
             potential, lower, upper = values["potential_V"], values["lower_m"], values["upper_m"]
+            weight, born = values["ion_count"], values["ion_birth_potential_V"]
+        if weight.sum():
+            row[2].hist(born, bins=60, weights=weight / weight.sum())
+        row[2].set_xlabel("potential at ion birth (V)")
+        row[2].set_ylabel("alive ion charge fraction")
+        row[2].set_title(f"{name}: alive-ion birth potential", fontsize=9)
         center = [size // 2 for size in potential.shape]
         for axis, (plane, extent, labels) in zip(row, (
             (potential[center[0], :, :].T, (lower[1], upper[1], lower[2], upper[2]), ("y (m)", "z (m)")),
@@ -133,7 +192,7 @@ def main() -> None:
     reference_case = physics[0]
     loaded = {name: load(args.run / name, args.partial) for name in physics + splitting}
     summaries = {
-        name: summarize(name, configuration, history, complete(args.run / name, configuration, history))
+        name: summarize(args.run / name, configuration, history, complete(args.run / name, configuration, history))
         for name, (configuration, history) in loaded.items()
     }
     reference = cast(dict[str, float], summaries[reference_case]["last_quarter_mean"])
@@ -151,6 +210,7 @@ def main() -> None:
     histories = {name: history for name, (_, history) in loaded.items()}
     plot_histories(histories, physics, args.out / "ion-pic-histories.png")
     plot_fields(args.run, args.out / "ion-pic-fields.png", fields)
+    plot_scan(summaries, args.out / "ion-pic-scan.png")
     for name, summary in summaries.items():
         means = cast(dict[str, float], summary["last_quarter_mean"])
         print(f"{name:22s} {summary['cycles']}/{summary['requested_cycles']} neut={means['neutralization_fraction']:.3f} "
