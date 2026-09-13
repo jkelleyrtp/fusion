@@ -49,6 +49,12 @@ STUDIES = {
         (),
         ("diss5_gun_none", "d2plus_10mA_100eV", "dplus_10mA_100eV"),
     ),
+    "six-coil-deuteron-fine": (
+        ("dplus_30mA_100eV_idt2", "dplus_100mA_100eV_idt2", "dplus_100mA_1keV_idt2", "dplus_300mA_1keV_idt2",
+         "dplus_100mA_100eV_bias5kV_idt2", "dplus_100mA_100eV_60kAt_idt2"),
+        ("dplus_100mA_100eV_idt2_s2345", "dplus_100mA_100eV_idt1_20cyc"),
+        ("dplus_30mA_100eV_idt2", "dplus_100mA_100eV_idt2", "dplus_300mA_1keV_idt2"),
+    ),
     "six-coil-pulse": (
         ("pulse_continuous", "pulse_on150_off50", "pulse_on150_off20", "pulse_on50_off50", "pulse_on300_off100",
          "pulse_on50_off50_p1e-3", "pulse_on150_off50_s2345"),

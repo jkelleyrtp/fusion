@@ -178,6 +178,20 @@ SIX_COIL_DEUTERON = {  # coil kA-turn, electron dt, inject interval, seed, extra
     "dplus_10mA_100eV_60kAt": (60000, 1e-12, 4, 1234, ("--ion-gun-current", "1e-2", *DEUTERON_GUN)),
     "d2plus_10mA_100eV": (30000, 2e-12, 2, 1234, ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP)),
 }
+DPLUS_100MA = ("--ion-gun-current", "1e-1", *DEUTERON_GUN)
+SIX_COIL_DEUTERON_FINE = {  # as SIX_COIL_DEUTERON, with 0.2 ns ion steps unless noted
+    "dplus_100mA_100eV_idt2": (30000, 2e-12, 2, 1234, (*DPLUS_100MA, "--ion-dt", "2e-10")),
+    "dplus_100mA_100eV_idt2_s2345": (30000, 2e-12, 2, 2345, (*DPLUS_100MA, "--ion-dt", "2e-10")),
+    "dplus_100mA_100eV_idt1_20cyc": (30000, 2e-12, 2, 1234, (*DPLUS_100MA, "--ion-dt", "1e-10", "--cycles", "20")),
+    "dplus_30mA_100eV_idt2": (30000, 2e-12, 2, 1234,
+                              ("--ion-gun-current", "3e-2", *DEUTERON_GUN, "--ion-dt", "2e-10")),
+    "dplus_100mA_1keV_idt2": (30000, 2e-12, 2, 1234, (*DPLUS_100MA, "--ion-gun-energy-ev", "1000", "--ion-dt", "2e-10")),
+    "dplus_300mA_1keV_idt2": (30000, 2e-12, 2, 1234, ("--ion-gun-current", "3e-1", *DEUTERON_GUN,
+                                                      "--ion-gun-energy-ev", "1000", "--ion-dt", "2e-10")),
+    "dplus_100mA_100eV_bias5kV_idt2": (30000, 2e-12, 2, 1234,
+                                       (*DPLUS_100MA, "--casing-voltage", "5000", "--ion-dt", "2e-10")),
+    "dplus_100mA_100eV_60kAt_idt2": (60000, 1e-12, 4, 1234, (*DPLUS_100MA, "--ion-dt", "2e-10")),
+}
 SIX_COIL_PULSE = {  # gun period and on cycles (10 us each), seed, extra arguments
     "pulse_continuous": (0, 0, 1234, ()),
     "pulse_on150_off50": (20, 15, 1234, ()),
@@ -190,7 +204,7 @@ SIX_COIL_PULSE = {  # gun period and on cycles (10 us each), seed, extra argumen
 }
 COUPLED = (
     "ions", "six-coil-ions", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas", "six-coil-ion-gun",
-    "six-coil-deuteron", "six-coil-pulse",
+    "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse",
 )
 
 
@@ -255,6 +269,10 @@ def case_specs(
         "six-coil-deuteron": tuple(
             (name, 1, dt, 8, interval, 15000, 65, seed, "cuda")
             for name, (_, dt, interval, seed, _) in SIX_COIL_DEUTERON.items()
+        ),
+        "six-coil-deuteron-fine": tuple(
+            (name, 1, dt, 8, interval, 15000, 65, seed, "cuda")
+            for name, (_, dt, interval, seed, _) in SIX_COIL_DEUTERON_FINE.items()
         ),
         "six-coil-pulse": tuple(
             (name, 1, 2e-12, 8, 2, 15000, 65, seed, "cuda") for name, (_, _, seed, _) in SIX_COIL_PULSE.items()
@@ -351,8 +369,8 @@ def commands(
         if study == "six-coil-ion-gun":
             result[-1] += ["--fuel", "D2", "--gas-pa", "1e-5", "--cycles", "40", "--save-every-cycles", "4",
                            *SIX_COIL_ION_GUN[name]]
-        if study == "six-coil-deuteron":
-            coil_current, _, _, _, extra = SIX_COIL_DEUTERON[name]
+        if study in ("six-coil-deuteron", "six-coil-deuteron-fine"):
+            coil_current, _, _, _, extra = (SIX_COIL_DEUTERON | SIX_COIL_DEUTERON_FINE)[name]
             result[-1] += ["--coil-current", str(coil_current), "--fuel", "D2", "--gas-pa", "1e-5",
                            "--dissociative-fraction", "0.05", "--cycles", "40", "--save-every-cycles", "4", *extra]
         if study == "six-coil-pulse":
@@ -388,7 +406,7 @@ def main() -> None:
         choices=(
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
             "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas",
-            "six-coil-ion-gun", "six-coil-deuteron", "six-coil-pulse", "six-coil-tracks",
+            "six-coil-ion-gun", "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-tracks",
         ),
         default="startup",
     )
@@ -523,6 +541,13 @@ def main() -> None:
             "subsampled (40 ns per 10 us cycle), so drain in the off phase is not resolved in real time. "
             "No coil pulsing, induced fields, gas depletion or plasma magnetic feedback."
         ) if args.study == "six-coil-pulse" else (
+            "Coupled electron and D2+/D+ PIC in the six-coil cube (1 A, 5 keV electron gun, D2 at 1e-5 Pa, 40 x 10 us "
+            "cycles, 5% dissociative) with a high-current atomic D+ gun from the top face cusp (0, 0, 0.7) m aimed at "
+            "the centre, at 0.2 ns ion steps: 100 mA at 100 eV with a second seed and a 0.1 ns 20-cycle timestep "
+            "control, 30 mA, 100 mA and 300 mA at 1 keV, +5 kV casings and 60 kA-turn coils. The 100 mA case at "
+            "1 ns failed omega_pi dt <= 0.1. Tests how much injected D+ current the electron well tolerates. No "
+            "extraction optics, D+ dissociation products, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-deuteron-fine" else (
             "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel), 800 ns at 2 ps, "
             "recording paths of the first 64 electrons injected after 500 ns, once the trap has saturated, every "
             "2 ps into tracks.npz (float32, at most 65536 samples = 131 ns): 1 A at 0 V with a second seed, casings at +5 kV, "
