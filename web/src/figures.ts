@@ -33,6 +33,11 @@ const studies: Study[] = [
     doc: "ion-pic-design.md", figures: pair("six-coil-ion-gun", "D2+ ion gun"),
   },
   {
+    id: "six-coil-deuteron", title: "Atomic D+ ion gun at a cusp (six-coil)",
+    summary: "Same setup as the D2+ gun, 400 µs, 6 of 8 cases complete (100 mA failed the ion-step check and is rerun at 0.2 ns; 60 kA-turn still running, not shown in conclusions). A 10 mA, 100 eV D+ beam builds a +425 V mouth hill (D2+: +798 V) and still chokes: 97% leave through the top. At 1 keV D+ transits, 62% out the opposite face, 0.87% retained. +5 kV casings remove the well. Changing species does not trap gun ions in a static well.",
+    doc: "ion-pic-design.md", figures: pair("six-coil-deuteron", "D+ ion gun"),
+  },
+  {
     id: "six-coil-bias", title: "Six-coil casing (magrid) bias sweep",
     summary: "1 µs, 1 A, 5 keV gun, casings at +1 to +10 kV, with a second seed, a 1 mA control, 3 A and a 2 keV gun at +5 kV. Electrons only; imposed vacuum field. Positive casings raise repeated core entries from 26% to 37%, but the ion escape barrier (lowest path from the centre to the grounded walls) falls from 3.1 kV at 0 V to 338 V at +5 kV and 96 V at +10 kV.",
     doc: "six-coil-design.md", figures: pair("six-coil-bias", "Bias sweep"),

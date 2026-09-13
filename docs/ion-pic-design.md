@@ -321,6 +321,42 @@ Exit fractions count all lost ions, so the `gun_none` row is gas ions only. The 
   injection, then deepening it) or dissipation; the pulsed electron-gun campaign tests the first
   of these in a limited way.
 
+## Atomic D+ ion-gun results (job `jonathan-pic-306fed43182f`, source `cf4fb70`)
+
+Same setup as the D2+ gun study: 1 A / 5 keV electron gun, D2 at 1e-5 Pa, 400 µs, 1 ns ion step,
+gun at the top point cusp (`0, 0, 0.7` m, aimed at the centre). Gas ionization makes D2+, with 5%
+dissociative ionization to D+ (`diss5`). Six of eight cases are complete. `dplus_100mA_100eV`
+failed the `omega_pi * dt <= 0.1` ion-step check before writing a history and is rerun at 0.2 ns in
+`jonathan-pic-a551941178c2`. `dplus_10mA_100eV_60kAt` had reached 21/40 cycles and is not
+interpreted. Exit fractions count gun macroparticles.
+
+| case | mouth hill | top face | opposite face | conductors | D+ alive / injected | core ion KE | origin |
+|---|---|---|---|---|---|---|---|
+| no gun (5% dissociative) | 0 V | 4% | 4% | 59% | — | 693 eV | −3057 V |
+| D2+ 10 mA, 100 eV | +798 V | 98.7% | 0.6% | 0.4% | — | 728 eV | −3043 V |
+| D+ 10 mA, 100 eV | +425 V | 96.9% | 1.3% | 0.7% | 0.29% | 796 eV | −3043 V |
+| D+ 10 mA, 100 eV, seed 2345 | +432 V | 96.9% | 1.3% | 0.7% | 0.29% | 799 eV | −3045 V |
+| D+ 10 mA, 1 keV | +367 V | 1.0% | 62% | 23% | 0.87% | 1515 eV | −2902 V |
+| D+ 10 mA, 100 eV, +5 kV casings | casings at +5 kV | 75% | 0.4% | 4% | 0.08% | 297 eV | +157 V |
+
+The mouth hill is the last-quarter mean of the maximum potential; with +5 kV casings the maximum is
+the casings themselves. Core ion KE is the core-time-weighted mean over all ions, gas-born included.
+
+### D+ interpretation
+
+- **D+ halves the mouth hill but a 100 eV gun still chokes.** At fixed current a lighter ion moves
+  √2 faster, so beam density and the hill fall: +425 V for D+ against +798 V for D2+. That is still
+  above 100 eV, and 97% of gun ions leave through the top face. The seed repeat agrees within 1%.
+- **A 1 keV D+ beam transits.** It clears the hill, crosses the well and leaves mostly through the
+  opposite face (62%) and the casings (23%). Retention is 0.87% of injected charge, against
+  1–3% for the D2+ transit cases, and the centre is 5% shallower than with no gun.
+- **Casing bias removes the well**, as with D2+: the centre sits at +157 V and retention is 0.08%.
+- **Same conclusion as D2+.** Changing the ion species does not trap gun ions in a static well;
+  the phase-gated capture campaign below tests injecting while the well is down.
+
+![Six-coil D+ ion gun evolution](images/pic-six-coil-deuteron-evolution.png)
+![Six-coil D+ ion gun fields](images/pic-six-coil-deuteron-fields.png)
+
 ## Phase-gated D+ capture campaign (job `jonathan-pic-7acf9e969fe4`, source `65d4592`)
 
 This tests the time-varying well idea above. `--ion-gun-phase electron-off` injects gun ions only

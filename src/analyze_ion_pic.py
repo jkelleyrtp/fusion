@@ -14,7 +14,7 @@ from analyze_pic_startup import Record, scalar
 
 plt.switch_backend("Agg")
 
-STUDIES = {
+STUDIES: dict[str, tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]] = {
     "two-coil": (
         ("ions_p1e-3", "ions_p1e-3_nocx", "ions_p1e-3_nosec", "ions_p1e-2"),
         ("ions_p1e-3_dt05", "ions_p1e-3_cycle5", "ions_p1e-3_window80", "ions_p1e-3_ions2x"),
@@ -271,11 +271,18 @@ def main() -> None:
     parser.add_argument("run", type=Path)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--study", choices=tuple(STUDIES), default="two-coil")
-    parser.add_argument("--partial", action="store_true", help="summarize cases that are still running")
+    parser.add_argument("--partial", action="store_true",
+                        help="summarize cases that are still running and skip cases without a history")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     physics, splitting, fields = STUDIES[args.study]
     reference_case = physics[0]
+    if args.partial:
+        missing = [name for name in physics + splitting if not (args.run / name / "history.json").is_file()]
+        physics, splitting = (tuple(name for name in names if name not in missing) for names in (physics, splitting))
+        fields = tuple(name for name in fields if name not in missing)
+    else:
+        missing = []
     loaded = {name: load(args.run / name, args.partial) for name in physics + splitting}
     summaries = {
         name: summarize(args.run / name, configuration, history, complete(args.run / name, configuration, history))
@@ -289,8 +296,8 @@ def main() -> None:
                 for key, value in reference.items()}
 
     result = {
-        "run": str(args.run), "partial": not all(summary["complete"] for summary in summaries.values()),
-        "reference": reference_case, "cases": summaries,
+        "run": str(args.run), "partial": bool(missing) or not all(summary["complete"] for summary in summaries.values()),
+        "reference": reference_case, "cases": summaries, "without_history": missing,
         "relative_to_reference": {name: relative(name) for name in summaries if name != reference_case},
     }
     (args.out / "ion-pic-summary.json").write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
