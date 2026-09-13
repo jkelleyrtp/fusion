@@ -48,6 +48,17 @@ SIX_COILS = {
     "pic_1A_six_d120_s2345": (6, 1.2, (1.425, 1.95, 1.4625), 0.0, 1, 2345),
 }
 
+SIX_COIL_LONG = {
+    "six_long": (1, 30000, 0.0, 1234, 2e-12, 2, 1e-6),
+    "six_long_s2345": (1, 30000, 0.0, 2345, 2e-12, 2, 1e-6),
+    "six_long_1mA": (1e-3, 30000, 0.0, 1234, 2e-12, 2, 1e-6),
+    "six_long_300mA": (0.3, 30000, 0.0, 1234, 2e-12, 2, 1e-6),
+    "six_long_3A": (3, 30000, 0.0, 1234, 2e-12, 2, 1e-6),
+    "six_long_m1kV": (1, 30000, -1000.0, 1234, 2e-12, 2, 1e-6),
+    "six_long_60kAt": (1, 60000, 0.0, 1234, 1e-12, 4, 6e-7),
+    "six_long_60kAt_1mA": (1e-3, 60000, 0.0, 1234, 1e-12, 4, 6e-7),
+}
+
 COIL_CASINGS = {
     "pic_1A_casing_none": ((0.6, 1.95, 1.3), 0.0, 0.0, 1234),
     "pic_1A_casing_r015": ((1.2, 1.95, 1.3), 0.15, 0.0, 1234),
@@ -116,6 +127,10 @@ def case_specs(
             (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
             for name, (_, _, _, _, current, seed) in SIX_COILS.items()
         ),
+        "six-coil-long": tuple(
+            (name, current, dt, 8, interval, math.ceil(duration / dt / 15), 65, seed, "cuda")
+            for name, (current, _, _, seed, dt, interval, duration) in SIX_COIL_LONG.items()
+        ),
     }[study]
     return list(cases)
 
@@ -124,7 +139,7 @@ def commands(
     out: Path, revision: str, study: str = "startup", kernels: str = "reference",
 ) -> list[list[str]]:
     result = []
-    window = study in ("window", "domain", "gun", "casing", "ions", "six-coil")
+    window = study in ("window", "domain", "gun", "casing", "ions", "six-coil", "six-coil-long")
     for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
         case_specs(study, kernels),
     ):
@@ -136,6 +151,11 @@ def commands(
         ]
         if study == "ions":
             limits = ["--max-live-particles", "3000000"]
+        if study == "six-coil-long":
+            limits = [
+                "--duration", str(SIX_COIL_LONG[name][6]), "--diagnostic-every", str(stride // 30),
+                "--max-steps", "1000000", "--max-live-particles", "6000000",
+            ]
         result.append([
             sys.executable, str(Path(__file__).with_name("ion_pic.py" if study == "ions" else "run_transient_pic.py")),
             "--out", str(out / name), "--device", f"cuda:{device}",
@@ -175,6 +195,15 @@ def commands(
                 "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
                 "--casing-voltage", str(voltage), "--coils", str(count), "--coil-offset", str(offset),
             ]
+        if study == "six-coil-long":
+            width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
+            _, coil_current, voltage, _, _, _, _ = SIX_COIL_LONG[name]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+                "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
+                "--casing-voltage", str(voltage), "--coils", "6", "--coil-offset", "1.2",
+                "--coil-current", str(coil_current),
+            ]
         if study == "ions":
             result[-1] += ["--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *ION_CASES[name]]
     return result
@@ -186,7 +215,10 @@ def main() -> None:
     parser.add_argument("--case-timeout", type=float, default=900)
     parser.add_argument(
         "--study",
-        choices=("startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil"),
+        choices=(
+            "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
+            "six-coil-long",
+        ),
         default="startup",
     )
     parser.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
@@ -259,6 +291,12 @@ def main() -> None:
             "six-coil control, a wider box, a farther top wall, casings at +1 kV and a second seed. Tests "
             "whether the six-coil geometry changes the potential structure and core dwell. No plasma "
             "magnetic feedback, no ions."
+        ) if args.study == "six-coil" else (
+            "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel), 1 us at "
+            "2 ps: the 300 ns runs were still filling the cube, so this tests whether the live population, core "
+            "potential and losses saturate. 1 A with two seeds, a 1 mA control, 0.3 A and 3 A current scaling, "
+            "casings at -1 kV, and 60 kA-turn at 1 ps with matched packet timing for 600 ns (1 A and 1 mA). "
+            "No plasma magnetic feedback, no ions."
         ),
         "study": args.study, "kernels": args.kernels,
         "cases": [

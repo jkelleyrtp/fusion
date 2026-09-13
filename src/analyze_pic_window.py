@@ -1,4 +1,4 @@
-"""Summarize the long-window, grounded-box, gun-barrel and coil-casing transient PIC sensitivity campaigns."""
+"""Summarize the long-window, grounded-box, gun-barrel, coil-casing and six-coil transient PIC campaigns."""
 
 import argparse
 import json
@@ -28,6 +28,10 @@ GUN_CASES = (
 CASING_CASES = (
     "pic_1A_casing_r015", "pic_1A_casing_none", "pic_1A_casing_r015_w1275", "pic_1A_casing_r020",
     "pic_1A_casing_r015_p1kV", "pic_1A_casing_r015_m1kV", "pic_1A_casing_r015_s2345", "pic_1A_casing_r015_t195",
+)
+SIX_COIL_CASES = (
+    "pic_1A_six_d120", "pic_1A_two_coil_c010", "pic_1A_six_d120_1mA", "pic_1A_six_d130",
+    "pic_1A_six_d120_w1575", "pic_1A_six_d120_t195", "pic_1A_six_d120_p1kV", "pic_1A_six_d120_s2345",
 )
 WINDOW_METRICS = (
     "minimum_potential_V", "field_energy_J", "alive_electrons", "core_electron_count",
@@ -170,11 +174,11 @@ def main() -> None:
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--window-start", type=float, default=2e-7)
-    parser.add_argument("--study", choices=("window", "domain", "gun", "casing"), default="window")
+    parser.add_argument("--study", choices=("window", "domain", "gun", "casing", "six-coil"), default="window")
     parser.add_argument("--domain-run", type=Path, help="grounded-box campaign to compare the gun study against")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
-    names = {"domain": DOMAIN_CASES, "gun": GUN_CASES, "casing": CASING_CASES}.get(
+    names = {"domain": DOMAIN_CASES, "gun": GUN_CASES, "casing": CASING_CASES, "six-coil": SIX_COIL_CASES}.get(
         args.study, (*MESH_CASES, *VARIANT_CASES),
     )
     histories = {name: load(args.run / name) for name in names}
@@ -188,7 +192,8 @@ def main() -> None:
             for key in WINDOW_METRICS
         }
 
-    if args.study == "casing":
+    if args.study in ("casing", "six-coil"):
+        six = args.study == "six-coil"
         core_radius = 0.25 * json.loads((args.run / names[0] / "configuration.json").read_text())["radius"]
         conductors = {}
         for name, records in histories.items():
@@ -202,6 +207,9 @@ def main() -> None:
                 "box_lower_m": configuration["box_lower_m"], "box_upper_m": configuration["box_upper_m"],
                 "mesh_shape": configuration["mesh_shape"], "seed": configuration["seed"],
                 "coil_casings": configuration["coil_casings"], "conductor_setup_s": configuration["conductor_setup_s"],
+                **({"coils": configuration["coils"], "coil_offset": configuration["coil_offset"],
+                    "source_B_T": configuration["source_B_T"],
+                    "source_nominal_pitch_deg": configuration["source_nominal_pitch_deg"]} if six else {}),
                 "source_potential_V_window_mean": float(np.mean([scalar(r, "source_potential_V") for r in window])),
                 "final_conductor_charge_C": dict(zip(
                     configuration["conductor_names"], cast(list[float], final["conductor_charge_C"]), strict=True,
@@ -215,20 +223,30 @@ def main() -> None:
                 },
             }
         casing_report: dict[str, object] = {
-            "scope": "Absorbing coil casings inside a wider grounded box, with the gun barrel, 1 A external-gun CUDA PIC.",
+            "scope": (
+                "Six-coil imposed cube field versus the two-coil cusp, grounded barrel and casings, 1 A external-gun CUDA PIC."
+                if six else
+                "Absorbing coil casings inside a wider grounded box, with the gun barrel, 1 A external-gun CUDA PIC."
+            ),
             "cases": list(summaries.values()),
             "conductors": conductors,
             "final_fields": {name: core_field(args.run / name, core_radius) for name in names},
-            "relative_to_r015": {name: relative(name, names[0]) for name in names[1:]},
+            "relative_to_six_d120" if six else "relative_to_r015": {name: relative(name, names[0]) for name in names[1:]},
             "limitations": [
+                "Conductor absorption tests step endpoints only." if six else
                 "Conductor absorption tests step endpoints only; no casing received an electron in any case.",
                 "Casings are tori at the coil radius; the windings, supports and feedthroughs are not modelled.",
+                "Imposed vacuum magnetic field without plasma currents; electrons only; one seed except the reference."
+                if six else
                 "Grounded outer box, imposed two-coil magnetic field, electrons only, one seed except r015.",
             ],
         }
         (args.out / "analysis.json").write_text(json.dumps(casing_report, indent=2, allow_nan=False) + "\n")
         plot_histories(histories, args.out / "evolution.png", names[:2])
-        plot_fields(args.run, args.out / "fields.png", ("pic_1A_casing_none", "pic_1A_casing_r015", "pic_1A_casing_r015_m1kV"))
+        plot_fields(args.run, args.out / "fields.png", (
+            ("pic_1A_two_coil_c010", "pic_1A_six_d120", "pic_1A_six_d130") if six else
+            ("pic_1A_casing_none", "pic_1A_casing_r015", "pic_1A_casing_r015_m1kV")
+        ))
         return
     if args.study == "gun":
         core_radius = 0.25 * json.loads((args.run / GUN_CASES[0] / "configuration.json").read_text())["radius"]

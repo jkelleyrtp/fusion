@@ -137,6 +137,17 @@ class CampaignTests(unittest.TestCase):
                 (2e-12, 2, 8, 3e-7, 0.1),
             )
 
+    def test_long_six_coil_study_keeps_charge_per_time_and_bounds_output(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-long")
+        configurations = [parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        for item in configurations:
+            steps = validate(item)
+            self.assertLessEqual(steps, item.max_steps)
+            self.assertEqual((item.coils, item.coil_offset, item.casing_radius), (6, 1.2, 0.1))
+            self.assertEqual(item.dt * item.inject_every, 4e-12)
+        self.assertEqual(sorted({item.coil_current for item in configurations}), [30000, 60000])
+
 
 if __name__ == "__main__":
     unittest.main()
