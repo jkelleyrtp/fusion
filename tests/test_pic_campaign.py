@@ -227,6 +227,19 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual((low.gas_pa, low.cycle_duration), (1e-4, 1e-4))
         self.assertEqual(configurations["sustain_30A_10keV_long"].cycles, 64)
 
+    def test_six_coil_gun_limit_study_varies_gun_energy_divergence_and_bias(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-gun-limit")
+        configurations = {Path(command[3]).name: ion_parser().parse_args(command[2:]) for command in argv}
+        self.assertEqual(len(configurations), 8)
+        for item in configurations.values():
+            validate_coupled(item)
+            self.assertEqual((item.coils, item.coil_current, item.gas_pa, item.ion_dt), (6, 30000, 1e-3, 5e-10))
+        self.assertEqual(sorted({item.current_a for item in configurations.values()}), [30, 100, 300])
+        self.assertEqual(sorted({item.energy_ev for item in configurations.values()}), [10000, 20000])
+        self.assertEqual(configurations["limit_100A_20keV_div30"].divergence_deg, 30)
+        self.assertEqual(configurations["limit_100A_10keV_bias5kV"].casing_voltage, 5000)
+        self.assertEqual(configurations["limit_30A_20keV_s2345"].seed, 2345)
+
     def test_six_coil_gas_study_compares_uniform_fill_with_inlets(self) -> None:
         argv = commands(Path("/campaign"), "a" * 40, "six-coil-gas")
         configurations = [ion_parser().parse_args(command[2:]) for command in argv]
