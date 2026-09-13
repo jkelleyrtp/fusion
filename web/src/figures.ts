@@ -23,6 +23,11 @@ const studies: Study[] = [
     doc: "ion-pic-design.md", figures: pair("six-coil-ions", "Six-coil coupled ions"),
   },
   {
+    id: "six-coil-gas", title: "D2 fuel delivery: uniform fill, inlets and puffs (six-coil)",
+    summary: "1 A 5 keV gun, D2 and D2+ ions, 400 µs, all 8 cases complete. A steady inlet with a normal pump matches uniform gas within 0.1%. Pressure sets the neutralization clock linearly: 148 µs at 1e-3 Pa, 1.36 ms at 1e-4 Pa, ~7.9 ms at 1e-5 Pa, where the well holds −3.0 kV and core ions carry ~770 eV. A puff at the same background speeds ionization by 19–61% because the plume overlaps the electrons; ions are still born deep in the well.",
+    doc: "ion-pic-design.md", figures: pair("six-coil-gas", "D2 fuel delivery"),
+  },
+  {
     id: "six-coil-bias", title: "Six-coil casing (magrid) bias sweep",
     summary: "1 µs, 1 A, 5 keV gun, casings at +1 to +10 kV, with a second seed, a 1 mA control, 3 A and a 2 keV gun at +5 kV. Electrons only; imposed vacuum field. Positive casings raise repeated core entries from 26% to 37%, but the ion escape barrier (lowest path from the centre to the grounded walls) falls from 3.1 kV at 0 V to 338 V at +5 kV and 96 V at +10 kV.",
     doc: "six-coil-design.md", figures: pair("six-coil-bias", "Bias sweep"),

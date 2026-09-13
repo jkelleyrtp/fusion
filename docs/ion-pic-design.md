@@ -220,3 +220,50 @@ At the first 10 µs cycle the 1 A origin potential is −2.6 kV with −157 nC o
   fraction change by at most 3%; origin potential (−10 to 0 V) and core ion energy (8–12 eV) are
   small differences of large cancelling charges and uncertain at that level.
 - The same missing physics as the two-coil study limits the post-neutralization state.
+
+## D2 fuel-delivery results (job `jonathan-pic-f74373c4cc21`, source `09f2191`)
+
+`run_pic_campaign.py --study six-coil-gas`: the six-coil trap (30 kA-turn, 0 V casings, 1 A 5 keV
+gun) with D2 and D2+ ions, 40 × 10 µs cycles (400 µs). Inlets aim at the centre from a face axis
+(0.7, 0, 0), a corner (0.68, 0.68, 0.68) and beside the gun (0.1, 0, −0.95). "Puff" cases use a
+1000 m³/s pump, far larger than a real pump, to approximate an early-time puff or strong
+differential pumping in this static-gas model. All eight cases exited 0 with `DONE` and every
+requested cycle; ion charge balance stayed below 1e-19 C.
+Raw output: `/public/devcontainer-shared/jonathan/cusp/runs/pic-f74373c4cc21/attempt-20260913-170701-271575149`.
+Summary: `docs/data/pic-six-coil-gas-09f2191.json` (`analyze_ion_pic.py --study six-coil-gas`).
+Neutralization time is live electron charge over the ion production rate at the last cycle; the
+other columns are last-quarter means.
+
+| Case | Background | Gas at centre | Neutralization time | Neutralization (400 µs) | Origin | Core ion KE | Ions lost |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `d2_uniform_p1e-3` | 1e-3 Pa | 2.41e17 m⁻³ | 148 µs | 1.034 | +3 V | 9 eV | 59% |
+| `d2_inlet_face_Q1e-3_S1` | 1e-3 Pa | 2.42e17 m⁻³ | 148 µs | 1.034 | +5 V | 8 eV | 59% |
+| `d2_uniform_p1e-4` | 1e-4 Pa | 2.41e16 m⁻³ | 1.36 ms | 0.271 | −1.93 kV | 323 eV | 2% |
+| `d2_inlet_face_Q1e-4_S1` | 1e-4 Pa | 2.42e16 m⁻³ | 1.36 ms | 0.271 | −1.93 kV | 323 eV | 2% |
+| `d2_puff_face_Q1e-1_S1e3` | 1e-4 Pa | 3.66e16 m⁻³ | 845 µs | 0.422 | −1.35 kV | 247 eV | 6% |
+| `d2_puff_gun_Q1e-1_S1e3` | 1e-4 Pa | 3.08e16 m⁻³ | 1.02 ms | 0.367 | −1.51 kV | 229 eV | 4% |
+| `d2_puff_corner_Q1e-1_S1e3` | 1e-4 Pa | 2.86e16 m⁻³ | 1.15 ms | 0.322 | −1.71 kV | 290 eV | 3% |
+| `d2_puff_face_Q1e-2_S1e3` | 1e-5 Pa | 3.66e15 m⁻³ | 7.9 ms | 0.043 | −3.03 kV | 770 eV | 0.1% |
+
+![Six-coil D2 delivery evolution](images/pic-six-coil-gas-evolution.png)
+![Six-coil D2 delivery fields](images/pic-six-coil-gas-fields.png)
+
+### D2 delivery interpretation
+
+- **A steady inlet into a normally pumped vessel is uniform fill.** With a 1 m³/s pump the inlet
+  cases match uniform gas at the same background within 0.1% in every quantity, at both 1e-3 and
+  1e-4 Pa. D2 neutralizes on the same 148 µs clock as H2 at 1e-3 Pa.
+- **Background pressure sets the clock, linearly.** 148 µs at 1e-3 Pa, 1.36 ms at 1e-4 Pa and
+  ~7.9 ms at 1e-5 Pa. At 1e-5 Pa the well stays at −3.0 kV for the whole 400 µs and core ions
+  carry ~770 eV.
+- **A puff adds ionization where the electrons are; it does not move birth to the walls.** At the
+  same 1e-4 Pa background the face-axis puff raises the centre density by 52% and the ionization
+  rate by 61%, the gun-side puff by 28% and 34%, the corner puff by 19% and 19%. The face inlet sits
+  on a point-cusp axis, where most electrons leave, so its plume overlaps the electron flow. Alive
+  ions are still born mostly 0.5–2.5 kV down in the well. The plume does make some wall-side ions:
+  lost ions leave mainly along the inlet axis (both x faces take 4.5 times each y face for the face
+  puff, the z faces most for the gun-side puff), but they are 3–6% of created ions.
+- **Localized puffing is therefore a small knob in this model; pressure is the large one.** A
+  puff that delivers fuel without adding core ionization would need the gas to be ionized away
+  from the beam, which this static plume cannot represent: no neutral depletion, shadowing by the
+  casings, wall reflection or time-dependent filling.
