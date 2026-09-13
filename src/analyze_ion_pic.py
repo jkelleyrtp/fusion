@@ -61,7 +61,14 @@ STUDIES = {
         ("pulse_on150_off50_settle400",),
         ("pulse_continuous", "pulse_on150_off50", "pulse_on50_off50_p1e-3"),
     ),
+    "six-coil-capture": (
+        ("capture_off_1keV", "capture_on_1keV", "capture_always_1keV", "capture_continuous_1keV",
+         "capture_off_300eV", "capture_off_1keV_on4_off2"),
+        ("capture_off_1keV_s2345", "capture_off_1keV_idt2"),
+        ("capture_off_1keV", "capture_on_1keV", "capture_continuous_1keV"),
+    ),
 }
+CAPTURE = ("ion_bound_charge_C", "atomic_ion_bound_charge_C", "atomic_ion_alive_charge_C", "ion_gun_injected_charge_C")
 SOURCE_KEYS = (
     "ion_species", "current_a", "energy_ev", "coil_current", "casing_voltage", "gas_pa", "gas_density_m3",
     "gas_density_at_origin_m3", "gas_inlet", "ion_gun", "dissociative_ionization",
@@ -103,6 +110,7 @@ def derived(record: Record) -> dict[str, float]:
     created = scalar(record, "ion_created_charge_C")
     return {
         **{name: math.nan if record[name] is None else scalar(record, name) for name in METRICS},
+        **{name: math.nan if record.get(name) is None else scalar(record, name) for name in CAPTURE},
         "ion_alive_charge_C": scalar(record, "ion_alive_charge_C"),
         "ion_lost_fraction": scalar(record, "ion_lost_charge_C") / created if created else 0.0,
     }
@@ -134,7 +142,35 @@ def pulse_summary(configuration: dict[str, object], history: list[Record]) -> di
         "duty_mean": finite_stats(last), "gun_on_mean": finite_stats(on),
         "peak_neutralization_fraction": finite_stats(on, np.max)["neutralization_fraction"],
         "alive_ion_charge_at_period_end_C": scalar(last[-1], "ion_alive_charge_C"),
+        "period_ends": [
+            {"cycle": scalar(record, "cycle"),
+             **{key: value if math.isfinite(value := derived(record)[key]) else None for key in CAPTURE}}
+            for record in history[period - 1:periods * period:period]
+        ],
     }
+
+
+def plot_capture(histories: dict[str, list[Record]], output: Path) -> None:
+    """Alive and energetically bound atomic ions per unit injected gun charge."""
+    figure, axes = plt.subplots(1, 3, figsize=(15, 4.5), constrained_layout=True)
+    for name, history in histories.items():
+        time = [1e3 * scalar(record, "time_s") for record in history]
+        values = [derived(record) for record in history]
+        injected = [value["ion_gun_injected_charge_C"] or math.nan for value in values]
+        off = [index for index, record in enumerate(history) if not record.get("electron_gun_on", True)]
+        for axis, key in zip(axes, ("atomic_ion_alive_charge_C", "atomic_ion_bound_charge_C")):
+            axis.plot(time, [value[key] / total for value, total in zip(values, injected)], label=name,
+                      marker=".", markersize=4, markevery=off)
+        axes[2].plot(time, [value["potential_origin_V"] for value in values], label=name, marker=".",
+                     markersize=4, markevery=off)
+    for axis, label in zip(axes, ("alive D+ / injected gun charge", "bound D+ / injected gun charge",
+                                  "origin potential (V)")):
+        axis.set_xlabel("time (ms, dots: electron gun off)")
+        axis.set_ylabel(label)
+        axis.grid(alpha=0.3)
+    axes[0].legend(fontsize=7)
+    figure.savefig(output, dpi=140)
+    plt.close(figure)
 
 
 def last_snapshot(case: Path) -> Path:
@@ -262,6 +298,8 @@ def main() -> None:
     plot_histories(histories, physics, args.out / "ion-pic-histories.png")
     plot_fields(args.run, args.out / "ion-pic-fields.png", fields)
     plot_scan(summaries, args.out / "ion-pic-scan.png")
+    if args.study == "six-coil-capture":
+        plot_capture(histories, args.out / "ion-pic-capture.png")
     for name, summary in summaries.items():
         means = {key: math.nan if value is None else value
                  for key, value in cast(dict[str, float | None], summary["last_quarter_mean"]).items()}

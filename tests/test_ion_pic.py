@@ -197,6 +197,28 @@ class IonPICTests(unittest.TestCase):
             for record in history:
                 self.assertLess(abs(record["ion_charge_balance_C"]), 1e-9 * record["ion_created_charge_C"])
 
+    def test_ion_gun_injects_only_while_the_electron_gun_is_off(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "case"
+            with contextlib.redirect_stdout(io.StringIO()):
+                history = run(arguments(
+                    root, "--cycles", "4", "--gun-period-cycles", "2", "--gun-on-cycles", "1",
+                    "--gun-settle", "2e-10", "--fuel", "D2", "--gas-pa", "1e-6", "--ion-gun-current", "1e-3",
+                    "--ion-gun-species", "atomic", "--ion-gun-position", "0", "0", "0.05",
+                    "--ion-gun-phase", "electron-off", "--cx-cross-section", "0",
+                ))
+            configuration = json.loads((root / "configuration.json").read_text())
+            self.assertEqual(configuration["ion_gun"]["phase"], "electron-off")
+            self.assertEqual([record["ion_gun_on"] for record in history], [False, True, False, True])
+            pulse = 1e-3 * 1e-7
+            self.assertEqual(
+                [round(record["ion_gun_injected_charge_C"] / pulse, 9) for record in history], [0, 1, 1, 2],
+            )
+            for record in history:
+                self.assertLessEqual(record["atomic_ion_bound_charge_C"], record["ion_bound_charge_C"])
+                self.assertLessEqual(record["ion_bound_charge_C"], record["ion_alive_charge_C"] * (1 + 1e-12))
+                self.assertGreaterEqual(record["atomic_ion_bound_charge_C"], 0)
+
     def test_population_limit_stops_cleanly(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "case"
@@ -213,6 +235,8 @@ class IonPICTests(unittest.TestCase):
             validate_coupled(arguments(root, "--cycle-duration", "1.5e-9"))
         with self.assertRaisesRegex(ValueError, "positive"):
             validate_coupled(arguments(root, "--gas-pa", "0"))
+        with self.assertRaisesRegex(ValueError, "gated ion gun"):
+            validate_coupled(arguments(root, "--ion-gun-phase", "electron-off"))
 
 
 if __name__ == "__main__":

@@ -202,9 +202,21 @@ SIX_COIL_PULSE = {  # gun period and on cycles (10 us each), seed, extra argumen
     "pulse_on150_off50_s2345": (20, 15, 2345, ()),
     "pulse_on150_off50_settle400": (20, 15, 1234, ("--gun-settle", "4e-7")),
 }
+DPLUS_10MA_1KEV = ("--ion-gun-current", "1e-2", *DEUTERON_GUN, "--ion-gun-energy-ev", "1000")
+SIX_COIL_CAPTURE = {  # electron-gun period and on cycles (1 us each), ion-gun phase, seed, extra arguments
+    "capture_off_1keV": (12, 10, "electron-off", 1234, DPLUS_10MA_1KEV),
+    "capture_on_1keV": (12, 10, "electron-on", 1234, DPLUS_10MA_1KEV),
+    "capture_always_1keV": (12, 10, "always", 1234, DPLUS_10MA_1KEV),
+    "capture_continuous_1keV": (0, 0, "always", 1234, DPLUS_10MA_1KEV),
+    "capture_off_300eV": (12, 10, "electron-off", 1234,
+                          ("--ion-gun-current", "1e-2", *DEUTERON_GUN, "--ion-gun-energy-ev", "300")),
+    "capture_off_1keV_on4_off2": (6, 4, "electron-off", 1234, DPLUS_10MA_1KEV),
+    "capture_off_1keV_s2345": (12, 10, "electron-off", 2345, DPLUS_10MA_1KEV),
+    "capture_off_1keV_idt2": (12, 10, "electron-off", 1234, (*DPLUS_10MA_1KEV, "--ion-dt", "2e-10")),
+}
 COUPLED = (
     "ions", "six-coil-ions", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas", "six-coil-ion-gun",
-    "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse",
+    "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture",
 )
 
 
@@ -276,6 +288,9 @@ def case_specs(
         ),
         "six-coil-pulse": tuple(
             (name, 1, 2e-12, 8, 2, 15000, 65, seed, "cuda") for name, (_, _, seed, _) in SIX_COIL_PULSE.items()
+        ),
+        "six-coil-capture": tuple(
+            (name, 1, 2e-12, 8, 2, 15000, 65, seed, "cuda") for name, (_, _, _, seed, _) in SIX_COIL_CAPTURE.items()
         ),
         **{
             long: tuple(
@@ -378,6 +393,11 @@ def commands(
             result[-1] += ["--fuel", "D2", "--gas-pa", "1e-4", "--cycles", "60", "--save-every-cycles", "5",
                            "--gun-period-cycles", str(period), "--gun-on-cycles", str(on), "--gun-settle", "2e-7",
                            *extra]
+        if study == "six-coil-capture":
+            period, on, phase, _, extra = SIX_COIL_CAPTURE[name]
+            result[-1] += ["--fuel", "D2", "--gas-pa", "1e-5", "--cycle-duration", "1e-6", "--cycles", "48",
+                           "--save-every-cycles", "4", "--ion-dt", "5e-10", "--gun-period-cycles", str(period),
+                           "--gun-on-cycles", str(on), "--gun-settle", "2e-7", "--ion-gun-phase", phase, *extra]
         if study in LONG:
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
             _, coil_current, voltage, _, _, _, _, energy = LONG[study][name]
@@ -406,7 +426,8 @@ def main() -> None:
         choices=(
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
             "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas",
-            "six-coil-ion-gun", "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-tracks",
+            "six-coil-ion-gun", "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture",
+            "six-coil-tracks",
         ),
         default="startup",
     )
@@ -548,6 +569,17 @@ def main() -> None:
             "1 ns failed omega_pi dt <= 0.1. Tests how much injected D+ current the electron well tolerates. No "
             "extraction optics, D+ dissociation products, gas depletion or plasma magnetic feedback."
         ) if args.study == "six-coil-deuteron-fine" else (
+            "Coupled electron and D2+/D+ PIC in the six-coil cube (1 A, 5 keV electron gun, D2 at 1e-5 Pa, 48 x 1 us "
+            "cycles, 0.5 ns ion steps, no dissociation so every D+ is a gun ion until charge exchange) testing capture "
+            "of injected ions by switching the well: a 10 mA 1 keV D+ gun from the top face cusp (0, 0, 0.7) m fires "
+            "only while the electron gun is off (10/2 us on/off), so ions in transit when the gun turns back on "
+            "see the well deepen around them and lose total energy. Controls fire the ion gun during the on phase, "
+            "always, or with a continuous electron gun; variants use 300 eV, 4/2 us on/off, a second seed and 0.2 ns "
+            "ion steps. Bound charge counts ions with kinetic plus potential energy below the grounded walls in the "
+            "frozen end-of-cycle potential. Ions see the well change only at cycle boundaries (1 us, against ~2 us "
+            "1 keV D+ transit); each switch advances electrons 200 ns on frozen ions. No coil pulsing, induced "
+            "fields, extraction optics, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-capture" else (
             "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel), 800 ns at 2 ps, "
             "recording paths of the first 64 electrons injected after 500 ns, once the trap has saturated, every "
             "2 ps into tracks.npz (float32, at most 65536 samples = 131 ns): 1 A at 0 V with a second seed, casings at +5 kV, "

@@ -46,6 +46,7 @@ H2_SHELL_ELECTRONS = 2
 SECONDARY_BATCH = 16
 FUELS = {"H2": (2.016, 1.008, 15.43), "D2": (4.028, 2.014, 15.47)}  # molecule and atom in amu, ionization eV
 SPECIES = ("molecular", "atomic")
+ION_GUN_PHASES = ("always", "electron-on", "electron-off")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -76,6 +77,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--ion-gun-energy-ev", type=float, default=100.0)
     result.add_argument("--ion-gun-divergence-deg", type=float, default=5.0, help="RMS angle per transverse axis")
     result.add_argument("--ion-gun-radius", type=float, default=5e-3, help="RMS spot size per transverse axis (m)")
+    result.add_argument("--ion-gun-phase", choices=ION_GUN_PHASES, default="always",
+                        help="cycles in which the ion gun injects, relative to the electron gun state")
     result.add_argument("--secondaries", action=argparse.BooleanOptionalAction, default=True)
     result.add_argument("--secondary-temperature-ev", type=float, default=3.0)
     result.add_argument("--secondary-every", type=int, default=64, help="electron steps per secondary batch")
@@ -147,6 +150,8 @@ def validate_coupled(args: argparse.Namespace) -> Plan:
         raise ValueError("Invalid cycle, sampling or ion particle settings")
     if not (0 < args.gun_on_cycles < args.gun_period_cycles or args.gun_on_cycles == args.gun_period_cycles == 0):
         raise ValueError("A pulsed gun needs 0 < gun-on-cycles < gun-period-cycles; continuous needs both 0")
+    if args.ion_gun_phase != "always" and not args.gun_period_cycles:
+        raise ValueError("A gated ion gun requires a pulsed electron gun")
     startup = steps_for(args.electron_startup, args.dt, "electron-startup")
     window = steps_for(args.electron_window, args.dt, "electron-window")
     ion_steps = steps_for(args.cycle_duration, args.ion_dt, "cycle-duration")
@@ -394,10 +399,15 @@ class CoupledPIC:
             species = atomic.long()
         self.append_ions(position, velocity, weight, potential, species)
 
+    @property
+    def ion_gun_on(self) -> bool:
+        phase = self.args.ion_gun_phase
+        return phase == "always" or (phase == "electron-on") == self.gun_on
+
     def inject_gun_ions(self, count: int, potential: torch.Tensor) -> None:
         """Append `count` ion-gun macroparticles carrying one batch of the gun current."""
         args = self.args
-        if self.ion_gun is None or not args.ion_gun_current:
+        if self.ion_gun is None or not args.ion_gun_current or not self.ion_gun_on:
             return
         if len(self.ions.weight) + count > args.max_live_ions:
             raise PopulationLimit("ion population reached max-live-ions")
@@ -555,9 +565,10 @@ class CoupledPIC:
         core_ion = float(ion_charge[core_nodes].sum())
         in_core = ions.position.square().sum(dim=1) < self.electrons.core_radius ** 2
         kinetic = self.ion_kinetic_ev()
+        bound = ions.weight * (kinetic + mesh.gather(potential, ions.position)[0] < 0)
         record: dict[str, object] = {
             "cycle": cycle, "time_s": self.time, "electron_time_s": self.electrons.time,
-            "electron_steps": self.electron_step, "electron_gun_on": self.gun_on,
+            "electron_steps": self.electron_step, "electron_gun_on": self.gun_on, "ion_gun_on": self.ion_gun_on,
             "window_mean_electron_charge_C": mean_electron,
             "window_mean_core_electron_charge_C": core_electron,
             "electron_residence_s": abs(mean_electron) / args.current_a if args.current_a else None,
@@ -570,6 +581,8 @@ class CoupledPIC:
             "atomic_ion_alive_charge_C": float(E_CHARGE * (ions.weight * ions.species).sum()),
             "ion_created_charge_C": created, "ion_lost_charge_C": lost, "ion_alive_charge_C": alive_ion_charge,
             "ion_charge_balance_C": created - lost - alive_ion_charge,
+            "ion_bound_charge_C": float(E_CHARGE * bound.sum()),
+            "atomic_ion_bound_charge_C": float(E_CHARGE * (bound * ions.species).sum()),
             "ion_deposition_error_C": float(ion_charge.sum()) - alive_ion_charge,
             "ion_lost_kinetic_J": lost_kinetic, "ion_exchanged_kinetic_J": exchanged_kinetic,
             "ion_exchange_events": int(self.ion_exchanges),
@@ -638,6 +651,7 @@ def run(args: argparse.Namespace) -> list[dict[str, object]]:
             "species": species_label(args, args.ion_gun_species), "current_A": args.ion_gun_current, "position_m": args.ion_gun_position,
             "direction": simulation.ion_gun[1].tolist(), "energy_eV": args.ion_gun_energy_ev,
             "divergence_deg": args.ion_gun_divergence_deg, "radius_m": args.ion_gun_radius,
+            "phase": args.ion_gun_phase,
         },
         "gas_inlet": None if args.gas_inlet is None else {
             "position_m": args.gas_inlet, "direction": aim(args.gas_inlet, args.gas_inlet_direction),
