@@ -36,6 +36,17 @@ GUN_BARRELS = {
     "pic_1A_gun_b195_n97": ((0.6, 1.95, 1.3), 0.06, 97, 1234),
 }
 
+SIX_COILS = {
+    "pic_1A_two_coil_dt2": (2, 0.5, (1.2, 1.95, 1.3), 0.0, 1, 1234),
+    "pic_1A_six_d100": (6, 1.0, (1.2, 1.95, 1.3), 0.0, 1, 1234),
+    "pic_1A_six_d100_1mA": (6, 1.0, (1.2, 1.95, 1.3), 0.0, 1e-3, 1234),
+    "pic_1A_six_d110": (6, 1.1, (1.275, 1.95, 1.3), 0.0, 1, 1234),
+    "pic_1A_six_d100_w1275": (6, 1.0, (1.275, 1.95, 1.3), 0.0, 1, 1234),
+    "pic_1A_six_d100_t195": (6, 1.0, (1.2, 1.95, 1.95), 0.0, 1, 1234),
+    "pic_1A_six_d100_p1kV": (6, 1.0, (1.2, 1.95, 1.3), 1000.0, 1, 1234),
+    "pic_1A_six_d100_s2345": (6, 1.0, (1.2, 1.95, 1.3), 0.0, 1, 2345),
+}
+
 COIL_CASINGS = {
     "pic_1A_casing_none": ((0.6, 1.95, 1.3), 0.0, 0.0, 1234),
     "pic_1A_casing_r015": ((1.2, 1.95, 1.3), 0.15, 0.0, 1234),
@@ -100,6 +111,10 @@ def case_specs(
             for name, (_, _, _, seed) in COIL_CASINGS.items()
         ),
         "ions": tuple((name, 1, 4e-12, 8, 1, 7500, 65, 1234, "cuda") for name in ION_CASES),
+        "six-coil": tuple(
+            (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
+            for name, (_, _, _, _, current, seed) in SIX_COILS.items()
+        ),
     }[study]
     return list(cases)
 
@@ -108,7 +123,7 @@ def commands(
     out: Path, revision: str, study: str = "startup", kernels: str = "reference",
 ) -> list[list[str]]:
     result = []
-    window = study in ("window", "domain", "gun", "casing", "ions")
+    window = study in ("window", "domain", "gun", "casing", "ions", "six-coil")
     for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
         case_specs(study, kernels),
     ):
@@ -152,6 +167,13 @@ def commands(
                 "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(casing),
                 "--casing-voltage", str(voltage),
             ]
+        if study == "six-coil":
+            count, offset, (width, bottom, top), voltage, _, _ = SIX_COILS[name]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+                "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", "0.15",
+                "--casing-voltage", str(voltage), "--coils", str(count), "--coil-offset", str(offset),
+            ]
         if study == "ions":
             result[-1] += ["--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *ION_CASES[name]]
     return result
@@ -162,7 +184,8 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--case-timeout", type=float, default=900)
     parser.add_argument(
-        "--study", choices=("startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions"),
+        "--study",
+        choices=("startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil"),
         default="startup",
     )
     parser.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
@@ -228,6 +251,12 @@ def main() -> None:
             "1e-2 Pa over 1 us cycles, half ion timestep, 5 us cycles, 80 ns electron windows and twice "
             "the ion macroparticles. Tests how fast ions neutralize the electron well and whether the "
             "operator-split cycle is converged. Imposed two-coil field, no Coulomb collisions."
+        ) if args.study == "ions" else (
+            "CUDA electron-only PIC, 300 ns at 2 ps with matched packets, 0.15a casings and the grounded "
+            "0.06a gun barrel: two-coil cusp versus a six-coil cube (one coil per face, imposed vacuum "
+            "field, coil planes 1.0a or 1.1a from the centre), a 1 mA six-coil control, a wider box, a "
+            "farther top wall, casings at +1 kV and a second seed. Tests whether the six-coil geometry "
+            "changes the potential structure and core dwell. No plasma magnetic feedback, no ions."
         ),
         "study": args.study, "kernels": args.kernels,
         "cases": [

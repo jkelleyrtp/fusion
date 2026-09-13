@@ -174,20 +174,23 @@ class Cylinder:
 
 @dataclass(frozen=True)
 class Torus:
-    """Solid torus around the z axis: tube of `minor_radius` about the circle of `major_radius` at `center_z`."""
+    """Solid torus about coordinate `axis`: tube of `minor_radius` about the circle of `major_radius`
+    whose plane sits at `center_z` along that axis (the name predates non-z axes)."""
 
     center_z: float
     major_radius: float
     minor_radius: float
     voltage: float = 0.0
+    axis: int = 2
 
     def __post_init__(self) -> None:
-        if not 0 < self.minor_radius < self.major_radius:
-            raise ValueError("Torus needs 0 < minor radius < major radius")
+        if not 0 < self.minor_radius < self.major_radius or self.axis not in (0, 1, 2):
+            raise ValueError("Torus needs 0 < minor radius < major radius and axis 0, 1 or 2")
 
     def contains(self, points: torch.Tensor) -> torch.Tensor:
-        radial = torch.hypot(points[:, 0], points[:, 1]) - self.major_radius
-        return radial.square() + (points[:, 2] - self.center_z).square() <= self.minor_radius ** 2
+        first, second = (axis for axis in range(3) if axis != self.axis)
+        radial = torch.hypot(points[:, first], points[:, second]) - self.major_radius
+        return radial.square() + (points[:, self.axis] - self.center_z).square() <= self.minor_radius ** 2
 
 
 Shape = Cylinder | Torus
@@ -230,8 +233,16 @@ class Conductors:
             unit[node] = 1.0
             capacitance[:, column] = potential(unit.reshape(mesh.shape)).flatten()[self.indices]
             unit[node] = 0.0
-        capacitance = 0.5 * (capacitance + capacitance.T)
-        self._inverse = torch.cholesky_inverse(torch.linalg.cholesky(capacitance))
+        count, block = len(self.indices), 4096
+        for start in range(0, count, block):
+            end = min(start + block, count)
+            symmetric = 0.5 * (capacitance[start:end, start:] + capacitance[start:, start:end].T)
+            capacitance[start:end, start:] = symmetric
+            capacitance[start:, start:end] = symmetric.T
+            del symmetric
+        factor = torch.linalg.cholesky(capacitance)
+        del capacitance
+        self._inverse = torch.cholesky_inverse(factor)
 
     def absorbing(self, points: torch.Tensor) -> torch.Tensor:
         """Index of the first shape containing each point, or -1."""

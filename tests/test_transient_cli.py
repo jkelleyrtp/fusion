@@ -9,9 +9,9 @@ from unittest.mock import patch
 import numpy as np
 import torch
 
-from cusp_sim import E_CHARGE
+from cusp_sim import E_CHARGE, ring_field_on_grid
 from electrostatic import ElectrostaticMesh
-from run_transient_pic import parser, run, validate
+from run_transient_pic import COIL_FRAMES, coils, parser, run, six_coil_field, validate
 
 
 def arguments(path: Path, *extra: str):
@@ -135,7 +135,12 @@ class TransientCLITests(unittest.TestCase):
         ]:
             with self.subTest(option=option, value=value), self.assertRaises(ValueError):
                 validate(arguments(Path("unused"), option, value))
-        for extra in (("--box-half-width", "0.75"), ("--box-half-width", "1.2", "--casing-radius", "0.2")):
+        six = ("--coils", "6", "--coil-offset", "1", "--box-half-width", "1.2", "--box-bottom", "1.95")
+        for extra in (
+            ("--box-half-width", "0.75"), ("--box-half-width", "1.2", "--casing-radius", "0.2"),
+            ("--coil-offset", "1"), six, (*six, "--casing-radius", "0.15", "--box-top", "1.1"),
+            (*six, "--casing-radius", "0.15", "--box-top", "1.3", "--coil-offset", "0.8"),
+        ):
             with self.subTest(extra=extra), self.assertRaises(ValueError):
                 validate(arguments(Path("unused"), *extra))
 
@@ -210,6 +215,68 @@ class TransientCLITests(unittest.TestCase):
             axes = [np.linspace(lower[i], upper[i], potential.shape[i]) for i in range(3)]
             x, y, z = np.meshgrid(*axes, indexing="ij")
             tube = (np.hypot(x, y) - 0.5) ** 2 + np.minimum((z + 0.25) ** 2, (z - 0.25) ** 2) <= 0.15 ** 2
+            np.testing.assert_allclose(potential[tube], -500, atol=1e-8)
+
+    def test_six_coil_field_matches_closed_form_loops(self):
+        args = parser().parse_args([
+            "--out", "unused", "--coils", "6", "--coil-offset", "1", "--casing-radius", "0.15",
+            "--box-half-width", "1.2", "--box-bottom", "1.95", "--box-top", "1.3",
+            "--coil-current", "30000", "--nodes", "5",
+        ])
+        lower = torch.tensor([-0.6, -0.6, -0.975], dtype=torch.float64)
+        _, field, bmax, _ = six_coil_field(args, torch.device("cpu"), -lower.abs(), lower.abs())
+        self.assertGreater(bmax, 0)
+        generator = torch.Generator().manual_seed(3)
+        points = (2 * torch.rand(24, 3, generator=generator, dtype=torch.float64) - 1) * 0.4
+        points[0] = 0
+        magnetic = field(points)
+        self.assertLess(magnetic[0].abs().max(), 1e-15)
+        exact = torch.zeros_like(points)
+        for axis, center, turns in coils(args):
+            frame = list(COIL_FRAMES[axis])
+            local = points[:, frame] - points.new_tensor([0, 0, center])
+            for row in range(1, len(points)):
+                radius = torch.hypot(local[row, 0], local[row, 1])
+                br, bz = ring_field_on_grid(radius[None], local[row, 2][None], 0.5, [0.0], [turns], 0, "cpu")
+                exact[row, frame] += torch.stack((br[0, 0] * local[row, 0] / radius,
+                                                  br[0, 0] * local[row, 1] / radius, bz[0, 0]))
+        error = (magnetic - exact)[1:].norm(dim=1)
+        self.assertLess(float(error.max()), 2e-3 * float(exact[1:].norm(dim=1).max()))
+        quarter = points.new_tensor([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
+        np.testing.assert_allclose(field(points @ quarter.T), magnetic @ quarter.T, atol=1e-14)
+        np.testing.assert_allclose(field(-points), -magnetic, atol=1e-14)
+
+    def test_six_coil_casings_are_held_and_recorded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "six"
+            with contextlib.redirect_stdout(io.StringIO()):
+                history = run(arguments(
+                    root, "--nodes", "17", "--coils", "6", "--coil-offset", "1", "--casing-radius", "0.15",
+                    "--box-half-width", "1.2", "--box-bottom", "1.95", "--gun-radius", "0.06",
+                    "--casing-voltage", "-500", "--coil-current", "30000", "--dt", "2e-12",
+                    "--duration", "4e-12", "--current-a", "1e-3",
+                ))
+            configuration = json.loads((root / "configuration.json").read_text())
+            self.assertEqual(configuration["conductor_names"], [
+                "gun_barrel", "casing_x-", "casing_x+", "casing_y-", "casing_y+", "casing_z-", "casing_z+",
+            ])
+            self.assertEqual([coil["ampere_turns"] for coil in configuration["coils"]], [30000, -30000] * 3)
+            casings = configuration["coil_casings"]
+            self.assertEqual([casing["axis"] for casing in casings], list("xxyyzz"))
+            self.assertTrue(all(casing["nodes"] > 0 for casing in casings))
+            self.assertIn("six-coil", configuration["magnetic_geometry"])
+            final = history[-1]
+            self.assertEqual(len(final["conductor_exit_counts"]), 7)
+            with np.load(root / final["snapshot"]) as state:
+                lower, upper, potential = state["lower_m"], state["upper_m"], state["potential_V"]
+            axes = [np.linspace(lower[i], upper[i], potential.shape[i]) for i in range(3)]
+            grid = np.stack(np.meshgrid(*axes, indexing="ij"), axis=-1)
+            tube = np.zeros(potential.shape, dtype=bool)
+            for axis in range(3):
+                first, second = (other for other in range(3) if other != axis)
+                radial = np.hypot(grid[..., first], grid[..., second]) - 0.5
+                tube |= radial ** 2 + np.minimum((grid[..., axis] + 0.5) ** 2, (grid[..., axis] - 0.5) ** 2) <= 0.075 ** 2
+            self.assertTrue(tube.any())
             np.testing.assert_allclose(potential[tube], -500, atol=1e-8)
 
     def test_backwards_sample_rejected(self):

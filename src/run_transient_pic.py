@@ -29,6 +29,10 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--inject-every", type=int, default=1)
     result.add_argument("--current-a", type=float, default=1e-8)
     result.add_argument("--coil-current", type=float, default=1000)
+    result.add_argument("--coils", type=int, choices=(2, 6), default=2,
+                        help="2: axisymmetric cusp pair on z; 6: cube of coils, one per face (Polywell-like)")
+    result.add_argument("--coil-offset", type=float, default=0.5,
+                        help="coil-plane distance from the centre in coil radii")
     result.add_argument("--radius", type=float, default=0.5)
     result.add_argument("--box-half-width", type=float, default=0.6,
                         help="transverse half-width in coil radii")
@@ -85,10 +89,18 @@ def validate(args: argparse.Namespace) -> int:
         raise ValueError("A gun barrel needs a positive radius and the lower wall behind the gun")
     if not 0 <= args.casing_radius < 0.5 or not math.isfinite(args.casing_voltage):
         raise ValueError("Casing radius must be in [0, 0.5) coil radii with a finite voltage")
+    if args.coils == 2 and args.coil_offset != 0.5:
+        raise ValueError("The two-coil cusp keeps its coils at 0.5 coil radii")
     if args.casing_radius and args.box_half_width <= 1 + args.casing_radius:
         raise ValueError("Coil casings must lie inside the box")
     if not args.casing_radius and args.box_half_width * math.sqrt(2) >= 1:
         raise ValueError("Coil windings inside the box need casings")
+    if args.coils == 6:
+        extent = args.coil_offset + args.casing_radius
+        if not args.casing_radius or min(args.box_half_width, args.box_top, args.box_bottom) <= extent:
+            raise ValueError("Six coils need casings inside the box on every axis")
+        if math.sqrt(2) * (args.coil_offset - 1 / math.sqrt(2)) <= 2 * args.casing_radius:
+            raise ValueError("Adjacent coil casings overlap")
     mesh_shape(args)
     ratio = args.duration / args.dt
     if not math.isfinite(ratio):
@@ -171,11 +183,77 @@ def gun_barrel(args: argparse.Namespace) -> Cylinder:
     )
 
 
+COIL_FRAMES = ((1, 2, 0), (2, 0, 1), (0, 1, 2))
+
+
+def coils(args: argparse.Namespace) -> list[tuple[int, float, float]]:
+    """(axis, centre along it, ampere-turns) per coil; every coil's field points the same way at the centre."""
+    d = args.coil_offset * args.radius
+    axes = (2,) if args.coils == 2 else (0, 1, 2)
+    return [(axis, sign * d, -sign * args.coil_current) for axis in axes for sign in (-1, 1)]
+
+
+def coil_names(args: argparse.Namespace) -> list[str]:
+    if args.coils == 2:
+        return ["casing_lower", "casing_upper"]
+    return [f"casing_{'xyz'[axis]}{'-' if center < 0 else '+'}" for axis, center, _ in coils(args)]
+
+
 def coil_casings(args: argparse.Namespace) -> tuple[Torus, ...]:
     a = args.radius
     return tuple(
-        Torus(z * a, a, args.casing_radius * a, args.casing_voltage) for z in (-0.5, 0.5)
+        Torus(center, a, args.casing_radius * a, args.casing_voltage, axis)
+        for axis, center, _ in coils(args)
     ) if args.casing_radius else ()
+
+
+class CoilSuperposition:
+    """Sum of one single-loop (r, z) field table translated and rotated onto each coil."""
+
+    def __init__(self, ring: MagneticField, placements: list[tuple[int, float, float]], current: float) -> None:
+        self.ring = ring
+        self.placements = [(list(COIL_FRAMES[axis]), center, turns / current) for axis, center, turns in placements]
+
+    def __call__(self, position: torch.Tensor) -> torch.Tensor:
+        result = torch.zeros_like(position)
+        for frame, center, scale in self.placements:
+            local = position[:, frame]
+            local[:, 2] -= center
+            result[:, frame] += scale * self.ring(local)
+        return result
+
+
+def six_coil_field(
+    args: argparse.Namespace, device: torch.device, lower: torch.Tensor, upper: torch.Tensor,
+) -> tuple[TorchPusher, CoilSuperposition, float, list[int]]:
+    """Single-loop table with the two-coil table spacing, its six-coil superposition, and the
+    maximum |B| outside the casings on a 4x refined mesh."""
+    a = args.radius
+    extent = float(torch.maximum(lower.abs(), upper.abs()).max())
+    dr, dz = math.sqrt(2) * 0.6 * a / 255, 2.6 * a / 511
+    radial = math.ceil(math.sqrt(2) * extent / dr)
+    half = math.ceil((extent + args.coil_offset * a) / dz)
+    r = torch.arange(radial + 1, device=device, dtype=torch.float64) * dr
+    z = torch.arange(-half, half + 1, device=device, dtype=torch.float64) * dz
+    br, bz = ring_field_on_grid(r, z, a, [0.0], [args.coil_current], 720, device)
+    pusher = TorchPusher(br, bz, 0, dr, float(z[0]), dz, QM)
+    field = CoilSuperposition(pusher.field, coils(args), args.coil_current)
+    shape = [4 * (count - 1) + 1 for count in mesh_shape(args)]
+    axes = [
+        torch.linspace(float(lower[axis]), float(upper[axis]), count, device=device, dtype=torch.float64)
+        for axis, count in enumerate(shape)
+    ]
+    bmax = 0.0
+    for plane in axes[0]:
+        grid = torch.meshgrid(plane[None], axes[1], axes[2], indexing="ij")
+        points = torch.stack(grid, dim=-1).reshape(-1, 3)
+        windings = torch.zeros(len(points), dtype=torch.bool, device=device)
+        for casing in coil_casings(args):
+            windings |= casing.contains(points)
+        bmax = max(bmax, float(field(points[~windings]).norm(dim=1).max()))
+    if not math.isfinite(bmax):
+        raise ValueError("Nonfinite magnetic field table")
+    return pusher, field, bmax, [len(z), len(r)]
 
 
 def magnetic_table(
@@ -222,7 +300,12 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         [width, width, args.box_top * a], device=device, dtype=torch.float64,
     )
     mesh = ElectrostaticMesh(lower, upper, mesh_shape(args))
-    pusher, bmax, table_shape = magnetic_table(args, device)
+    reference: MagneticField
+    if args.coils == 6:
+        pusher, reference, bmax, table_shape = six_coil_field(args, device, lower, upper)
+    else:
+        pusher, bmax, table_shape = magnetic_table(args, device)
+        reference = pusher.field
     if abs(QM) * bmax * min(args.dt, args.duration) > 2 * math.pi / 80:
         raise ValueError("Timestep requires at least 80 steps per gyration")
     kernels: ReferenceKernels
@@ -230,9 +313,11 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
     if args.kernels == "cuda":
         cuda = CUDAKernels(mesh)
         kernels, magnetic_field = cuda, cuda.magnetic_field(pusher)
+        if args.coils == 6:
+            magnetic_field = CoilSuperposition(magnetic_field, coils(args), args.coil_current)
     else:
         kernels = ReferenceKernels(mesh)
-        magnetic_field = pusher.field
+        magnetic_field = reference
     shapes: tuple[Shape, ...] = ((gun_barrel(args),) if args.gun_radius else ()) + coil_casings(args)
     setup_start = time.perf_counter()
     conductors = Conductors(mesh, shapes, kernels.potential) if shapes else None
@@ -247,7 +332,7 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
     )
     counts = [] if conductors is None else conductors.node_counts
     origin, direction = source_geometry(args)
-    source_field = pusher.field(lower.new_tensor([origin]))[0]
+    source_field = reference(lower.new_tensor([origin]))[0]
     source_norm = float(source_field.norm())
     pitch = math.degrees(math.acos(max(-1, min(1, float(
         source_field.dot(lower.new_tensor(direction)),
@@ -267,6 +352,12 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         "source_B_T": source_field.cpu().tolist(),
         "magnetic_table_max_T": bmax,
         "magnetic_table_shape_z_r": table_shape,
+        "magnetic_geometry": (
+            "two-coil axisymmetric cusp" if args.coils == 2
+            else "six-coil cube, one coil per face, all fields pointing along the same radial sense at the centre"
+        ),
+        "coils": [{"axis": "xyz"[axis], "center_m": center, "ampere_turns": turns}
+                  for axis, center, turns in coils(args)],
         "box_lower_m": lower.cpu().tolist(), "box_upper_m": upper.cpu().tolist(),
         "mesh_shape": list(mesh.shape),
         "core_radius_m": simulation.core_radius,
@@ -276,20 +367,21 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
             + (f"; grounded absorbing gun barrel, {counts[0]} surface nodes, emitter on its front face"
                if args.gun_radius else "")
             + (f"; absorbing toroidal coil casings at {args.casing_voltage:g} V, surface nodes "
-               f"{counts[-2:]}" if args.casing_radius else "")
+               f"{counts[-args.coils:]}" if args.casing_radius else "")
         ),
         "conductor_setup_s": conductor_setup_s,
         "conductor_names": (["gun_barrel"] if args.gun_radius else [])
-        + (["casing_lower", "casing_upper"] if args.casing_radius else []),
+        + (coil_names(args) if args.casing_radius else []),
         "gun_barrel": {
             "front_m": list(gun_barrel(args).start), "axis": list(gun_barrel(args).axis),
             "length_m": gun_barrel(args).length, "radius_m": gun_barrel(args).radius,
             "voltage_V": 0.0, "nodes": counts[0],
         } if args.gun_radius else None,
         "coil_casings": [
-            {"center_z_m": casing.center_z, "major_radius_m": casing.major_radius,
+            {"center_z_m": casing.center_z, "axis": "xyz"[casing.axis],
+             "major_radius_m": casing.major_radius,
              "minor_radius_m": casing.minor_radius, "voltage_V": casing.voltage, "nodes": nodes}
-            for casing, nodes in zip(coil_casings(args), counts[-2:], strict=False)
+            for casing, nodes in zip(coil_casings(args), counts[-args.coils:], strict=False)
         ],
         "charge_deposition": "instantaneous CIC; no residence weighting",
         "energy_balance": "K + U + lost kinetic - injected kinetic; not a power budget",

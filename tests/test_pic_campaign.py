@@ -122,6 +122,21 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual((nocx.cx_cross_section, nosec.secondaries), (0, False))
         self.assertEqual((dense.gas_pa, dense.cycle_duration), (1e-2, 1e-6))
 
+    def test_six_coil_study_matches_packets_and_encloses_the_coils(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil")
+        configurations = [parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        control, *six = configurations
+        self.assertEqual((control.coils, control.coil_offset), (2, 0.5))
+        self.assertTrue(all(item.coils == 6 and item.coil_offset >= 1 for item in six))
+        self.assertEqual(sorted({item.current_a for item in six}), [1e-3, 1])
+        for item in configurations:
+            validate(item)
+            self.assertEqual(
+                (item.dt, item.inject_every, item.inject_per_step, item.duration, item.casing_radius),
+                (2e-12, 2, 8, 3e-7, 0.15),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

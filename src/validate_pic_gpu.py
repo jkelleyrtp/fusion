@@ -11,6 +11,15 @@ import numpy as np
 import torch
 
 from electrostatic import ElectrostaticMesh
+from pic_cuda import CUDAKernels
+from run_transient_pic import (
+    CoilSuperposition,
+    coil_casings,
+    coils,
+    mesh_shape,
+    parser,
+    six_coil_field,
+)
 from transient_pic import PIC
 
 LIMITS = {
@@ -107,6 +116,36 @@ def compare_states(out: Path, name: str, reference: PIC, actual: PIC) -> None:
             )
 
 
+def six_coil_control(device: torch.device) -> dict[str, object]:
+    """CUDA table lookup of the rotated six-coil superposition against the CPU reference field."""
+    args = parser().parse_args([
+        "--out", "unused", "--nodes", "17", "--radius", "0.5", "--coils", "6", "--coil-offset", "1.0",
+        "--casing-radius", "0.15", "--box-half-width", "1.2", "--box-bottom", "1.95", "--box-top", "1.3",
+        "--coil-current", "30000",
+    ])
+    fields = []
+    generator = torch.Generator().manual_seed(13579)
+    unit = torch.rand((65536, 3), generator=generator, dtype=torch.float64)
+    for where in (torch.device("cpu"), device):
+        lower = torch.tensor([-0.6, -0.6, -0.975], dtype=torch.float64, device=where)
+        upper = torch.tensor([0.6, 0.6, 0.65], dtype=torch.float64, device=where)
+        pusher, reference, _, _ = six_coil_field(args, where, lower, upper)
+        points = lower + (upper - lower) * unit.to(where)
+        windings = torch.zeros(len(points), dtype=torch.bool, device=where)
+        for casing in coil_casings(args):
+            windings |= casing.contains(points)
+        points = points[~windings]
+        fields.append(reference(points))
+        if where.type == "cuda":
+            cuda = CUDAKernels(ElectrostaticMesh(lower, upper, mesh_shape(args)))
+            fields.append(CoilSuperposition(cuda.magnetic_field(pusher), coils(args), args.coil_current)(points))
+    expected = fields[0]
+    for observed in fields[1:]:
+        torch.testing.assert_close(observed.cpu(), expected, rtol=1e-10, atol=1e-15)
+    return {"control": "six_coil_field", "points": len(expected), "passed": True,
+            "max_T": float(expected.norm(dim=1).max())}
+
+
 def validate(out: Path, device: torch.device) -> dict[str, object]:
     if device.type != "cuda" or not torch.cuda.is_available():
         raise ValueError("GPU validation requires a broker-allocated CUDA device")
@@ -128,6 +167,7 @@ def validate(out: Path, device: torch.device) -> dict[str, object]:
         compare_states(out, name, cpu, gpu)
         rows.append({"control": name, "steps": 128, "dt_s": h,
                      "cpu_s": cpu_s, "gpu_s": gpu_s, "passed": True})
+    rows.append(six_coil_control(device))
     report = {
         "gpu": torch.cuda.get_device_name(device), "torch": torch.__version__,
         "precision": "float64", "relative_tolerance": 1e-10,
