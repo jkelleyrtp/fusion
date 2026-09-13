@@ -176,3 +176,47 @@ Before ions, the same geometry has origin potential −3.97 kV and −66 nC of l
   is set by ionization rate and electron inventory. The quasi-neutral state depends on processes
   not modelled: Coulomb collisions, recombination, neutral depletion, wall emission and plasma
   magnetic fields. These results are for the two-coil field with a single beam.
+
+## Six-coil results (job `jonathan-pic-1a0b057287d8`, source `b1809b3`)
+
+`run_pic_campaign.py --study six-coil-ions`: the six-coil trap (30 kA-turn, 0 V casings, 5 keV gun)
+with the same ion model. Cases: 1 A at 1e-3 Pa with a second seed, 300 mA, 1e-2 Pa (40 × 1 µs
+cycles), and the four splitting controls (0.5 ns ion step, 5 µs cycles, 80 ns electron windows,
+twice the ion macroparticles). All eight cases exited 0 with `DONE` and every requested cycle.
+Raw output: `/public/devcontainer-shared/jonathan/cusp/runs/pic-1a0b057287d8/attempt-20260913-135600-865199098`.
+Summary: `docs/data/pic-six-coil-ions-b1809b3.json` (`analyze_ion_pic.py --study six-coil`). Ion
+charge balance stayed below 1.7e-19 C. Columns as in the two-coil table; last-quarter means, ions
+lost is the final lost / created fraction.
+
+| Case | Neutralization time | Neutralization | Core neutralization | Origin | Min potential | Core ion KE | Ions lost (final) | Electron charge |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `ions6_p1e-3` | 148 µs | 1.020 | 0.982 | −9 V | −161 V | 12.3 eV | 65% | −162 nC |
+| `ions6_p1e-3_s2345` | 148 µs | 1.021 | 0.984 | −4 V | −141 V | 11.9 eV | 65% | −161 nC |
+| `ions6_p1e-3_300mA` | 148 µs | 1.039 | 0.994 | +5 V | −39 V | 2.0 eV | 61% | −51 nC |
+| `ions6_p1e-3_dt05` | 148 µs | 1.020 | 0.986 | −3 V | −139 V | 9.9 eV | 65% | −163 nC |
+| `ions6_p1e-3_cycle5` | 148 µs | 1.020 | 0.990 | 0 V | −111 V | 8.7 eV | 63% | −165 nC |
+| `ions6_p1e-3_window80` | 148 µs | 1.021 | 0.984 | −5 V | −143 V | 11.7 eV | 64% | −162 nC |
+| `ions6_p1e-3_ions2x` | 148 µs | 1.019 | 0.989 | −2 V | −127 V | 8.0 eV | 64% | −165 nC |
+| `ions6_p1e-2` | 14.6 µs | 1.295 | 0.985 | +162 V | −85 V | 9.9 eV | 53% | −174 nC |
+
+At the first 10 µs cycle the 1 A origin potential is −2.6 kV with −157 nC of live electrons.
+
+![Six-coil coupled ion evolution](images/pic-six-coil-ions-evolution.png)
+![Six-coil coupled ion fields](images/pic-six-coil-ions-fields.png)
+
+### Six-coil interpretation
+
+- **The six-coil well is neutralized on the same clock as the two-coil well.** 148 µs at 1e-3 Pa
+  and 14.6 µs at 1e-2 Pa, against 147 µs and 14.5 µs in the two-coil field. The centre rises from
+  −2.6 kV to within ~10 V of ground and the core ion energy falls from ~780 eV to ~10 eV.
+- **Beam current does not change the neutralization time.** 300 mA neutralizes in exactly the same
+  148 µs as 1 A with a third of the electron charge: each electron ionizes at the same rate, so
+  pressure sets the time and current only sets how deep the well was.
+- **Most lost ions leave through the box faces, not the beam channel.** At 1e-3 Pa 86% of ion losses
+  reach the grounded walls, 14% the gun barrel and 55 of ~208,000 a casing. The −z face below
+  the gun takes about half as many as each other face.
+- **At 1e-2 Pa the ions overshoot** to 1.3 of the electron charge and the centre sits at +162 V.
+- **Splitting controls agree.** Neutralization, core neutralization, electron charge and loss
+  fraction change by at most 3%; origin potential (−10 to 0 V) and core ion energy (8–12 eV) are
+  small differences of large cancelling charges and uncertain at that level.
+- The same missing physics as the two-coil study limits the post-neutralization state.

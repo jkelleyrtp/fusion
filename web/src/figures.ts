@@ -10,6 +10,19 @@ const pair = (name: string, what: string): Figure[] => [
 
 const studies: Study[] = [
   {
+    id: "six-coil-tracks", title: "Settled-electron paths (six-coil)",
+    summary: "64 electrons injected after 500 ns in eight 300 ns runs (0 V, second seed, −1 kV, +5 kV, +10 kV, 3 A, +5 kV with a 2 keV gun, 60 kA-turn), sampled every 2 ps. 61–87% of wall exits leave along a face-axis point cusp; each electron passes through the core about once (42% re-enter at +5 kV). At 3 A, 58% return into the gun barrel. Phase-space slices, not whole-population lifetimes.",
+    doc: "six-coil-design.md", figures: [
+      { image: "pic-six-coil-tracks-paths.png", title: "Paths of the 4 most-entering electrons per case (y–z projection)" },
+      { image: "pic-six-coil-tracks-statistics.png", title: "Survival, core entries and exit channels" },
+    ],
+  },
+  {
+    id: "six-coil-ions", title: "Coupled electrons + H2+ ions (six-coil)",
+    summary: "Six-coil trap, 0 V casings, H2 at 1e-3 Pa (and 1e-2 Pa), ionization, ion space charge and charge exchange; 400 µs, all 8 cases complete. Ions cancel the well in 148 µs at 1e-3 Pa and 14.6 µs at 1e-2 Pa, the same clock as the two-coil field; the centre rises from −2.6 kV to within ~10 V of ground. 300 mA neutralizes in the same 148 µs as 1 A: pressure sets the time, current does not.",
+    doc: "ion-pic-design.md", figures: pair("six-coil-ions", "Six-coil coupled ions"),
+  },
+  {
     id: "six-coil-bias", title: "Six-coil casing (magrid) bias sweep",
     summary: "1 µs, 1 A, 5 keV gun, casings at +1 to +10 kV, with a second seed, a 1 mA control, 3 A and a 2 keV gun at +5 kV. Electrons only; imposed vacuum field. Positive casings raise repeated core entries from 26% to 37%, but the ion escape barrier (lowest path from the centre to the grounded walls) falls from 3.1 kV at 0 V to 338 V at +5 kV and 96 V at +10 kV.",
     doc: "six-coil-design.md", figures: pair("six-coil-bias", "Bias sweep"),
@@ -23,11 +36,6 @@ const studies: Study[] = [
     id: "six-coil", title: "Six-coil geometry (first runs)",
     summary: "Six coils on cube faces with grounded casings; central field cancels. Short windows used to set up the long study.",
     doc: "six-coil-design.md", figures: pair("six-coil", "Six-coil"),
-  },
-  {
-    id: "six-coil-ions", title: "Coupled electrons + H2+ ions (six-coil, partial)",
-    summary: "Six-coil trap at 1 A, 0 V casings with H2 gas at 1e-3 Pa (and 1e-2 Pa), ionization, ion space charge and charge exchange. Ions cancel the whole electron well within ~200 µs at 1e-3 Pa (~20 µs at 1e-2 Pa); the centre rises from −2.8 kV to ~0 V. Partial: 7 of 8 cases still running, 50–90% of cycles shown.",
-    doc: "ion-pic-design.md", figures: pair("six-coil-ions", "Six-coil coupled ions"),
   },
   {
     id: "ions", title: "Coupled electrons + H2+ ions (two-coil)",

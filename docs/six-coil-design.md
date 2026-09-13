@@ -263,8 +263,53 @@ Tracking is bookkeeping only: particle arithmetic, sampling and charge are uncha
 The campaign runs 800 ns at 2 ps (60 kA-turn at 1 ps), tracks 64 electrons injected from 500 ns, once
 the population has saturated, and samples every 2 ps for at most 65536 samples (131 ns, comparable to
 the ~160 ns mean dwell): 1 A at 0 V with a second seed, casings at +5 kV, +10 kV and −1 kV, 3 A, +5 kV
-with a 2 keV gun, and 60 kA-turn. A 5 keV electron moves ~8 cm per 2 ps sample, about 1.7 mesh cells,
-so paths resolve bounces and cusp exits but not gyration in the strong-field region. The 64 electrons
-come from 8 consecutive packets, a ~32 ps slice of injection, so they sample one slice of gun phase
-space, not the whole trapped population. Electrons still alive when the buffer fills are cut off
-(`full` in `tracks.npz`).
+with a 2 keV gun, and 60 kA-turn. A 5 keV electron moves ~84 µm per 2 ps sample (the mesh cell is
+9.4 mm across and 20 mm along z) and gyrates with a ~360 ps period at 0.1 T, so paths resolve
+gyration as well as bounces. The 64 electrons come from 8 consecutive packets, a ~32 ps slice of
+injection, so they sample one slice of gun phase space, not the whole trapped population. Paths stop
+when the buffer fills, 131 ns after injection; exit times, faces and terminal wall positions come from
+the final snapshot and cover the whole 300 ns after injection.
+
+### Results (job `jonathan-pic-95ea7a4358af`, source `4a02d53`)
+
+All eight cases exited 0 with `DONE`. Raw output:
+`/public/devcontainer-shared/jonathan/cusp/runs/pic-95ea7a4358af/attempt-20260913-175730-462875207`.
+Summary: `docs/data/pic-six-coil-tracks-4a02d53.json` (`analyze_tracks.py`).
+
+![six-coil settled-electron paths](images/pic-six-coil-tracks-paths.png)
+
+![six-coil path statistics](images/pic-six-coil-tracks-statistics.png)
+
+Lifetimes are from injection; electrons alive at 800 ns are censored there, so the mean is a lower
+bound. Core entries are sampled outside-to-inside crossings of the 12.5 cm core within the 131 ns
+path window. Wall exits are classified by the nearest cube-symmetry direction of the terminal position
+(face axis, edge or corner, 22.5° boundaries).
+
+| Case | Lost by 300 ns | Median exit lifetime (ns) | Mean lifetime ≥ (ns) | Core entries / e⁻ | ≥2 entries | Point cusp | Corner cusp | Line cusp | Gun barrel |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 V | 56/64 | 155 | 172 | 1.09 | 27% | 44 | 7 | 0 | 5 |
+| 0 V, seed 2345 | 55/64 | 100 | 137 | 0.94 | 23% | 39 | 6 | 0 | 10 |
+| −1 kV | 55/64 | 116 | 149 | 0.84 | 22% | 36 | 8 | 0 | 11 |
+| +5 kV | 59/64 | 128 | 141 | 1.53 | 42% | 38 | 14 | 1 | 6 |
+| +10 kV | 56/64 | 106 | 137 | 1.33 | 31% | 42 | 9 | 0 | 5 |
+| 3 A | 61/64 | 2.3 | 63 | 0.56 | 16% | 20 | 4 | 0 | 37 |
+| +5 kV, 2 keV gun | 39/64 | 113 | 187 | 0.92 | 14% | 20 | 13 | 0 | 6 |
+| 60 kA-turn | 52/64 | 95 | 144 | 0.94 | 22% | 27 | 11 | 0 | 14 |
+
+Observations:
+
+- **Electrons leak through the six face-axis point cusps.** 61–87% of wall exits in every 1 A case
+  are along a face axis; the corners take the rest and the edges almost none.
+- **The paths are beam-like, not a stirred cloud.** Each electron makes one to a few passes through
+  the core, gyrating along field lines between the cusps, and leaves; ≥2 core entries is 22–27% at
+  0 V and 42% at +5 kV, consistent with the whole-population entry counts of the bias sweep.
+- **At 3 A, 58% of the tracked electrons return into the gun barrel, most within ~3 ns.** This is the
+  gun-mouth space-charge choke seen in the potential maps, now as individual paths.
+- **Doubling the coil current did not lengthen these lifetimes.** 60 kA-turn gives a shorter median
+  (95 ns) and more gun-barrel returns than 0 V. The two 0 V seeds differ by 55 ns in median, so with
+  64 electrons from one 32 ps slice this is within slice-to-slice spread and does not contradict the
+  whole-population gain in core dwell.
+- **The 2 keV gun at +5 kV keeps 39% alive at 300 ns** but with fewer repeated core entries.
+
+What this does not establish: whole-population statistics (64 electrons from one injection slice),
+ion behaviour, or plasma magnetic feedback.

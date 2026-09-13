@@ -99,6 +99,10 @@ def load(case: Path) -> CaseTracks:
         full = bool(data["full"])
     if len(time) < 2 or np.isnan(birth).any():
         raise ValueError(f"{case.name}: tracked electrons were not all injected and sampled")
+    with np.load(max((case / "snapshots").glob("step-*.npz"))) as data:
+        if not np.array_equal(data["tracked_exit_time_s"], exit_time, equal_nan=True):
+            raise ValueError(f"{case.name}: the last snapshot and tracks.npz disagree on exits")
+        terminal = data["tracked_position_m"]
     exited = ~np.isnan(exit_time)
     position[time[:, None] > np.where(exited, exit_time, math.inf)[None, :]] = math.nan
     names = [*WALL_FACES, *(str(name) for name in configuration.get("conductor_names", []))]
@@ -110,10 +114,7 @@ def load(case: Path) -> CaseTracks:
         if int(exit_face[index]) >= len(WALL_FACES):
             cusps[name] = cusps.get(name, 0) + 1
             continue
-        interval = time[1] - time[0]
-        kind = "wall, after path window"
-        if exit_time[index] <= time[-1] + interval:
-            kind = cusp_class(position[~np.isnan(position[:, index, 0]), index][-1])
+        kind = cusp_class(terminal[index])
         cusps[kind] = cusps.get(kind, 0) + 1
     return CaseTracks(
         name=case.name, configuration=configuration, time=time, position=position,
@@ -178,7 +179,7 @@ def plot_statistics(cases: list[CaseTracks], out: Path) -> None:
     survival.legend(fontsize=8)
     entries_axis.set_xlabel("sampled core entries per electron")
     entries_axis.set_ylabel("fraction of tracked electrons")
-    entries_axis.set_title("Core entries (2 ps sampling; lower bound)")
+    entries_axis.set_title("Core entries within the path window (lower bound on lifetime entries)")
     names = [*CUSP_CLASSES, *sorted({name for case in cases for name in case.cusps} - set(CUSP_CLASSES))]
     bottom = np.zeros(len(cases))
     for index, name in enumerate(names):
@@ -187,7 +188,7 @@ def plot_statistics(cases: list[CaseTracks], out: Path) -> None:
         bottom += values
     channels.set_xticks(range(len(cases)), [case.name for case in cases], rotation=40, ha="right", fontsize=8)
     channels.set_ylabel("fraction of tracked electrons")
-    channels.set_title("Exit channel within the path window (wall exits by nearest cusp direction)")
+    channels.set_title("Exit channel by the end of the run (wall exits by nearest cusp direction)")
     channels.legend(fontsize=7, ncol=2)
     figure.savefig(out, dpi=130)
     plt.close(figure)
