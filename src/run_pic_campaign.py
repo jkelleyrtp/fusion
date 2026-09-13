@@ -49,15 +49,27 @@ SIX_COILS = {
 }
 
 SIX_COIL_LONG = {
-    "six_long": (1, 30000, 0.0, 1234, 2e-12, 2, 1e-6),
-    "six_long_s2345": (1, 30000, 0.0, 2345, 2e-12, 2, 1e-6),
-    "six_long_1mA": (1e-3, 30000, 0.0, 1234, 2e-12, 2, 1e-6),
-    "six_long_300mA": (0.3, 30000, 0.0, 1234, 2e-12, 2, 1e-6),
-    "six_long_3A": (3, 30000, 0.0, 1234, 2e-12, 2, 1e-6),
-    "six_long_m1kV": (1, 30000, -1000.0, 1234, 2e-12, 2, 1e-6),
-    "six_long_60kAt": (1, 60000, 0.0, 1234, 1e-12, 4, 6e-7),
-    "six_long_60kAt_1mA": (1e-3, 60000, 0.0, 1234, 1e-12, 4, 6e-7),
+    "six_long": (1, 30000, 0.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_long_s2345": (1, 30000, 0.0, 2345, 2e-12, 2, 1e-6, 5000),
+    "six_long_1mA": (1e-3, 30000, 0.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_long_300mA": (0.3, 30000, 0.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_long_3A": (3, 30000, 0.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_long_m1kV": (1, 30000, -1000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_long_60kAt": (1, 60000, 0.0, 1234, 1e-12, 4, 6e-7, 5000),
+    "six_long_60kAt_1mA": (1e-3, 60000, 0.0, 1234, 1e-12, 4, 6e-7, 5000),
 }
+
+SIX_COIL_BIAS = {
+    "six_bias_p1kV": (1, 30000, 1000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p2p5kV": (1, 30000, 2500.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p5kV": (1, 30000, 5000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p10kV": (1, 30000, 10000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p5kV_s2345": (1, 30000, 5000.0, 2345, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p5kV_1mA": (1e-3, 30000, 5000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p5kV_3A": (3, 30000, 5000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p5kV_2keV": (1, 30000, 5000.0, 1234, 2e-12, 2, 1e-6, 2000),
+}
+LONG = {"six-coil-long": SIX_COIL_LONG, "six-coil-bias": SIX_COIL_BIAS}
 
 COIL_CASINGS = {
     "pic_1A_casing_none": ((0.6, 1.95, 1.3), 0.0, 0.0, 1234),
@@ -143,10 +155,13 @@ def case_specs(
             (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
             for name, (current, seed, _) in SIX_COIL_IONS.items()
         ),
-        "six-coil-long": tuple(
-            (name, current, dt, 8, interval, math.ceil(duration / dt / 15), 65, seed, "cuda")
-            for name, (current, _, _, seed, dt, interval, duration) in SIX_COIL_LONG.items()
-        ),
+        **{
+            long: tuple(
+                (name, current, dt, 8, interval, math.ceil(duration / dt / 15), 65, seed, "cuda")
+                for name, (current, _, _, seed, dt, interval, duration, _) in LONG[long].items()
+            )
+            for long in LONG
+        },
     }[study]
     return list(cases)
 
@@ -155,7 +170,7 @@ def commands(
     out: Path, revision: str, study: str = "startup", kernels: str = "reference",
 ) -> list[list[str]]:
     result = []
-    window = study in ("window", "domain", "gun", "casing", "six-coil", "six-coil-long", *COUPLED)
+    window = study in ("window", "domain", "gun", "casing", "six-coil", *LONG, *COUPLED)
     for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
         case_specs(study, kernels),
     ):
@@ -167,9 +182,9 @@ def commands(
         ]
         if study in COUPLED:
             limits = ["--max-live-particles", "3000000" if study == "ions" else "6000000"]
-        if study == "six-coil-long":
+        if study in LONG:
             limits = [
-                "--duration", str(SIX_COIL_LONG[name][6]), "--diagnostic-every", str(stride // 30),
+                "--duration", str(LONG[study][name][6]), "--diagnostic-every", str(stride // 30),
                 "--max-steps", "1000000", "--max-live-particles", "6000000",
             ]
         result.append([
@@ -219,14 +234,14 @@ def commands(
                 "--coils", "6", "--coil-offset", "1.2", "--electron-startup", "5e-7",
                 "--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_IONS[name][2],
             ]
-        if study == "six-coil-long":
+        if study in LONG:
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
-            _, coil_current, voltage, _, _, _, _ = SIX_COIL_LONG[name]
+            _, coil_current, voltage, _, _, _, _, energy = LONG[study][name]
             result[-1] += [
                 "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
                 "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
                 "--casing-voltage", str(voltage), "--coils", "6", "--coil-offset", "1.2",
-                "--coil-current", str(coil_current),
+                "--coil-current", str(coil_current), "--energy-ev", str(energy),
             ]
         if study == "ions":
             result[-1] += ["--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *ION_CASES[name]]
@@ -241,7 +256,7 @@ def main() -> None:
         "--study",
         choices=(
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
-            "six-coil-long", "six-coil-ions",
+            "six-coil-long", "six-coil-ions", "six-coil-bias",
         ),
         default="startup",
     )
@@ -328,6 +343,12 @@ def main() -> None:
             "ion timestep, 5 us cycles, 80 ns electron windows and twice the ion macroparticles. Tests how "
             "fast ions neutralize the six-coil well, where they go, and whether the operator split is "
             "converged. No Coulomb collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-ions" else (
+            "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel and box), 1 us "
+            "at 2 ps: casing (magrid) bias +1, +2.5, +5 and +10 kV at 1 A with a second +5 kV seed, a +5 kV 1 mA "
+            "vacuum-potential control, +5 kV at 3 A, and +5 kV with a 2 keV gun. Tests whether a positive magrid "
+            "deepens the well relative to the casings and relieves the gun-mouth space-charge limit seen at 3 A. "
+            "No plasma magnetic feedback, no ions."
         ),
         "study": args.study, "kernels": args.kernels,
         "cases": [

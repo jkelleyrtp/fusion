@@ -157,6 +157,17 @@ class CampaignTests(unittest.TestCase):
             self.assertEqual((item.coils, item.coil_offset, item.casing_radius), (6, 1.2, 0.1))
             self.assertEqual(item.dt * item.inject_every, 4e-12)
         self.assertEqual(sorted({item.coil_current for item in configurations}), [30000, 60000])
+        self.assertEqual({item.energy_ev for item in configurations}, {5000})
+
+    def test_six_coil_bias_study_sweeps_positive_casings(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-bias")
+        configurations = [parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        for item in configurations:
+            self.assertLessEqual(validate(item), item.max_steps)
+            self.assertEqual((item.coils, item.coil_offset, item.casing_radius, item.duration), (6, 1.2, 0.1, 1e-6))
+        self.assertEqual(sorted({item.casing_voltage for item in configurations}), [1000, 2500, 5000, 10000])
+        self.assertEqual(sorted({item.energy_ev for item in configurations}), [2000, 5000])
 
 
 if __name__ == "__main__":
