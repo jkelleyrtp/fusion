@@ -28,6 +28,11 @@ const studies: Study[] = [
     doc: "ion-pic-design.md", figures: pair("six-coil-gas", "D2 fuel delivery"),
   },
   {
+    id: "six-coil-ion-gun", title: "D2+ ion gun at a cusp (six-coil)",
+    summary: "1 A 5 keV electron gun, D2 at 1e-5 Pa, D2+ gun at the top point cusp, 400 µs, all 8 cases complete. At 10 mA and above a 10–100 eV gun chokes: its space charge builds a +0.7 to +1.6 kV hill at the mouth and 96–99% of gun ions leave back through the top. Unchoked beams (1 mA at 100 eV, 10 mA at 1 keV) fall through the −3 kV well, reach ~1.3 keV in the core and mostly leave through the opposite face; 1–3% are retained. Core neutralization stays at the no-gun 0.10–0.14.",
+    doc: "ion-pic-design.md", figures: pair("six-coil-ion-gun", "D2+ ion gun"),
+  },
+  {
     id: "six-coil-bias", title: "Six-coil casing (magrid) bias sweep",
     summary: "1 µs, 1 A, 5 keV gun, casings at +1 to +10 kV, with a second seed, a 1 mA control, 3 A and a 2 keV gun at +5 kV. Electrons only; imposed vacuum field. Positive casings raise repeated core entries from 26% to 37%, but the ion escape barrier (lowest path from the centre to the grounded walls) falls from 3.1 kV at 0 V to 338 V at +5 kV and 96 V at +10 kV.",
     doc: "six-coil-design.md", figures: pair("six-coil-bias", "Bias sweep"),

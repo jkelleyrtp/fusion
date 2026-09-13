@@ -267,3 +267,56 @@ other columns are last-quarter means.
   puff that delivers fuel without adding core ionization would need the gas to be ionized away
   from the beam, which this static plume cannot represent: no neutral depletion, shadowing by the
   casings, wall reflection or time-dependent filling.
+
+## D2+ ion-gun results (job `jonathan-pic-489401f39d77`, source `2ebefc8`)
+
+`run_pic_campaign.py --study six-coil-ion-gun`: the same six-coil trap and 1 A 5 keV electron gun,
+D2 at 1e-5 Pa (a slow 12.8 ms neutralization clock), plus a D2+ ion gun at the top point cusp
+(0, 0, 0.7) m aimed at the centre, 5 mm RMS spot, 5° RMS divergence; one case uses the corner
+(0.68, 0.68, 0.68) m. 40 × 10 µs cycles. All eight cases exited 0 with `DONE` and every requested
+cycle. The analyzer's charge-balance gate is now 1e-9 of created charge: gun cases accumulate
+~4e5 injected packets and reach 3.5e-12 relative FP64 accumulation roundoff, against 1e-12 before.
+Raw output: `/public/devcontainer-shared/jonathan/cusp/runs/pic-489401f39d77/attempt-20260913-172701-598627424`.
+Summary: `docs/data/pic-six-coil-ion-gun-2ebefc8.json`. Columns are last-quarter means except
+retained, which is (final alive ion charge − the no-gun case) / injected gun charge; mouth is the
+highest potential in the domain at 400 µs.
+
+| Case | Mouth potential | Gun ions leaving +z (back out) | leaving −z (transit) | Retained | Core neutralization | Origin | Core ion KE |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `gun_none` | 0 V | — | — | — | 0.103 | −3.06 kV | 694 eV |
+| `gun_1mA_100eV` | +68 V | 3% | 80% | 3.1% | 0.143 | −3.07 kV | 1288 eV |
+| `gun_10mA_10eV` | +690 V | 98% | 1% | 0.5% | 0.104 | −3.04 kV | 737 eV |
+| `gun_10mA_100eV` | +803 V | 99% | 1% | 0.3% | 0.103 | −3.04 kV | 726 eV |
+| `gun_100mA_100eV` | +1.62 kV | 96% | 0% | 0.09% | 0.101 | −3.04 kV | 697 eV |
+| `gun_10mA_1keV` | +790 V | 1% | 49% | 1.2% | 0.142 | −2.85 kV | 1284 eV |
+| `gun_corner_10mA_100eV` | +984 V | 11% | 0% (87% sides) | 0.2% | 0.103 | −3.06 kV | 692 eV |
+| `gun_10mA_100eV_bias5kV` | — | 75% | 0% | 0.03% | 0.078 | +154 V | 298 eV |
+
+Exit fractions count all lost ions, so the `gun_none` row is gas ions only. The no-gun case loses
+0.13% of created ions, mostly to the conductors.
+
+![Six-coil D2+ ion gun evolution](images/pic-six-coil-ion-gun-evolution.png)
+![Six-coil D2+ ion gun fields](images/pic-six-coil-ion-gun-fields.png)
+
+### Ion-gun interpretation
+
+- **At 10 mA and above a low-energy ion gun chokes on its own charge.** The beam's space charge
+  builds a +0.7 to +1.6 kV potential hill at the mouth, above the 10–100 eV beam energy, and
+  96–99% of gun ions turn around and leave through the top face. This is the ion analogue of the
+  electron gun choke at 3 A. The mesh (9.4 × 9.4 × 20 mm cells) smears the 5 mm spot, so the real
+  hill for this spot would be higher; a real gun needs extraction optics, a wider aperture or
+  beam neutralization, none of which is modelled.
+- **Unchoked gun ions transit and leave.** At 1 mA, 100 eV (hill +68 V) and 10 mA, 1 keV (hill
+  +790 V) the ions pass the mouth, fall through the −3 kV well, gain ~1.3 keV in the core and 49–80%
+  leave through the opposite face. This is energy conservation: an ion injected from a grounded
+  wall with positive energy cannot be trapped by a static potential. Only charge exchange and the
+  slowly changing well retain them, 1–3% of injected charge over 400 µs.
+- **The gun barely touches the core well.** Core neutralization stays 0.10–0.14 in every case, the
+  same as gas ionization alone; the larger volume-averaged neutralization (up to 0.31) is the
+  choked or transiting beam near the axis. The 1 keV beam makes the centre 7% shallower.
+- **Casing bias does not help injection.** At +5 kV the centre sits at +154 V, the gun ions see no
+  well, and retention falls to 0.03%.
+- **Consequence for fuelling.** A cusp ion gun adds energetic core transits but does not fill the
+  well. Trapping injected ions needs a time-varying well (for example lowering the barrier during
+  injection, then deepening it) or dissipation; the pulsed electron-gun campaign tests the first
+  of these in a limited way.

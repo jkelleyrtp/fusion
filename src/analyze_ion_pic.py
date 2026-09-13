@@ -93,7 +93,7 @@ def load(case: Path, partial: bool) -> tuple[dict[str, object], list[Record]]:
         raise ValueError(f"Incomplete case: {case.name}")
     for record in history:
         created = scalar(record, "ion_created_charge_C")
-        assert abs(scalar(record, "ion_charge_balance_C")) <= 1e-12 * max(created, 1e-18)
+        assert abs(scalar(record, "ion_charge_balance_C")) <= 1e-9 * max(created, 1e-18)
         assert all(math.isfinite(value) for value in record.values() if isinstance(value, (int, float)))
     return configuration, history
 
