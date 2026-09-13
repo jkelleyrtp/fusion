@@ -34,6 +34,10 @@ SIX_COIL_CASES = (
     "pic_1A_six_d120", "pic_1A_two_coil_c010", "pic_1A_six_d120_1mA", "pic_1A_six_d130",
     "pic_1A_six_d120_w1575", "pic_1A_six_d120_t195", "pic_1A_six_d120_p1kV", "pic_1A_six_d120_s2345",
 )
+SIX_COIL_LONG_CASES = (
+    "six_long", "six_long_s2345", "six_long_1mA", "six_long_300mA", "six_long_3A", "six_long_m1kV",
+    "six_long_60kAt", "six_long_60kAt_1mA",
+)
 WINDOW_METRICS = (
     "minimum_potential_V", "field_energy_J", "alive_electrons", "core_electron_count",
     "residence_s", "core_residence_s",
@@ -171,20 +175,55 @@ def plot_fields(run: Path, output: Path, names: tuple[str, ...]) -> None:
     plt.close(figure)
 
 
+def plot_saturation(histories: dict[str, list[Record]], output: Path) -> None:
+    """Current-normalized histories, so cases at 1 mA to 3 A share axes."""
+    figure, axes = plt.subplots(2, 2, figsize=(12, 7.5), constrained_layout=True)
+    for name, records in histories.items():
+        time_s = np.array([scalar(record, "time_s") for record in records])
+        injected = np.array([scalar(record, "injected_count") for record in records], dtype=float)
+        alive = np.array([scalar(record, "alive_count") for record in records], dtype=float)
+        current = abs(scalar(records[-1], "injected_charge_C")) / time_s[-1]
+        kind = "--" if name.endswith("1mA") else "-"
+        axes[0, 0].plot(time_s * 1e9, [scalar(r, "minimum_potential_V") / current for r in records], kind, label=name)
+        axes[0, 1].plot(time_s * 1e9, alive / injected, kind, label=name)
+        axes[1, 0].plot(time_s * 1e9, [derived(r)["core_residence_s"] * 1e9 for r in records], kind, label=name)
+        smooth = max(1, len(records) // 25)
+        growth = (alive[smooth:] - alive[:-smooth]) / (injected[smooth:] - injected[:-smooth])
+        axes[1, 1].plot(time_s[smooth:] * 1e9, growth, kind, label=name)
+    panels = (
+        ("Minimum potential per injected ampere", "V / A"), ("Live / injected macroparticles", "fraction"),
+        ("Core electrons / injection rate", "ns"), ("d(live) / d(injected): 0 at saturation", "fraction"),
+    )
+    for axis, (title, unit) in zip(axes.flat, panels, strict=True):
+        axis.set(title=title, xlabel="Physical time (ns)", ylabel=unit)
+        axis.grid(alpha=0.25)
+    axes[0, 0].legend(fontsize=7)
+    figure.savefig(output, dpi=160)
+    plt.close(figure)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--window-start", type=float, default=2e-7)
-    parser.add_argument("--study", choices=("window", "domain", "gun", "casing", "six-coil"), default="window")
+    parser.add_argument(
+        "--study", choices=("window", "domain", "gun", "casing", "six-coil", "six-coil-long"), default="window",
+    )
     parser.add_argument("--domain-run", type=Path, help="grounded-box campaign to compare the gun study against")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
-    names = {"domain": DOMAIN_CASES, "gun": GUN_CASES, "casing": CASING_CASES, "six-coil": SIX_COIL_CASES}.get(
-        args.study, (*MESH_CASES, *VARIANT_CASES),
-    )
+    names = {
+        "domain": DOMAIN_CASES, "gun": GUN_CASES, "casing": CASING_CASES, "six-coil": SIX_COIL_CASES,
+        "six-coil-long": SIX_COIL_LONG_CASES,
+    }.get(args.study, (*MESH_CASES, *VARIANT_CASES))
     histories = {name: load(args.run / name) for name in names}
-    summaries = {name: summarize(name, records, args.window_start) for name, records in histories.items()}
+    long = args.study == "six-coil-long"
+
+    def window_start(name: str) -> float:
+        return 0.8 * scalar(histories[name][-1], "time_s") if long else args.window_start
+
+    summaries = {name: summarize(name, records, window_start(name)) for name, records in histories.items()}
 
     def relative(name: str, reference: str) -> dict[str, float | None]:
         current = cast(dict[str, float], summaries[name]["mean"])
@@ -194,8 +233,8 @@ def main() -> None:
             for key in WINDOW_METRICS
         }
 
-    if args.study in ("casing", "six-coil"):
-        six = args.study == "six-coil"
+    if args.study in ("casing", "six-coil", "six-coil-long"):
+        six = args.study != "casing"
         core_radius = 0.25 * json.loads((args.run / names[0] / "configuration.json").read_text())["radius"]
         conductors = {}
         for name, records in histories.items():
@@ -204,7 +243,7 @@ def main() -> None:
             box_exits = sum(cast(list[int], final["exit_counts_xlo_xhi_ylo_yhi_zlo_zhi"]))
             shape_exits = cast(list[int], final["conductor_exit_counts"])
             total_exits = box_exits + sum(shape_exits)
-            window = [record for record in records if scalar(record, "time_s") >= args.window_start]
+            window = [record for record in records if scalar(record, "time_s") >= window_start(name)]
             conductors[name] = {
                 "box_lower_m": configuration["box_lower_m"], "box_upper_m": configuration["box_upper_m"],
                 "mesh_shape": configuration["mesh_shape"], "seed": configuration["seed"],
@@ -226,6 +265,9 @@ def main() -> None:
             }
         casing_report: dict[str, object] = {
             "scope": (
+                "Six-coil imposed cube field, 1 us saturation study: current scaling, casing bias, seed and "
+                "60 kA-turn coils; window is the last 20% of each run."
+                if long else
                 "Six-coil imposed cube field versus the two-coil cusp, grounded barrel and casings, 1 A external-gun CUDA PIC."
                 if six else
                 "Absorbing coil casings inside a wider grounded box, with the gun barrel, 1 A external-gun CUDA PIC."
@@ -244,8 +286,12 @@ def main() -> None:
             ],
         }
         (args.out / "analysis.json").write_text(json.dumps(casing_report, indent=2, allow_nan=False) + "\n")
-        plot_histories(histories, args.out / "evolution.png", names[:2])
+        if long:
+            plot_saturation(histories, args.out / "evolution.png")
+        else:
+            plot_histories(histories, args.out / "evolution.png", names[:2])
         plot_fields(args.run, args.out / "fields.png", (
+            ("six_long", "six_long_3A", "six_long_60kAt") if long else
             ("pic_1A_two_coil_c010", "pic_1A_six_d120", "pic_1A_six_d130") if six else
             ("pic_1A_casing_none", "pic_1A_casing_r015", "pic_1A_casing_r015_m1kV")
         ))

@@ -120,8 +120,10 @@ Observations:
   comparison; the two-coil run is close to saturated.
 - **At 300 ns retention is set by single-particle orbits.** The 1 mA control loses the same
   fraction (0.50 versus 0.52). Space charge at 1 A shortens core dwell from 7.7 to 6.0 ns.
-  Core dwell is shorter than the two-coil value because electrons spend their time spread over
-  the cube, not concentrated near the axis.
+  The minimum potential per injected ampere is the same at 1 mA and 1 A through the run, so the
+  well is still linear in current: the 1 A population is the vacuum-orbit population scaled up,
+  not yet reshaped by its own field. Core dwell is shorter than the two-coil value because
+  electrons spend their time spread over the cube, not concentrated near the axis.
 - **Box and seed are not the limiting factor.** Wider box, farther top wall and the second
   seed change every window mean by ≤1.7%. Moving the coils to 1.3a deepens the well 8% and
   holds 7% more electrons. Casings at +1 kV give a 30% shallower well, 9% more core entries
