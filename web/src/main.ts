@@ -6,6 +6,7 @@ import { setupNavigation, setupSidebar } from "./navigation";
 import type { Page } from "./navigation";
 import { campaignHref, renderCampaignHome, renderCampaignReport, reportHref } from "./campaigns";
 import { renderSpaceCharge } from "./space-charge";
+import { renderFigures } from "./figures";
 import { renderReport } from "./reports";
 import { JobMonitor } from "./jobs";
 import { FieldView } from "./fields";
@@ -46,6 +47,7 @@ $("app").innerHTML = `
   </header>
   <nav class="top-nav" aria-label="Analysis pages">
     <a href="#campaigns" data-page="campaigns">Campaigns</a>
+    <a href="#pic" data-page="pic">PIC results</a>
     <a href="#jobs" data-page="jobs">Jobs</a>
     <a href="#sweeps" data-page="sweeps">Sweeps</a>
     <a href="#trajectories" data-page="trajectories">Trajectories</a>
@@ -69,6 +71,7 @@ $("app").innerHTML = `
       <div id="error" class="error" role="alert" hidden></div>
       <div id="campaigns-page" class="document-page" hidden><div id="campaign-jobs"></div><div id="campaign-list"></div></div>
       <div id="jobs-page" class="document-page" hidden></div>
+      <div id="pic-page" class="document-page" hidden></div>
       <div id="campaign-page" class="document-page" hidden>
         <div id="campaign-heading"></div><div id="campaign-job-status" hidden></div><div id="campaign-widget" class="report-widget"></div>
         <div id="campaign-sweep"></div><section id="campaign-details" class="campaign-details"></section>
@@ -155,16 +158,19 @@ $("app").innerHTML = `
   </div>`;
 
 renderSpaceCharge($("space-charge-page"));
+renderFigures($("pic-page"));
 const jobMonitor = new JobMonitor($("jobs-page"), $("campaign-jobs"), $("campaign-job-status"));
 setupNavigation(page => {
   $("campaigns-page").hidden = page !== "campaigns";
   $("jobs-page").hidden = page !== "jobs";
+  $("pic-page").hidden = page !== "pic";
   $("campaign-page").hidden = page !== "campaign";
   $("sweep-page").hidden = page !== "sweeps";
   $("space-charge-page").hidden = page !== "space-charge";
   $("report-page").hidden = page !== "reports";
   $("run-page").hidden = page !== "trajectories" && page !== "residence";
-  $("model-context").textContent = page === "jobs" ? "One node · priority 1" : page === "space-charge"
+  $("model-context").textContent = page === "jobs" ? "One node · priority 1" : page === "pic"
+    ? "Time-dependent electrostatic PIC · imposed B" : page === "space-charge"
     ? "Stationary Poisson feedback · reference pilot"
     : selected?.poisson ? "Stationary Poisson · frozen orbit iteration" : "Fixed fields · no Poisson feedback";
   const widgetTarget = page === "campaign" ? "campaign-widget" : page === "reports" ? "report-widget" : "trajectory-home";
@@ -535,7 +541,7 @@ async function initialize(): Promise<void> {
   } catch (error) { showError(error); }
 }
 async function resolveRoute(page: Page): Promise<void> {
-  if (page === "campaigns" || page === "space-charge" || page === "jobs") return;
+  if (page === "campaigns" || page === "space-charge" || page === "jobs" || page === "pic") return;
   const id = decodeURIComponent(location.hash.split("/").slice(1).join("/"));
   let run = selected ?? catalog.runs.find(r => r.study === catalog.studies[0]?.id) ?? catalog.runs[0];
   if (page === "campaign") {
