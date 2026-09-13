@@ -137,6 +137,16 @@ SIX_COIL_FEED_FINE = {
     "feed_100A_10keV_p1e-3": ("feed_100A_10keV", ("--gas-pa", "1e-3", "--cycle-duration", "1e-5",
                                                 "--ion-dt", "5e-10")),
 }
+SIX_COIL_SUSTAIN = {  # electron-gun current, seed, extra arguments; 10 keV, 30 kA-turn, 1e-3 Pa, 32 x 10 us
+    "sustain_1A_10keV": (1, 1234, ()),
+    "sustain_3A_10keV": (3, 1234, ()),
+    "sustain_10A_10keV_long": (10, 1234, ("--cycles", "64", "--save-every-cycles", "8")),
+    "sustain_10A_10keV_s2345": (10, 2345, ()),
+    "sustain_10A_10keV_cycle5": (10, 1234, ("--cycle-duration", "5e-6", "--cycles", "64", "--save-every-cycles", "8")),
+    "sustain_30A_10keV_long": (30, 1234, ("--ion-dt", "5e-10", "--cycles", "64", "--save-every-cycles", "8")),
+    "sustain_10A_10keV_D2": (10, 1234, ("--fuel", "D2")),
+    "sustain_10A_10keV_p1e-4": (10, 1234, ("--gas-pa", "1e-4", "--cycle-duration", "1e-4")),
+}
 FACE_INLET, CORNER_INLET, GUN_INLET = ("0.7", "0", "0"), ("0.68", "0.68", "0.68"), ("0.1", "0", "-0.95")
 SIX_COIL_GAS = {
     "d2_uniform_p1e-3": ("--gas-pa", "1e-3"),
@@ -216,7 +226,7 @@ SIX_COIL_CAPTURE = {  # electron-gun period and on cycles (1 us each), ion-gun p
 }
 COUPLED = (
     "ions", "six-coil-ions", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas", "six-coil-ion-gun",
-    "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture",
+    "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture", "six-coil-sustain",
 )
 
 
@@ -275,6 +285,10 @@ def case_specs(
         "six-coil-feed-fine": tuple(
             (name, SIX_COIL_FEED[base][0], SIX_COIL_FEED[base][3], 8, SIX_COIL_FEED[base][4], 15000, 65, 1234, "cuda")
             for name, (base, _) in SIX_COIL_FEED_FINE.items()
+        ),
+        "six-coil-sustain": tuple(
+            (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
+            for name, (current, seed, _) in SIX_COIL_SUSTAIN.items()
         ),
         "six-coil-gas": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_GAS),
         "six-coil-ion-gun": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_ION_GUN),
@@ -379,6 +393,11 @@ def commands(
                 "--coil-current", str(coil_current), "--energy-ev", str(energy), "--gas-pa", "1e-2",
                 "--cycle-duration", "1e-6", "--cycles", "32", "--save-every-cycles", "4", *extra,
             ]
+        if study == "six-coil-sustain":
+            result[-1] += [
+                "--coil-current", "30000", "--energy-ev", "10000", "--gas-pa", "1e-3", "--cycle-duration", "1e-5",
+                "--cycles", "32", "--save-every-cycles", "4", *SIX_COIL_SUSTAIN[name][2],
+            ]
         if study == "six-coil-gas":
             result[-1] += ["--fuel", "D2", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_GAS[name]]
         if study == "six-coil-ion-gun":
@@ -427,7 +446,7 @@ def main() -> None:
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
             "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas",
             "six-coil-ion-gun", "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture",
-            "six-coil-tracks",
+            "six-coil-sustain", "six-coil-tracks",
         ),
         default="startup",
     )
@@ -530,6 +549,13 @@ def main() -> None:
             "10 us cycles. The 10 A case checks the ion timestep against the passing 1 ns run. No Coulomb "
             "collisions, gas depletion or plasma magnetic feedback."
         ) if args.study == "six-coil-feed-fine" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (10 keV gun, 30 kA-turn, H2 at 1e-3 Pa, 32 x 10 us cycles) "
+            "following up six-coil-feed-fine, where 10 A and 30 A kept a -2.7 kV and -5.7 kV well at 0.71-0.76 "
+            "neutralization while 1 A at 5 keV neutralized fully: 1 A and 3 A at 10 keV separate current from gun "
+            "energy; 10 A with a second seed, 5 us cycles, D2 fuel and 1e-4 Pa (100 us cycles), and 10 A and 30 A "
+            "over 640 us, test whether the partially neutralized plateau is physical and settled. No Coulomb "
+            "collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-sustain" else (
             "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV gun, 30 kA-turn, 40 x 10 us cycles) "
             "comparing fuel delivery: uniform D2 at 1e-3 and 1e-4 Pa; a steady face inlet (0.7, 0, 0) m at 1e-3 "
             "and 1e-4 Pa m^3/s with a 1 m^3/s pump, where the pumped background Q/S dominates the plume; and "

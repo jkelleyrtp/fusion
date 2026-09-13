@@ -210,6 +210,23 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(sorted(item.current_a for item in low), [10, 30, 100])
         self.assertTrue(all(item.cycle_duration == 1e-5 for item in low))
 
+    def test_six_coil_sustain_study_controls_the_high_feed_plateau(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-sustain")
+        configurations = {Path(command[3]).name: ion_parser().parse_args(command[2:]) for command in argv}
+        self.assertEqual(len(configurations), 8)
+        for item in configurations.values():
+            validate_coupled(item)
+            self.assertEqual((item.coils, item.energy_ev, item.coil_current), (6, 10000, 30000))
+            self.assertEqual(item.dt * item.inject_every, 4e-12)
+        self.assertEqual(sorted({item.current_a for item in configurations.values()}), [1, 3, 10, 30])
+        self.assertEqual(configurations["sustain_10A_10keV_s2345"].seed, 2345)
+        self.assertEqual(configurations["sustain_10A_10keV_D2"].fuel, "D2")
+        cycle5 = configurations["sustain_10A_10keV_cycle5"]
+        self.assertEqual(cycle5.cycle_duration * cycle5.cycles, 64 * 5e-6)
+        low = configurations["sustain_10A_10keV_p1e-4"]
+        self.assertEqual((low.gas_pa, low.cycle_duration), (1e-4, 1e-4))
+        self.assertEqual(configurations["sustain_30A_10keV_long"].cycles, 64)
+
     def test_six_coil_gas_study_compares_uniform_fill_with_inlets(self) -> None:
         argv = commands(Path("/campaign"), "a" * 40, "six-coil-gas")
         configurations = [ion_parser().parse_args(command[2:]) for command in argv]

@@ -23,6 +23,11 @@ const studies: Study[] = [
     doc: "ion-pic-design.md", figures: pair("six-coil-ions", "Six-coil coupled ions"),
   },
   {
+    id: "six-coil-feed-fine", title: "High electron feed: 10–100 A with H2 ions (six-coil)",
+    summary: "10 keV gun at 10–100 A, H2 at 1e-3 Pa (320 µs) and 1e-2 Pa (32 µs, transient), 7 of 8 cases complete (60 kA-turn still running, not interpreted). At 1e-3 Pa, 10 A levels off at 0.76 neutralization with the centre at −2.7 kV and ~0.8 keV core ions; 30 A holds −5.7 kV but is still settling. 1 A at the same pressure lost its well. 100 A chokes: a −15 to −23 kV virtual cathode forms at the gun mouth and 99.8% of lost ions fall into the gun barrel. One seed, no cycle-duration control yet.",
+    doc: "ion-pic-design.md", figures: pair("six-coil-feed-fine", "High feed"),
+  },
+  {
     id: "six-coil-gas", title: "D2 fuel delivery: uniform fill, inlets and puffs (six-coil)",
     summary: "1 A 5 keV gun, D2 and D2+ ions, 400 µs, all 8 cases complete. A steady inlet with a normal pump matches uniform gas within 0.1%. Pressure sets the neutralization clock linearly: 148 µs at 1e-3 Pa, 1.36 ms at 1e-4 Pa, ~7.9 ms at 1e-5 Pa, where the well holds −3.0 kV and core ions carry ~770 eV. A puff at the same background speeds ionization by 19–61% because the plume overlaps the electrons; ions are still born deep in the well.",
     doc: "ion-pic-design.md", figures: pair("six-coil-gas", "D2 fuel delivery"),

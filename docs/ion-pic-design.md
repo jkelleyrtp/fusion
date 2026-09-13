@@ -221,6 +221,56 @@ At the first 10 µs cycle the 1 A origin potential is −2.6 kV with −157 nC o
   small differences of large cancelling charges and uncertain at that level.
 - The same missing physics as the two-coil study limits the post-neutralization state.
 
+## High-feed results (job `jonathan-pic-98784dc572d0`, source `0efa509`)
+
+`run_pic_campaign.py --study six-coil-feed-fine`: the six-coil trap with H2 and H2+, 10 keV gun at
+10–100 A, 10/30/60 kA-turn. Two groups: 1e-2 Pa for 32 × 1 µs cycles with a 0.2 ns ion step (the
+1 ns cases of `six-coil-feed` failed the `omega_pi * dt` check), and 1e-3 Pa for 32 × 10 µs cycles
+(320 µs, 0.5–1 ns ion step). Seven of eight cases have `DONE` and every cycle; ion charge balance
+stayed below 3e-19 C. `feed_30A_10keV_60kAt_idt2` had 18/32 cycles and is not interpreted.
+Raw output: `/public/jonathan/cusp/runs/pic-98784dc572d0/attempt-20260913-194000-421552263`.
+Summary: `docs/data/pic-six-coil-feed-fine-0efa509.json` (`analyze_ion_pic.py --study
+six-coil-feed-fine --partial`). Last-quarter means; "gun" is the share of lost ions absorbed by the
+gun barrel.
+
+| Case | Gas | Neutralization | Origin | Gun-mouth minimum | Electron charge | Core ion KE | Ions lost | Gun |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `feed_10A_10keV_p1e-3` | 1e-3 Pa | 0.760 ± 0.005 | −2722 V | −6.2 kV | −954 nC | 765 eV | 42% | 3% |
+| `feed_30A_10keV_p1e-3` | 1e-3 Pa | 0.707 ± 0.033 | −5718 V | −11.3 kV | −2080 nC | 1137 eV | 13% | 20% |
+| `feed_100A_10keV_p1e-3` | 1e-3 Pa | 0.111 | −98 V | −23.2 kV | −151 nC | 100 eV | 92% | 99.8% |
+| `feed_10A_10keV_idt2` | 1e-2 Pa | 1.057 | −251 V | −1.5 kV | −963 nC | 202 eV | 19% | 6% |
+| `feed_30A_10keV_idt2` | 1e-2 Pa | 0.777 | −3903 V | −8.6 kV | −2240 nC | 742 eV | 2% | 30% |
+| `feed_100A_10keV_idt2` | 1e-2 Pa | 0.424 | −6283 V | −15.4 kV | −1090 nC | 1458 eV | 27% | 99.8% |
+| `feed_100A_10keV_10kAt_idt2` | 1e-2 Pa | 0.496 | −5434 V | −14.4 kV | −1650 nC | 1211 eV | 20% | 98% |
+
+For comparison, 1 A and 300 mA at 5 keV and 1e-3 Pa neutralize to 1.02–1.04 with the centre within
+10 V of ground (`six-coil-ions` above).
+
+![Six-coil high-feed evolution](images/pic-six-coil-feed-fine-evolution.png)
+![Six-coil high-feed fields](images/pic-six-coil-feed-fine-fields.png)
+
+### High-feed interpretation
+
+- **At 10–30 A the well survives 1e-3 Pa for 320 µs.** Ions do not cancel the electron charge. At
+  10 A neutralization levels off at 0.76 from ~200 µs and the centre holds −2.7 kV with ~0.8 keV core
+  ions; ion losses balance production before the well is gone. At 30 A the centre holds −5.7 kV
+  but neutralization is still rising (0.76 at 320 µs), so that case is not yet settled. At 1 A the
+  same pressure removed the well. This corrects the earlier estimate that current cannot keep a
+  well alive: the neutralization *time* is still ~180 µs for every current, but the endpoint
+  depends on current. The live electron charge also grows as ions arrive (−0.33 to −0.95 µC at
+  10 A), so ions let the trap hold more electrons.
+- **100 A chokes at the gun.** The beam's own charge makes a −15 to −23 kV virtual cathode at the gun
+  mouth. At 1e-3 Pa the beam never reaches the centre (−98 V, −151 nC, no core ions) and 99.8% of lost
+  ions fall back into the gun barrel. At 1e-2 Pa ions born near the mouth partly neutralize the choke
+  within ~15 µs and a −6.3 kV spherical well forms, but ions still stream into the gun. More current
+  needs a lower-perveance gun (larger emitter or several guns), not a single brighter one.
+- **The 1e-2 Pa runs are transient.** Neutralization is still rising at 32 µs in every case and
+  10 A has already overshot to 1.06; treat them as the fast-pressure limit, not an equilibrium.
+- **Coil current is a weak knob here.** 100 A at 10 kA-turn is within ~15% of 30 kA-turn.
+- Limits: two-timescale splitting, no gas depletion (the 100 A ion inventory is below 1e-5 of the
+  gas), no plasma magnetic field, one seed, and no cycle-duration control at 10–30 A yet. The
+  plateau needs those controls and a longer run before it is a design number.
+
 ## D2 fuel-delivery results (job `jonathan-pic-f74373c4cc21`, source `09f2191`)
 
 `run_pic_campaign.py --study six-coil-gas`: the six-coil trap (30 kA-turn, 0 V casings, 1 A 5 keV
