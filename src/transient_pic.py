@@ -63,9 +63,9 @@ class PIC:
         self.time = 0.0
         self.injected_count = 0
         self.lost_count = 0
-        self._injected_charge = empty.new_zeros(())
+        self.injected_charge = 0.0
         self.lost_charge = 0.0
-        self._injected_kinetic = empty.new_zeros(())
+        self.injected_kinetic = 0.0
         self.lost_kinetic = 0.0
         self.lost_dwell = 0.0
         self.lost_core_dwell = 0.0
@@ -82,17 +82,9 @@ class PIC:
         )
         self._tracked_live = 0
 
-    @property
-    def injected_charge(self) -> float:
-        return float(self._injected_charge)
-
-    @property
-    def injected_kinetic(self) -> float:
-        return float(self._injected_kinetic)
-
     def _raise_first(
         self, checks: list[tuple[torch.Tensor, str]], *extra: torch.Tensor,
-    ) -> list[bool]:
+    ) -> list[float]:
         tensors = [flag for flag, _ in checks] + list(extra)
         if not tensors:
             return []
@@ -105,6 +97,32 @@ class PIC:
     def inject(
         self, position: torch.Tensor, velocity: torch.Tensor, weight: torch.Tensor,
     ) -> None:
+        self._check_append(position, velocity, weight)
+        charge, kinetic = self._raise_first([
+            (~torch.isfinite(tensor).all(), "Particle arrays must be finite")
+            for tensor in (position, velocity, weight)
+        ] + [
+            ((weight < 0).any(), "Represented electron counts must be nonnegative"),
+            (((position < self.mesh.lower) | (position > self.mesh.upper)).any(),
+             "Deposit/gather requires positions inside the box"),
+        ], -E_CHARGE * weight.sum(), (0.5 * M_E * weight * velocity.square().sum(dim=1)).sum())
+        self._append(position, velocity, weight, charge, kinetic)
+
+    def append_validated_packet(
+        self, position: torch.Tensor, velocity: torch.Tensor, weight: float,
+        kinetic_J: float,
+    ) -> None:
+        """Append equal-weight particles already checked finite and inside the box."""
+        if not math.isfinite(weight) or weight < 0 or not math.isfinite(kinetic_J):
+            raise ValueError("Represented electron counts must be finite and nonnegative")
+        count = len(position)
+        weights = torch.full((count,), weight, dtype=torch.float64, device=position.device)
+        self._check_append(position, velocity, weights)
+        self._append(position, velocity, weights, -E_CHARGE * weight * count, kinetic_J)
+
+    def _check_append(
+        self, position: torch.Tensor, velocity: torch.Tensor, weight: torch.Tensor,
+    ) -> None:
         count = len(position)
         if len(self.particles.ids) + count > self.max_live:
             raise ValueError("Injection exceeds max-live-particles")
@@ -115,14 +133,12 @@ class PIC:
         for tensor in (position, velocity, weight):
             if tensor.dtype != torch.float64 or tensor.device != self.mesh.lower.device:
                 raise ValueError("Particle arrays must be FP64 on the mesh device")
-        self._raise_first([
-            (~torch.isfinite(tensor).all(), "Particle arrays must be finite")
-            for tensor in (position, velocity, weight)
-        ] + [
-            ((weight < 0).any(), "Represented electron counts must be nonnegative"),
-            (((position < self.mesh.lower) | (position > self.mesh.upper)).any(),
-             "Deposit/gather requires positions inside the box"),
-        ])
+
+    def _append(
+        self, position: torch.Tensor, velocity: torch.Tensor, weight: torch.Tensor,
+        charge: float, kinetic: float,
+    ) -> None:
+        count = len(position)
         ids = torch.arange(
             self.injected_count, self.injected_count + count, device=position.device,
         )
@@ -138,8 +154,8 @@ class PIC:
         start = self.injected_count
         tracked = max(0, min(count, len(self.tracked_birth) - start))
         self.injected_count += count
-        self._injected_charge += -E_CHARGE * weight.sum()
-        self._injected_kinetic += (0.5 * M_E * weight * velocity.square().sum(dim=1)).sum()
+        self.injected_charge += charge
+        self.injected_kinetic += kinetic
         self.tracked_birth[start:start + tracked] = self.time
         self.tracked_position[start:start + tracked] = position[:tracked]
         self._tracked_live += tracked

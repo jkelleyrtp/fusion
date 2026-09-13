@@ -13,8 +13,8 @@ import torch
 from cusp_sim import E_CHARGE
 from pic_kernels import ReferenceKernels
 from run_transient_pic import (
+    GunSource,
     create_simulation,
-    inject_packet,
     validate,
 )
 from run_transient_pic import (
@@ -97,10 +97,11 @@ def microbenchmark(call: Callable[[], object], device: torch.device,
 
 def profile_backend(args: argparse.Namespace) -> dict[str, object]:
     simulation, _ = create_simulation(args)
+    source = GunSource(args)
     device = simulation.mesh.lower.device
     h = args.dt
     for step in range(args.warm_steps):
-        inject_packet(simulation, args, step)
+        source.inject(simulation, step)
         simulation.advance(h)
         simulation.time = (step + 1) * args.dt
 
@@ -116,7 +117,7 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
     live_start = len(simulation.particles.ids)
     for step in range(args.warm_steps, args.warm_steps + args.timed_steps):
         start = time.perf_counter()
-        inject_packet(simulation, args, step)
+        source.inject(simulation, step)
         simulation.advance(h)
         synchronize(device)
         totals["step_total"] += time.perf_counter() - start
@@ -130,7 +131,7 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
     synchronize(device)
     start = time.perf_counter()
     for step in range(first, first + args.timed_steps):
-        inject_packet(simulation, args, step)
+        source.inject(simulation, step)
         simulation.advance(h)
         simulation.time = (step + 1) * args.dt
     synchronize(device)
@@ -140,7 +141,7 @@ def profile_backend(args: argparse.Namespace) -> dict[str, object]:
     first += args.timed_steps
     for step in range(first, first + args.timed_steps):
         start = time.perf_counter()
-        inject_packet(simulation, args, step)
+        source.inject(simulation, step)
         synchronize(device)
         middle = time.perf_counter()
         simulation.advance(h)

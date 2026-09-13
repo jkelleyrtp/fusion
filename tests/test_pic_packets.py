@@ -5,10 +5,11 @@ from pathlib import Path
 
 import torch
 
+from cusp_sim import E_CHARGE, M_E
 from electrostatic import ElectrostaticMesh
 from pic_cuda import CUDAKernels
 from pic_kernels import ReferenceKernels
-from run_transient_pic import inject_packet, parser, validate
+from run_transient_pic import GunSource, parser, validate
 from transient_pic import PIC
 from validate_pic_gpu import compare_states, control
 
@@ -27,9 +28,10 @@ class PacketTests(unittest.TestCase):
                 "--duration", "1e-11", "--current-a", "1",
             ])
             simulation = PIC(mesh(), torch.zeros_like, 0.2, 100)
+            source = GunSource(args)
             for step in range(validate(args)):
                 simulation.time = step * dt
-                inject_packet(simulation, args, step)
+                source.inject(simulation, step)
             self.assertEqual(simulation.injected_count, 24)
             self.assertTrue(math.isclose(simulation.injected_charge, -1e-11, rel_tol=1e-15))
             simulations.append(simulation)
@@ -40,6 +42,32 @@ class PacketTests(unittest.TestCase):
             (fine.weight, coarse.weight),
         ):
             torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+
+    def test_gun_blocks_are_independent_and_accounted(self):
+        packets = {}
+        for seed in (1234, 1235):
+            args = parser().parse_args([
+                "--out", "unused", "--dt", "4e-12", "--duration", "1.2e-9",
+                "--current-a", "1", "--seed", str(seed), "--save-every", "100",
+            ])
+            simulation = PIC(mesh(), torch.zeros_like, 0.2, 10000)
+            source = GunSource(args)
+            for step in range(validate(args)):
+                simulation.time = step * args.dt
+                source.inject(simulation, step)
+            p = simulation.particles
+            self.assertEqual(simulation.injected_count, 2400)
+            self.assertTrue(math.isclose(
+                simulation.injected_charge, float(-E_CHARGE * p.weight.sum()), rel_tol=1e-12,
+            ))
+            self.assertTrue(math.isclose(
+                simulation.injected_kinetic,
+                float((0.5 * M_E * p.weight * p.velocity.square().sum(dim=1)).sum()),
+                rel_tol=1e-12,
+            ))
+            packets[seed] = p.position.reshape(300, 8, 3)
+        self.assertFalse(torch.equal(packets[1234][1], packets[1235][0]))
+        self.assertFalse(torch.equal(packets[1234][255], packets[1234][256]))
 
     def test_invalid_packet_interval(self):
         args = parser().parse_args(["--out", "unused", "--inject-every", "0"])

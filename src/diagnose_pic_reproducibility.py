@@ -12,7 +12,7 @@ from diagnose_pic_cuda import difference
 from electrostatic import ElectrostaticMesh
 from pic_cuda import CUDAKernels
 from pic_kernels import ReferenceKernels
-from run_transient_pic import create_simulation, inject_packet, parser, validate
+from run_transient_pic import GunSource, create_simulation, parser, validate
 from transient_pic import PIC
 from validate_pic_gpu import LIMITS, compare_states, state
 
@@ -118,9 +118,10 @@ def main() -> None:
     }
     comparisons: list[dict[str, object]] = []
     report["comparisons"] = comparisons
+    source = GunSource(args)
     for step in range(steps):
         for simulation in (reference, repeated):
-            inject_packet(simulation, args, step)
+            source.inject(simulation, step)
             simulation.advance(args.dt)
             simulation.time = (step + 1) * args.dt
         if step + 1 in (1, 64, 512, 2048, 8192):

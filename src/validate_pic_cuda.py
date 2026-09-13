@@ -15,8 +15,8 @@ from electrostatic import ElectrostaticMesh
 from pic_cuda import CUDAKernels
 from pic_kernels import ReferenceKernels
 from run_transient_pic import (
+    GunSource,
     create_simulation,
-    inject_packet,
     parser,
     save_snapshot,
     validate,
@@ -151,9 +151,10 @@ def external_controls(out: Path, device: torch.device) -> None:
         (out / f"{name}-configuration.json").write_text(
             json.dumps(configuration, indent=2, allow_nan=False) + "\n",
         )
+        source = GunSource(args)
         for step in range(steps):
             for simulation in (reference, actual):
-                inject_packet(simulation, args, step)
+                source.inject(simulation, step)
                 simulation.advance(args.dt)
                 simulation.time = (step + 1) * args.dt
             if step + 1 in (1, 64, 512, 2048, 8192):

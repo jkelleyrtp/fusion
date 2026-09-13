@@ -9,12 +9,14 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from cusp_sim import E_CHARGE, QM, TorchPusher, ring_field_on_grid
+from cusp_sim import E_CHARGE, M_E, QM, TorchPusher, ring_field_on_grid
 from electrostatic import ElectrostaticMesh
 from pic_cuda import CUDAKernels
 from pic_kernels import ReferenceKernels
 from steady_space_charge import thermal_source
 from transient_pic import PIC, MagneticField
+
+PACKETS_PER_BLOCK = 256
 
 
 def parser() -> argparse.ArgumentParser:
@@ -183,25 +185,57 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
     return simulation, configuration
 
 
-def inject_packet(simulation: PIC, args: argparse.Namespace, step: int) -> None:
-    if step % args.inject_every:
-        return
-    if len(simulation.particles.ids) + args.inject_per_step > args.max_live_particles:
-        raise ValueError("Injection exceeds max-live-particles")
-    origin, direction = source_geometry(args)
-    position, velocity = thermal_source(
-        origin, direction, args.energy_ev, args.temperature_ev,
-        args.source_sigma, args.inject_per_step, torch.device("cpu"),
-        args.seed + step // args.inject_every, args.divergence_deg,
-    )
-    if (velocity[:, 2] <= 0).any():
-        raise ValueError("Sampled inlet velocity points backwards")
-    pulse_duration = min(args.dt * args.inject_every, args.duration - step * args.dt)
-    weight = position.new_full(
-        (args.inject_per_step,), args.current_a * pulse_duration / (E_CHARGE * args.inject_per_step),
-    )
-    packet = torch.cat((position, velocity, weight[:, None]), dim=1).to(simulation.mesh.lower.device)
-    simulation.inject(packet[:, :3], packet[:, 3:6], packet[:, 6])
+class GunSource:
+    """External-gun packets sampled on CPU in seeded blocks and copied once per block."""
+
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.args = args
+        self.block = -1
+        self.speed_square: list[float] = []
+        self.cpu: tuple[torch.Tensor, torch.Tensor] | None = None
+        self.devices: dict[torch.device, tuple[torch.Tensor, torch.Tensor]] = {}
+
+    def _sample(self, block: int) -> None:
+        args = self.args
+        count = args.inject_per_step
+        seed = int(np.random.SeedSequence([args.seed, block]).generate_state(1)[0])
+        origin, direction = source_geometry(args)
+        position, velocity = thermal_source(
+            origin, direction, args.energy_ev, args.temperature_ev, args.source_sigma,
+            PACKETS_PER_BLOCK * count, torch.device("cpu"), seed, args.divergence_deg,
+        )
+        if (velocity[:, 2] <= 0).any():
+            raise ValueError("Sampled inlet velocity points backwards")
+        if not (torch.isfinite(position).all() and torch.isfinite(velocity).all()):
+            raise ValueError("Particle arrays must be finite")
+        self.speed_square = velocity.square().sum(dim=1).reshape(-1, count).sum(dim=1).tolist()
+        self.block, self.cpu, self.devices = block, (position, velocity), {}
+
+    def inject(self, simulation: PIC, step: int) -> None:
+        args = self.args
+        if step % args.inject_every:
+            return
+        if len(simulation.particles.ids) + args.inject_per_step > args.max_live_particles:
+            raise ValueError("Injection exceeds max-live-particles")
+        block, row = divmod(step // args.inject_every, PACKETS_PER_BLOCK)
+        if block != self.block:
+            self._sample(block)
+        assert self.cpu is not None
+        device = simulation.mesh.lower.device
+        if device not in self.devices:
+            position, velocity = self.cpu
+            lower, upper = simulation.mesh.lower.cpu(), simulation.mesh.upper.cpu()
+            if ((position < lower) | (position > upper)).any():
+                raise ValueError("Deposit/gather requires positions inside the box")
+            self.devices[device] = (position.to(device), velocity.to(device))
+        position, velocity = self.devices[device]
+        count = args.inject_per_step
+        pulse_duration = min(args.dt * args.inject_every, args.duration - step * args.dt)
+        weight = args.current_a * pulse_duration / (E_CHARGE * count)
+        rows = slice(row * count, (row + 1) * count)
+        simulation.append_validated_packet(
+            position[rows], velocity[rows], weight, 0.5 * M_E * weight * self.speed_square[row],
+        )
 
 
 def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | str]]:
@@ -232,11 +266,12 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
         with (args.out / "diagnostics.jsonl").open("a") as stream:
             stream.write(json.dumps(record, allow_nan=False) + "\n")
 
+    source = GunSource(args)
     start = time.perf_counter()
     publish(0, 0)
     for step in range(steps):
         h = args.duration - step * args.dt if step + 1 == steps else args.dt
-        inject_packet(simulation, args, step)
+        source.inject(simulation, step)
         simulation.advance(h)
         simulation.time = args.duration if step + 1 == steps else (step + 1) * args.dt
         if (step + 1) % args.save_every == 0 or step + 1 == steps:
