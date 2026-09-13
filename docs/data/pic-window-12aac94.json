@@ -1,0 +1,505 @@
+{
+  "scope": "Long-window sensitivity of the 1 A external-gun CUDA PIC model; not a convergence certificate.",
+  "cases": [
+    {
+      "case": "pic_1A_n33",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -3755.5705448984213,
+        "field_energy_J": 5.9261089802306556e-05,
+        "alive_electrons": 349762396181.50714,
+        "core_electron_count": 108320710218.95146,
+        "residence_s": 5.603811386134054e-08,
+        "core_residence_s": 1.735489108909478e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.004073420460742803,
+        "field_energy_J": 0.007712533960261812,
+        "alive_electrons": 0.00420951024560062,
+        "core_electron_count": 0.006942172664499323,
+        "residence_s": 0.004209510245563523,
+        "core_residence_s": 0.006942172664464253
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": 5.876436285641992e-05,
+        "field_energy_J": 0.025151277523756028,
+        "alive_electrons": 0.013994791162681097,
+        "core_electron_count": 0.0218995697345369,
+        "residence_s": 0.01399479116255207,
+        "core_residence_s": 0.021899569734407646
+      },
+      "final_loss_fraction": 0.8122033333333334,
+      "final_core_entries_per_injected_particle": 0.858555,
+      "final_repeated_entry_particle_fraction": 0.18880833333333333,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.030234629259503983,
+        0.02748080324713434,
+        0.031260644912398786,
+        0.015033181346214617,
+        0.6485485982574151,
+        0.24744214297733327
+      ],
+      "max_abs_charge_balance_C": 4.52699405638021e-19,
+      "max_abs_deposition_error_C": 5.293955920339377e-23,
+      "wall_s_per_step": 0.0040971938932562865
+    },
+    {
+      "case": "pic_1A_n49",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -3718.0671170947803,
+        "field_energy_J": 5.6447169440644516e-05,
+        "alive_electrons": 333196009764.1386,
+        "core_electron_count": 102796325818.29845,
+        "residence_s": 5.338388613857042e-08,
+        "core_residence_s": 1.6469787128699463e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0033380641847823075,
+        "field_energy_J": 0.004154040017482941,
+        "alive_electrons": 0.0029146022786332693,
+        "core_electron_count": 0.004294845412895398,
+        "residence_s": 0.002914602278596671,
+        "core_residence_s": 0.004294845412867478
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.0009223905436596418,
+        "field_energy_J": 0.012793774453641587,
+        "alive_electrons": 0.009461136225173871,
+        "core_electron_count": 0.010449482788669685,
+        "residence_s": 0.009461136225044728,
+        "core_residence_s": 0.010449482788540469
+      },
+      "final_loss_fraction": 0.8212383333333333,
+      "final_core_entries_per_injected_particle": 0.8305516666666667,
+      "final_repeated_entry_particle_fraction": 0.17739666666666667,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.030372831273097742,
+        0.014486253483053031,
+        0.029053685186801233,
+        0.02679084228492338,
+        0.6879509196477677,
+        0.21134546812435692
+      ],
+      "max_abs_charge_balance_C": 4.553132963736886e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.0041505715413577855
+    },
+    {
+      "case": "pic_1A_n65",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -3693.0864560745713,
+        "field_energy_J": 5.865667835765997e-05,
+        "alive_electrons": 339663325513.4318,
+        "core_electron_count": 109368480380.90674,
+        "residence_s": 5.4420064356391357e-08,
+        "core_residence_s": 1.7522762376223353e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0037354593285986275,
+        "field_energy_J": 0.01082772306147559,
+        "alive_electrons": 0.006371180246225174,
+        "core_electron_count": 0.010100564943212858,
+        "residence_s": 0.00637118024618937,
+        "core_residence_s": 0.010100564943182918
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.005511063941542667,
+        "field_energy_J": 0.031918317327337124,
+        "alive_electrons": 0.020051241742355386,
+        "core_electron_count": 0.02544160631335236,
+        "residence_s": 0.020051241742226326,
+        "core_residence_s": 0.02544160631322385
+      },
+      "final_loss_fraction": 0.81781,
+      "final_core_entries_per_injected_particle": 0.8393633333333334,
+      "final_repeated_entry_particle_fraction": 0.184355,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.03310263590157453,
+        0.014822106194185284,
+        0.032825472909355474,
+        0.028961494723713333,
+        0.688534011567479,
+        0.2017542787036924
+      ],
+      "max_abs_charge_balance_C": 4.603094672735088e-19,
+      "max_abs_deposition_error_C": 5.293955920339377e-23,
+      "wall_s_per_step": 0.004196117131977032
+    },
+    {
+      "case": "pic_1A_n97",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -3517.057140831622,
+        "field_energy_J": 5.393800842529431e-05,
+        "alive_electrons": 327380993510.2461,
+        "core_electron_count": 104284956631.11707,
+        "residence_s": 5.2452217821739496e-08,
+        "core_residence_s": 1.6708292079194312e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.004627204016151439,
+        "field_energy_J": 0.01376080846200411,
+        "alive_electrons": 0.008405217266233406,
+        "core_electron_count": 0.013705505728145875,
+        "residence_s": 0.008405217266195818,
+        "core_residence_s": 0.013705505728109035
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.0039066195453702005,
+        "field_energy_J": 0.04578186082757266,
+        "alive_electrons": 0.02832864785120227,
+        "core_electron_count": 0.04511328070705195,
+        "residence_s": 0.02832864785107311,
+        "core_residence_s": 0.045113280706923074
+      },
+      "final_loss_fraction": 0.8231866666666666,
+      "final_core_entries_per_injected_particle": 0.8223933333333333,
+      "final_repeated_entry_particle_fraction": 0.17332666666666666,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.027270040007126777,
+        0.012990168289087934,
+        0.02168604933672395,
+        0.023562901893454703,
+        0.6589088744553686,
+        0.25558196601823807
+      ],
+      "max_abs_charge_balance_C": 4.653916649570346e-19,
+      "max_abs_deposition_error_C": 5.293955920339377e-23,
+      "wall_s_per_step": 0.004086608943063765
+    },
+    {
+      "case": "pic_1A_n129",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -3340.530767141371,
+        "field_energy_J": 5.0373616608475346e-05,
+        "alive_electrons": 317740766454.8231,
+        "core_electron_count": 100412254743.21306,
+        "residence_s": 5.0907683168275426e-08,
+        "core_residence_s": 1.6087816831670065e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0045105083298326775,
+        "field_energy_J": 0.011267366675573457,
+        "alive_electrons": 0.006309970431083543,
+        "core_electron_count": 0.012199604946824207,
+        "residence_s": 0.006309970431045849,
+        "core_residence_s": 0.012199604946787401
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.00730116755933716,
+        "field_energy_J": 0.03821723212822014,
+        "alive_electrons": 0.021523778261727543,
+        "core_electron_count": 0.04075125453966332,
+        "residence_s": 0.021523778261598243,
+        "core_residence_s": 0.04075125453953409
+      },
+      "final_loss_fraction": 0.8287383333333334,
+      "final_core_entries_per_injected_particle": 0.80552,
+      "final_repeated_entry_particle_fraction": 0.17056333333333334,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.025882717303209898,
+        0.013196766973089616,
+        0.021353744547434553,
+        0.02119486850493622,
+        0.6745253326844219,
+        0.24384656998690782
+      ],
+      "max_abs_charge_balance_C": 4.655240138550431e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.0041753869724522035
+    },
+    {
+      "case": "pic_1A_n65_particles",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -3696.055159916123,
+        "field_energy_J": 5.851802909391333e-05,
+        "alive_electrons": 339303434538.4576,
+        "core_electron_count": 108965485915.04715,
+        "residence_s": 5.436240346530229e-08,
+        "core_residence_s": 1.7458195544540252e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.003332317580235863,
+        "field_energy_J": 0.009341996793796005,
+        "alive_electrons": 0.0050823652628379816,
+        "core_electron_count": 0.007150160815891401,
+        "residence_s": 0.005082365262801357,
+        "core_residence_s": 0.0071501608158624835
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.007048344622954489,
+        "field_energy_J": 0.02925326055750352,
+        "alive_electrons": 0.01640274215366799,
+        "core_electron_count": 0.017338064595558745,
+        "residence_s": 0.016402742153538794,
+        "core_residence_s": 0.017338064595430115
+      },
+      "final_loss_fraction": 0.8178533333333333,
+      "final_core_entries_per_injected_particle": 0.839355,
+      "final_repeated_entry_particle_fraction": 0.18451333333333333,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.03311107125972057,
+        0.014441260861768206,
+        0.032145127895792235,
+        0.02919125678605781,
+        0.688993747860252,
+        0.20211753533640914
+      ],
+      "max_abs_charge_balance_C": 3.4212851879683267e-19,
+      "max_abs_deposition_error_C": 2.6469779601696886e-23,
+      "wall_s_per_step": 0.00407030828922987
+    },
+    {
+      "case": "pic_1A_n65_dt",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -3694.405843665052,
+        "field_energy_J": 5.845012548836469e-05,
+        "alive_electrons": 338879459950.51105,
+        "core_electron_count": 108811472043.85077,
+        "residence_s": 5.429447524748058e-08,
+        "core_residence_s": 1.7433519801966e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0034622152136476107,
+        "field_energy_J": 0.009023216036511142,
+        "alive_electrons": 0.005006532990711244,
+        "core_electron_count": 0.010397570694263728,
+        "residence_s": 0.005006532990677046,
+        "core_residence_s": 0.010397570694238615
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.005986604982680111,
+        "field_energy_J": 0.02601066004755254,
+        "alive_electrons": 0.014757001375209399,
+        "core_electron_count": 0.021213426688058857,
+        "residence_s": 0.014757001375080424,
+        "core_residence_s": 0.021213426687930408
+      },
+      "final_loss_fraction": 0.818515,
+      "final_core_entries_per_injected_particle": 0.8373283333333333,
+      "final_repeated_entry_particle_fraction": 0.18358166666666667,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.03263837559482722,
+        0.014385808445782912,
+        0.03219244607612567,
+        0.029246053320138705,
+        0.688973323640984,
+        0.20256399292214153
+      ],
+      "max_abs_charge_balance_C": 8.340098156902655e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.0030168737752145776
+    },
+    {
+      "case": "pic_1A_n65_s2345",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -3693.008112036384,
+        "field_energy_J": 5.860372171778985e-05,
+        "alive_electrons": 339684985403.8338,
+        "core_electron_count": 109080536702.36763,
+        "residence_s": 5.4423534653421056e-08,
+        "core_residence_s": 1.7476628712857058e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.003809296734121715,
+        "field_energy_J": 0.008639694665794216,
+        "alive_electrons": 0.004945772785508033,
+        "core_electron_count": 0.008644911944919733,
+        "residence_s": 0.004945772785474314,
+        "core_residence_s": 0.00864491194489802
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.0030292318839969393,
+        "field_energy_J": 0.02319708495580999,
+        "alive_electrons": 0.014334613987540027,
+        "core_electron_count": 0.01492249995971818,
+        "residence_s": 0.014334613987411015,
+        "core_residence_s": 0.014922499959589716
+      },
+      "final_loss_fraction": 0.8178716666666667,
+      "final_core_entries_per_injected_particle": 0.8397483333333333,
+      "final_repeated_entry_particle_fraction": 0.18457,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.033085875330889324,
+        0.014747627480268909,
+        0.03253566676108517,
+        0.02916309200913754,
+        0.6889589442516451,
+        0.20150879416697404
+      ],
+      "max_abs_charge_balance_C": 4.586948107178053e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.004321757270985593
+    }
+  ],
+  "final_fields": {
+    "pic_1A_n33": {
+      "center_potential_V": -2774.775290366821,
+      "minimum_potential_position_m": [
+        0.0,
+        0.0,
+        -0.56875
+      ]
+    },
+    "pic_1A_n49": {
+      "center_potential_V": -2617.164854583367,
+      "minimum_potential_position_m": [
+        0.012500000000000011,
+        0.0,
+        -0.56875
+      ]
+    },
+    "pic_1A_n65": {
+      "center_potential_V": -2725.157693070643,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ]
+    },
+    "pic_1A_n97": {
+      "center_potential_V": -2722.944302094374,
+      "minimum_potential_position_m": [
+        0.006249999999999978,
+        0.0,
+        -0.5822916666666667
+      ]
+    },
+    "pic_1A_n129": {
+      "center_potential_V": -2628.584178651191,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ]
+    },
+    "pic_1A_n65_particles": {
+      "center_potential_V": -2729.761858016668,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ]
+    },
+    "pic_1A_n65_dt": {
+      "center_potential_V": -2707.651341175639,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ]
+    },
+    "pic_1A_n65_s2345": {
+      "center_potential_V": -2740.3797050828243,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ]
+    }
+  },
+  "mesh_relative_to_129": {
+    "pic_1A_n33": {
+      "minimum_potential_V": -0.12424366266568372,
+      "field_energy_J": 0.1764311120027045,
+      "alive_electrons": 0.10077910393420325,
+      "core_electron_count": 0.07875986348442138,
+      "residence_s": 0.10077910393420314,
+      "core_residence_s": 0.07875986348442168
+    },
+    "pic_1A_n49": {
+      "minimum_potential_V": -0.11301687554175185,
+      "field_energy_J": 0.12057011668182063,
+      "alive_electrons": 0.04864104622694974,
+      "core_electron_count": 0.023742829808794125,
+      "residence_s": 0.048641046226949716,
+      "core_residence_s": 0.02374282980879424
+    },
+    "pic_1A_n65": {
+      "minimum_potential_V": -0.10553882406983381,
+      "field_energy_J": 0.16443254042218208,
+      "alive_electrons": 0.06899510976576463,
+      "core_electron_count": 0.08919454762367078,
+      "residence_s": 0.0689951097657646,
+      "core_residence_s": 0.08919454762367078
+    },
+    "pic_1A_n97": {
+      "minimum_potential_V": -0.0528438101593393,
+      "field_energy_J": 0.0707591008309547,
+      "alive_electrons": 0.03033991251101749,
+      "core_electron_count": 0.0385680203856369,
+      "residence_s": 0.03033991251101741,
+      "core_residence_s": 0.03856802038563711
+    }
+  },
+  "variants_relative_to_n65": {
+    "pic_1A_n65_particles": {
+      "minimum_potential_V": -0.0008038544119834355,
+      "field_energy_J": -0.0023637421625074427,
+      "alive_electrons": -0.0010595520562316683,
+      "core_electron_count": -0.0036847404705272137,
+      "residence_s": -0.0010595520562315334,
+      "core_residence_s": -0.003684740470527136
+    },
+    "pic_1A_n65_dt": {
+      "minimum_potential_V": -0.0003572587877845662,
+      "field_energy_J": -0.00352138707950387,
+      "alive_electrons": -0.0023077721497777033,
+      "core_electron_count": -0.0050929512334452285,
+      "residence_s": -0.0023077721497774596,
+      "core_residence_s": -0.005092951233445062
+    },
+    "pic_1A_n65_s2345": {
+      "minimum_potential_V": 2.1213702717021466e-05,
+      "field_energy_J": -0.0009028237082778269,
+      "alive_electrons": 6.376870499408983e-05,
+      "core_electron_count": -0.002632784852969181,
+      "residence_s": 6.376870499404684e-05,
+      "core_residence_s": -0.002632784852968967
+    }
+  },
+  "limitations": [
+    "Residence is live charge divided by injection rate; it equals mean dwell only in a stationary state.",
+    "The 50 micrometre source is unresolved on every mesh in this study.",
+    "Grounded outer box, imposed two-coil magnetic field, electrons only.",
+    "One seed per mesh; seed spread is from a single alternative seed at 65 cubed."
+  ]
+}
