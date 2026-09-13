@@ -1,0 +1,1057 @@
+{
+  "scope": "Grounded, absorbing gun barrel around the emitter of the 1 A external-gun CUDA PIC model.",
+  "cases": [
+    {
+      "case": "pic_1A_gun_wall",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -3694.5799878995467,
+        "field_energy_J": 5.8504981535388165e-05,
+        "alive_electrons": 339183903459.9698,
+        "core_electron_count": 109113041987.25046,
+        "residence_s": 5.434325247520331e-08,
+        "core_residence_s": 1.748183663364913e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.003553365227715192,
+        "field_energy_J": 0.006865438704650714,
+        "alive_electrons": 0.004169133660149668,
+        "core_electron_count": 0.006900150420425384,
+        "residence_s": 0.004169133660115149,
+        "core_residence_s": 0.0069001504203995345
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.0006703553548575672,
+        "field_energy_J": 0.019518721473955,
+        "alive_electrons": 0.012512827966542779,
+        "core_electron_count": 0.015025096269733477,
+        "residence_s": 0.012512827966413627,
+        "core_residence_s": 0.015025096269604575
+      },
+      "final_loss_fraction": 0.8179733333333333,
+      "final_core_entries_per_injected_particle": 0.8381383333333333,
+      "final_repeated_entry_particle_fraction": 0.18444833333333333,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.03319382864967073,
+        0.014656142009519462,
+        0.032079285388276715,
+        0.029336734693877552,
+        0.6893032372693486,
+        0.2014307719893069
+      ],
+      "max_abs_charge_balance_C": 4.577882207664472e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.002493344471255938
+    },
+    {
+      "case": "pic_1A_gun_b1625",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4256.291610355277,
+        "field_energy_J": 8.012549798533589e-05,
+        "alive_electrons": 395582395746.71545,
+        "core_electron_count": 132615629798.49109,
+        "residence_s": 6.337928712866127e-08,
+        "core_residence_s": 2.1247366336616355e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0035550833925014195,
+        "field_energy_J": 0.009542662958852354,
+        "alive_electrons": 0.006215726488994088,
+        "core_electron_count": 0.011284896289339118,
+        "residence_s": 0.006215726488957217,
+        "core_residence_s": 0.011284896289305226
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.0033465426290216985,
+        "field_energy_J": 0.030605795603545562,
+        "alive_electrons": 0.020277703170885144,
+        "core_electron_count": 0.03324765756709771,
+        "residence_s": 0.020277703170756032,
+        "core_residence_s": 0.03324765756696897
+      },
+      "final_loss_fraction": 0.7872983333333333,
+      "final_core_entries_per_injected_particle": 1.0314683333333334,
+      "final_repeated_entry_particle_fraction": 0.22411833333333334,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.08995498108100644,
+        0.04402923928153856,
+        0.07951961407094392,
+        0.08492372561475221,
+        0.04478415775954926,
+        0.6567882821922096
+      ],
+      "max_abs_charge_balance_C": 4.401527301068167e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.003719322508238256
+    },
+    {
+      "case": "pic_1A_gun_b195",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4261.991681607477,
+        "field_energy_J": 8.032813403764221e-05,
+        "alive_electrons": 396269085339.1453,
+        "core_electron_count": 132553523693.34424,
+        "residence_s": 6.348930693064136e-08,
+        "core_residence_s": 2.1237415841566865e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.004186468866226324,
+        "field_energy_J": 0.012956787555835163,
+        "alive_electrons": 0.007571143490620034,
+        "core_electron_count": 0.009686022034421439,
+        "residence_s": 0.007571143490583404,
+        "core_residence_s": 0.00968602203438605
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.009700095584948247,
+        "field_energy_J": 0.04094900542968259,
+        "alive_electrons": 0.024453537500846324,
+        "core_electron_count": 0.030150411728972683,
+        "residence_s": 0.0244535375007173,
+        "core_residence_s": 0.030150411728843748
+      },
+      "final_loss_fraction": 0.7870216666666666,
+      "final_core_entries_per_injected_particle": 1.030915,
+      "final_repeated_entry_particle_fraction": 0.22446166666666667,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.08980519958756812,
+        0.04418912947414936,
+        0.07895584769480041,
+        0.08532644719399028,
+        0.04389453527765503,
+        0.6578288407718368
+      ],
+      "max_abs_charge_balance_C": 4.343690832638459e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.0035080086053473256
+    },
+    {
+      "case": "pic_1A_gun_b26",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4258.368866840003,
+        "field_energy_J": 8.03323540242499e-05,
+        "alive_electrons": 397464488819.7034,
+        "core_electron_count": 133191702546.92796,
+        "residence_s": 6.368083168311646e-08,
+        "core_residence_s": 2.133966336631925e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.0038079098688131754,
+        "field_energy_J": 0.010423569267090349,
+        "alive_electrons": 0.006307733092860385,
+        "core_electron_count": 0.010744425160457715,
+        "residence_s": 0.006307733092823622,
+        "core_residence_s": 0.010744425160422061
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.004030089323952189,
+        "field_energy_J": 0.033395458498803716,
+        "alive_electrons": 0.020565367173810117,
+        "core_electron_count": 0.0338956373657545,
+        "residence_s": 0.020565367173680956,
+        "core_residence_s": 0.03389563736562588
+      },
+      "final_loss_fraction": 0.7862533333333334,
+      "final_core_entries_per_injected_particle": 1.0338433333333332,
+      "final_repeated_entry_particle_fraction": 0.22471,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.09096816114359974,
+        0.044050894243752275,
+        0.07977916948926032,
+        0.0844842602961304,
+        0.042055493343287294,
+        0.65866202148397
+      ],
+      "max_abs_charge_balance_C": 4.351102370926934e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.0035117934036627413
+    },
+    {
+      "case": "pic_1A_gun_b195_r004",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4362.43658944255,
+        "field_energy_J": 8.41315980156619e-05,
+        "alive_electrons": 405888610359.5194,
+        "core_electron_count": 136253100950.83144,
+        "residence_s": 6.503052475242231e-08,
+        "core_residence_s": 2.1830153465328763e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.004157121466988971,
+        "field_energy_J": 0.011008677040690777,
+        "alive_electrons": 0.006546398420378819,
+        "core_electron_count": 0.009299188120060763,
+        "residence_s": 0.0065463984203433185,
+        "core_residence_s": 0.00929918812002842
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.006891067740730312,
+        "field_energy_J": 0.03433037413705692,
+        "alive_electrons": 0.02025047849264599,
+        "core_electron_count": 0.025822751059241138,
+        "residence_s": 0.020250478492517158,
+        "core_residence_s": 0.025822751059112508
+      },
+      "final_loss_fraction": 0.7821166666666667,
+      "final_core_entries_per_injected_particle": 1.054535,
+      "final_repeated_entry_particle_fraction": 0.229355,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.0843476834975214,
+        0.043092538166895816,
+        0.0747234450484996,
+        0.08175346981335957,
+        0.09662079491416391,
+        0.6194620685595597
+      ],
+      "max_abs_charge_balance_C": 4.381939664162911e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.003507617198334386
+    },
+    {
+      "case": "pic_1A_gun_b195_r010",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4158.10864273397,
+        "field_energy_J": 7.656119860023312e-05,
+        "alive_electrons": 387679810997.3342,
+        "core_electron_count": 129132805937.82246,
+        "residence_s": 6.211315346529596e-08,
+        "core_residence_s": 2.068935643562671e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.003331287022850927,
+        "field_energy_J": 0.013786264032900675,
+        "alive_electrons": 0.008103497290908802,
+        "core_electron_count": 0.014004924163355184,
+        "residence_s": 0.008103497290871866,
+        "core_residence_s": 0.014004924163319396
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.0024166482162727983,
+        "field_energy_J": 0.044788989920897665,
+        "alive_electrons": 0.026553394771202207,
+        "core_electron_count": 0.04429846334657582,
+        "residence_s": 0.026553394771073217,
+        "core_residence_s": 0.04429846334644722
+      },
+      "final_loss_fraction": 0.7911716666666667,
+      "final_core_entries_per_injected_particle": 1.01209,
+      "final_repeated_entry_particle_fraction": 0.21997,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.09226335145114328,
+        0.046011381323434825,
+        0.07863816916829923,
+        0.08617989168593831,
+        0.0016252019227464439,
+        0.6952820044484379
+      ],
+      "max_abs_charge_balance_C": 4.399806765394056e-19,
+      "max_abs_deposition_error_C": 5.293955920339377e-23,
+      "wall_s_per_step": 0.0034331884837647277
+    },
+    {
+      "case": "pic_1A_gun_b195_s2345",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4260.077102237248,
+        "field_energy_J": 8.01137334659641e-05,
+        "alive_electrons": 395648487766.07324,
+        "core_electron_count": 132440465863.1291,
+        "residence_s": 6.338987623757215e-08,
+        "core_residence_s": 2.1219301980180743e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.003697254767536574,
+        "field_energy_J": 0.012740030301150944,
+        "alive_electrons": 0.0074078159199580705,
+        "core_electron_count": 0.013381546822403025,
+        "residence_s": 0.007407815919920665,
+        "core_residence_s": 0.013381546822367394
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.00883562798634207,
+        "field_energy_J": 0.04230144131691129,
+        "alive_electrons": 0.024671110803116923,
+        "core_electron_count": 0.042002641988564286,
+        "residence_s": 0.02467111080298799,
+        "core_residence_s": 0.042002641988435556
+      },
+      "final_loss_fraction": 0.7869233333333333,
+      "final_core_entries_per_injected_particle": 1.0316233333333333,
+      "final_repeated_entry_particle_fraction": 0.22423666666666667,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.09054262140608121,
+        0.04444393371791042,
+        0.07922594286502264,
+        0.08446140056537427,
+        0.04307876169244559,
+        0.6582473397531658
+      ],
+      "max_abs_charge_balance_C": 4.382336710856936e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.0038441458696809906
+    },
+    {
+      "case": "pic_1A_gun_b195_n97",
+      "window_s": [
+        2e-07,
+        3e-07
+      ],
+      "window_samples": 101,
+      "mean": {
+        "minimum_potential_V": -4061.149330451078,
+        "field_energy_J": 7.66782719677513e-05,
+        "alive_electrons": 384945288457.2859,
+        "core_electron_count": 133433854559.8812,
+        "residence_s": 6.167503465341513e-08,
+        "core_residence_s": 2.1378460396022193e-08
+      },
+      "relative_std": {
+        "minimum_potential_V": 0.005242080251529215,
+        "field_energy_J": 0.016850092656886653,
+        "alive_electrons": 0.008324777453286141,
+        "core_electron_count": 0.011017943295516952,
+        "residence_s": 0.008324777453251872,
+        "core_residence_s": 0.011017943295483617
+      },
+      "relative_drift_per_100ns": {
+        "minimum_potential_V": -0.012819830594844105,
+        "field_energy_J": 0.05141082670674785,
+        "alive_electrons": 0.024730595554076026,
+        "core_electron_count": 0.031908760052781836,
+        "residence_s": 0.024730595553947327,
+        "core_residence_s": 0.031908760052653265
+      },
+      "final_loss_fraction": 0.7928683333333333,
+      "final_core_entries_per_injected_particle": 0.9705383333333333,
+      "final_repeated_entry_particle_fraction": 0.21087833333333333,
+      "final_exit_fractions_xlo_xhi_ylo_yhi_zlo_zhi": [
+        0.09040826848010212,
+        0.0460707534431542,
+        0.07549652615815186,
+        0.0790219232563278,
+        0.030550168168315617,
+        0.6784523604939484
+      ],
+      "max_abs_charge_balance_C": 4.444805390716941e-19,
+      "max_abs_deposition_error_C": 4.632211430296955e-23,
+      "wall_s_per_step": 0.003478827511332929
+    }
+  ],
+  "barrels": {
+    "pic_1A_gun_wall": {
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.65
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        65
+      ],
+      "gun_barrel": null,
+      "seed": 1234,
+      "source_potential_V": {
+        "window_mean": 0.0,
+        "final": 0.0
+      },
+      "final_conductor_charge_C": null,
+      "final_barrel_exit_fraction": 0.0
+    },
+    "pic_1A_gun_b1625": {
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.8125
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        73
+      ],
+      "gun_barrel": {
+        "front_m": [
+          0.0,
+          0.004,
+          -0.65
+        ],
+        "axis": [
+          -0.0,
+          0.49999999999999994,
+          -0.8660254037844387
+        ],
+        "length_m": 2.0,
+        "radius_m": 0.03,
+        "voltage_V": 0.0,
+        "nodes": 284
+      },
+      "seed": 1234,
+      "source_potential_V": {
+        "window_mean": -459.8209527707448,
+        "final": -459.6532053737893
+      },
+      "final_conductor_charge_C": [
+        4.4132369653437006e-09
+      ],
+      "final_barrel_exit_fraction": 0.5401108008611729
+    },
+    "pic_1A_gun_b195": {
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        81
+      ],
+      "gun_barrel": {
+        "front_m": [
+          0.0,
+          0.004,
+          -0.65
+        ],
+        "axis": [
+          -0.0,
+          0.49999999999999994,
+          -0.8660254037844387
+        ],
+        "length_m": 2.0,
+        "radius_m": 0.03,
+        "voltage_V": 0.0,
+        "nodes": 588
+      },
+      "seed": 1234,
+      "source_potential_V": {
+        "window_mean": -461.6581868326089,
+        "final": -465.679536412374
+      },
+      "final_conductor_charge_C": [
+        4.8595546430467145e-09
+      ],
+      "final_barrel_exit_fraction": 0.5399364269937507
+    },
+    "pic_1A_gun_b26": {
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -1.3
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        97
+      ],
+      "gun_barrel": {
+        "front_m": [
+          0.0,
+          0.004,
+          -0.65
+        ],
+        "axis": [
+          -0.0,
+          0.49999999999999994,
+          -0.8660254037844387
+        ],
+        "length_m": 2.0,
+        "radius_m": 0.03,
+        "voltage_V": 0.0,
+        "nodes": 941
+      },
+      "seed": 1234,
+      "source_potential_V": {
+        "window_mean": -461.35301666674053,
+        "final": -464.38676607881314
+      },
+      "final_conductor_charge_C": [
+        4.934118821912811e-09
+      ],
+      "final_barrel_exit_fraction": 0.540014668724245
+    },
+    "pic_1A_gun_b195_r004": {
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        81
+      ],
+      "gun_barrel": {
+        "front_m": [
+          0.0,
+          0.004,
+          -0.65
+        ],
+        "axis": [
+          -0.0,
+          0.49999999999999994,
+          -0.8660254037844387
+        ],
+        "length_m": 2.0,
+        "radius_m": 0.02,
+        "voltage_V": 0.0,
+        "nodes": 263
+      },
+      "seed": 1234,
+      "source_potential_V": {
+        "window_mean": -503.8679562674121,
+        "final": -504.31977640997263
+      },
+      "final_conductor_charge_C": [
+        4.104692290986886e-09
+      ],
+      "final_barrel_exit_fraction": 0.49317663605173995
+    },
+    "pic_1A_gun_b195_r010": {
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        81
+      ],
+      "gun_barrel": {
+        "front_m": [
+          0.0,
+          0.004,
+          -0.65
+        ],
+        "axis": [
+          -0.0,
+          0.49999999999999994,
+          -0.8660254037844387
+        ],
+        "length_m": 2.0,
+        "radius_m": 0.05,
+        "voltage_V": 0.0,
+        "nodes": 1622
+      },
+      "seed": 1234,
+      "source_potential_V": {
+        "window_mean": -428.12448715323427,
+        "final": -427.63951275156313
+      },
+      "final_conductor_charge_C": [
+        6.138273371169216e-09
+      ],
+      "final_barrel_exit_fraction": 0.5709591049561515
+    },
+    "pic_1A_gun_b195_s2345": {
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        81
+      ],
+      "gun_barrel": {
+        "front_m": [
+          0.0,
+          0.004,
+          -0.65
+        ],
+        "axis": [
+          -0.0,
+          0.49999999999999994,
+          -0.8660254037844387
+        ],
+        "length_m": 2.0,
+        "radius_m": 0.03,
+        "voltage_V": 0.0,
+        "nodes": 588
+      },
+      "seed": 2345,
+      "source_potential_V": {
+        "window_mean": -460.67511475077487,
+        "final": -463.316338195217
+      },
+      "final_conductor_charge_C": [
+        4.837544833873889e-09
+      ],
+      "final_barrel_exit_fraction": 0.5392287262206822
+    },
+    "pic_1A_gun_b195_n97": {
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        97,
+        97,
+        121
+      ],
+      "gun_barrel": {
+        "front_m": [
+          0.0,
+          0.004,
+          -0.65
+        ],
+        "axis": [
+          -0.0,
+          0.49999999999999994,
+          -0.8660254037844387
+        ],
+        "length_m": 2.0,
+        "radius_m": 0.03,
+        "voltage_V": 0.0,
+        "nodes": 1929
+      },
+      "seed": 1234,
+      "source_potential_V": {
+        "window_mean": -258.34522034310345,
+        "final": -258.1755685383227
+      },
+      "final_conductor_charge_C": [
+        4.903219097416465e-09
+      ],
+      "final_barrel_exit_fraction": 0.5718814178898977
+    }
+  },
+  "final_fields": {
+    "pic_1A_gun_wall": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "origin_potential_V": -2742.1731796719623,
+      "core_minimum_potential_V": -2909.3821457194563,
+      "core_minimum_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.06093749999999998
+      ],
+      "minimum_potential_V": -3681.2235802224895,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.65
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        65
+      ]
+    },
+    "pic_1A_gun_b1625": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3356.5256234516164,
+      "core_minimum_potential_V": -3557.98382120058,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.06093750000000009
+      ],
+      "minimum_potential_V": -4260.968546589741,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.5687500000000001
+      ],
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.8125
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        73
+      ]
+    },
+    "pic_1A_gun_b195": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3358.3252599601146,
+      "core_minimum_potential_V": -3563.9390254357068,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.06093749999999998
+      ],
+      "minimum_potential_V": -4286.975763998907,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        81
+      ]
+    },
+    "pic_1A_gun_b26": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "origin_potential_V": -3392.597336725705,
+      "core_minimum_potential_V": -3563.5589461914265,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.06093750000000009
+      ],
+      "minimum_potential_V": -4253.395940158479,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -1.3
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        97
+      ]
+    },
+    "pic_1A_gun_b195_r004": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3453.554128081467,
+      "core_minimum_potential_V": -3663.7105755339267,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.06093749999999998
+      ],
+      "minimum_potential_V": -4371.456445454728,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        81
+      ]
+    },
+    "pic_1A_gun_b195_r010": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3298.894107861184,
+      "core_minimum_potential_V": -3481.916441069474,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.06093749999999998
+      ],
+      "minimum_potential_V": -4170.224184180787,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        81
+      ]
+    },
+    "pic_1A_gun_b195_s2345": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3362.7343139747004,
+      "core_minimum_potential_V": -3563.337095416041,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.06093749999999998
+      ],
+      "minimum_potential_V": -4288.208010510125,
+      "minimum_potential_position_m": [
+        0.009375000000000022,
+        0.0,
+        -0.56875
+      ],
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        65,
+        65,
+        81
+      ]
+    },
+    "pic_1A_gun_b195_n97": {
+      "origin_node_m": [
+        0.0,
+        0.0,
+        1.1102230246251565e-16
+      ],
+      "origin_potential_V": -3402.679731710342,
+      "core_minimum_potential_V": -3634.9023031075685,
+      "core_minimum_position_m": [
+        0.0,
+        0.0,
+        -0.054166666666666585
+      ],
+      "minimum_potential_V": -4094.2457459319317,
+      "minimum_potential_position_m": [
+        0.006249999999999978,
+        0.0,
+        -0.5822916666666667
+      ],
+      "box_lower_m": [
+        -0.3,
+        -0.3,
+        -0.975
+      ],
+      "box_upper_m": [
+        0.3,
+        0.3,
+        0.65
+      ],
+      "mesh_shape": [
+        97,
+        97,
+        121
+      ]
+    }
+  },
+  "relative_to_wall_gun": {
+    "pic_1A_gun_b1625": {
+      "minimum_potential_V": -0.15203666568201066,
+      "field_energy_J": 0.3695500089487257,
+      "alive_electrons": 0.16627703057672302,
+      "core_electron_count": 0.21539668753792823,
+      "residence_s": 0.16627703057672302,
+      "core_residence_s": 0.21539668753792804
+    },
+    "pic_1A_gun_b195": {
+      "minimum_potential_V": -0.15357948550750344,
+      "field_energy_J": 0.37301357815237973,
+      "alive_electrons": 0.16830156530677667,
+      "core_electron_count": 0.21482749705422688,
+      "residence_s": 0.16830156530677615,
+      "core_residence_s": 0.21482749705422696
+    },
+    "pic_1A_gun_b26": {
+      "minimum_potential_V": -0.1525989099672959,
+      "field_energy_J": 0.3730857085333651,
+      "alive_electrons": 0.17182591734224756,
+      "core_electron_count": 0.22067628324844088,
+      "residence_s": 0.17182591734224717,
+      "core_residence_s": 0.22067628324844057
+    },
+    "pic_1A_gun_b195_r004": {
+      "minimum_potential_V": -0.1807665834087666,
+      "field_energy_J": 0.4380245204380221,
+      "alive_electrons": 0.1966623599147949,
+      "core_electron_count": 0.24873340958409185,
+      "residence_s": 0.1966623599147948,
+      "core_residence_s": 0.248733409584092
+    },
+    "pic_1A_gun_b195_r010": {
+      "minimum_potential_V": -0.12546179981285221,
+      "field_energy_J": 0.3086270021967823,
+      "alive_electrons": 0.14297821047126397,
+      "core_electron_count": 0.18347727811411635,
+      "residence_s": 0.1429782104712638,
+      "core_residence_s": 0.18347727811411588
+    },
+    "pic_1A_gun_b195_s2345": {
+      "minimum_potential_V": -0.15306127250995033,
+      "field_energy_J": 0.3693489231768298,
+      "alive_electrons": 0.16647188657868417,
+      "core_electron_count": 0.21379134383041387,
+      "residence_s": 0.1664718865786841,
+      "core_residence_s": 0.21379134383041426
+    },
+    "pic_1A_gun_b195_n97": {
+      "minimum_potential_V": -0.09921813677119345,
+      "field_energy_J": 0.31062808594120445,
+      "alive_electrons": 0.13491614587399436,
+      "core_electron_count": 0.22289555977618655,
+      "residence_s": 0.1349161458739941,
+      "core_residence_s": 0.22289555977618633
+    }
+  },
+  "limitations": [
+    "The barrel is a staircase of mesh nodes; the emitter potential is interpolated, not exactly 0 V.",
+    "The 50 micrometre source and a few-cm barrel are both unresolved at the few-cell level.",
+    "Grounded outer box, no coil casings, imposed two-coil magnetic field, electrons only."
+  ],
+  "barrel_relative_to_open_bottom_wall": {
+    "pic_1A_gun_b1625": {
+      "minimum_potential_V": -0.006388149296605973,
+      "field_energy_J": -0.06597499347715097,
+      "alive_electrons": -0.06463129162636162,
+      "core_electron_count": -0.047509480591418615,
+      "residence_s": -0.06463129162636168,
+      "core_residence_s": -0.04750948059141895
+    },
+    "pic_1A_gun_b195": {
+      "minimum_potential_V": -0.005381313998702127,
+      "field_energy_J": -0.06916835520102292,
+      "alive_electrons": -0.08287698892137332,
+      "core_electron_count": -0.04682850743881003,
+      "residence_s": -0.08287698892137377,
+      "core_residence_s": -0.046828507438809654
+    }
+  }
+}

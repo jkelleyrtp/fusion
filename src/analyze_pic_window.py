@@ -153,8 +153,8 @@ def plot_fields(run: Path, output: Path, names: tuple[str, ...]) -> None:
         )
         figure.colorbar(images[0], ax=axes[0, column], label="Potential (V)")
         figure.colorbar(images[1], ax=axes[1, column], label="Electron density (m⁻³)")
-        axes[0, column].set_title(f"{name}: potential, y = 0")
-        axes[1, column].set_title(f"{name}: deposited density, y = 0")
+        axes[0, column].set_title(f"{name}\npotential, y = 0", fontsize=10)
+        axes[1, column].set_title(f"{name}\ndeposited density, y = 0", fontsize=10)
         for axis in axes[:, column]:
             axis.set(xlabel="z (m)", ylabel="x (m)", aspect="equal")
     figure.savefig(output, dpi=160)

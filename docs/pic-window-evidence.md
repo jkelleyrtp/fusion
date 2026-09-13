@@ -193,10 +193,89 @@ Data: `docs/data/pic-domain-1a9dab6.json`.
   total energy than in the reference box. That shifts the returning-beam loss
   from the inlet face (69% → 42% of losses) to the top face, adds 28% core
   residence, and raises the repeated-entry fraction from 18.5% to 28.5%. The
-  change saturates between 1.625a and 1.95a, which is what an energy offset,
-  consistent with an energy offset rather than a wall-distance effect. These cases do not model a
-  physical gun: there is no gun body and no fixed cathode reference.
+  change saturates between 1.625a and 1.95a, consistent with an energy offset
+  rather than a wall-distance effect. These cases do not model a physical gun:
+  there is no gun body and no fixed cathode reference. The gun-barrel study
+  below shows this reading was only partly right.
 - Consequence: the reference-box well depth depends on the transverse wall and
   on where the source's energy is referenced. Well-depth claims need a gun
   electrode held at a fixed potential and the coil casings inside the domain.
   Those are the next boundary-model steps.
+
+## Grounded gun barrel
+
+`run_pic_campaign.py --study gun` puts a physical gun body into the solved
+domain: a solid cylinder held at 0 V, 2 m long along the reversed aim, whose
+front face carries the emitter at `(0, 0.004, −0.65)` m. Its surface nodes are
+held at 0 V by induced charge from a capacitance matrix, and electrons that
+reach it are absorbed and counted separately from the six box faces. Gun
+position, aim (30° off +z, 29.65° to the local field), energy and spread are
+unchanged. The box stays ±0.3 m transversely, so the transverse-wall effect
+above is still present.
+
+| Case | Bottom wall | Barrel radius | Mesh | Seed |
+|---|---:|---:|---|---:|
+| `pic_1A_gun_wall` | 1.3 (gun on wall, no barrel) | — | 65×65×65 | 1234 |
+| `pic_1A_gun_b1625` | 1.625 | 3 cm | 65×65×73 | 1234 |
+| `pic_1A_gun_b195` | 1.95 | 3 cm | 65×65×81 | 1234 |
+| `pic_1A_gun_b26` | 2.6 | 3 cm | 65×65×97 | 1234 |
+| `pic_1A_gun_b195_r004` | 1.95 | 2 cm | 65×65×81 | 1234 |
+| `pic_1A_gun_b195_r010` | 1.95 | 5 cm | 65×65×81 | 1234 |
+| `pic_1A_gun_b195_s2345` | 1.95 | 3 cm | 65×65×81 | 2345 |
+| `pic_1A_gun_b195_n97` | 1.95 | 3 cm | 97×97×121 | 1234 |
+
+### Results
+
+Job `jonathan-pic-c10065923288-89ef7d` at source `52fcfac`: all eight cases
+wrote `DONE` with exit code 0, 263 s of wall time for the 65-node barrel cases.
+Window means cover 200–300 ns; relative standard deviations are ≤1.4% and
+drifts ≤4.4% per 100 ns.
+
+| Case | Window min φ | Field energy | Residence | Core residence | Loss | ≥2 core entries | Barrel share of losses | φ at emitter |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| wall gun | −3695 V | 58.5 µJ | 54.3 ns | 17.5 ns | 0.818 | 0.184 | — | 0 V |
+| barrel, bottom 1.625 | −4256 V | 80.1 µJ | 63.4 ns | 21.3 ns | 0.787 | 0.224 | 0.54 | −460 V |
+| barrel, bottom 1.95 | −4262 V | 80.3 µJ | 63.5 ns | 21.2 ns | 0.787 | 0.224 | 0.54 | −462 V |
+| barrel, bottom 2.6 | −4258 V | 80.3 µJ | 63.7 ns | 21.3 ns | 0.786 | 0.225 | 0.54 | −461 V |
+| barrel 2 cm | −4362 V | 84.1 µJ | 65.0 ns | 21.8 ns | 0.782 | 0.229 | 0.49 | −504 V |
+| barrel 5 cm | −4158 V | 76.6 µJ | 62.1 ns | 20.7 ns | 0.791 | 0.220 | 0.57 | −428 V |
+| seed 2345 | −4260 V | 80.1 µJ | 63.4 ns | 21.2 ns | 0.787 | 0.224 | 0.54 | −461 V |
+| 97-node mesh | −4061 V | 76.7 µJ | 61.7 ns | 21.4 ns | 0.793 | 0.211 | 0.57 | −258 V |
+
+Charge balance stayed within 4.6e−19 C and deposition error within 5.3e−23 C.
+The global minimum stays next to the inlet (z ≈ −0.57 m); the core minimum at
+300 ns is −2909 V for the wall gun and −3564 V for the 3 cm barrel.
+
+![Gun evolution](images/pic-gun-evolution.png)
+![Gun fields](images/pic-gun-fields.png)
+
+Data: `docs/data/pic-gun-52fcfac.json`.
+
+### Interpretation
+
+- **Bottom-wall distance is converged once the gun is a conductor.** Moving the
+  bottom wall from 1.625a to 2.6a changes window potential by 0.1% and core
+  residence by 0.5%. A different seed changes them by under 0.2%.
+- **The grounded inlet plane was suppressing the well.** The barrel holds the
+  emitter near ground (−460 V interpolated, versus −1.9 kV with no gun body),
+  yet keeps most of the open-bottom-wall result: window potential −4262 V
+  versus −4239 V, core residence 21.2 versus 22.3 ns. Relative to the gun on a
+  grounded wall, the well is 15% deeper, core residence 21% longer and
+  repeated core entries rise from 18.4% to 22.4%. So the earlier bottom-wall
+  change was mostly the image charge of the dense beam in the grounded plane at
+  the inlet, and only partly the source-energy offset.
+- **The gun body is the dominant sink.** Returning electrons follow field lines
+  back to the gun: 54% of all losses end on the barrel, and the box's inlet
+  face drops to 4% of wall exits. A thinner barrel (2 cm) deepens the well by
+  2.4% and a fatter one (5 cm) makes it 2.4% shallower. A real gun would not
+  absorb all of these: a returning electron that enters the anode aperture is
+  reflected by the cathode potential. Modelling the cathode as a mirror is a
+  candidate for materially more bounces.
+- **Mesh sensitivity sits at the gun.** The 97-node mesh resolves the barrel
+  better, lowers the emitter's interpolated potential from −462 to −258 V, and
+  gives a 4.7% shallower window minimum and 4.5% less field energy, while core
+  residence changes by only 0.7%. The staircase barrel and the unresolved
+  50 µm source keep the inlet region the least trustworthy part of the field.
+- Still missing: transverse walls (coil casings, next), a cathode/anode gun
+  model, exact particle–conductor crossing (absorption is tested at step
+  endpoints), ions, and the six-coil field.
