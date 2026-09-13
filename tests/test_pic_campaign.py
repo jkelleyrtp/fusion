@@ -195,6 +195,21 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(sorted({item.coil_current for item in configurations}), [10000, 30000, 60000])
         self.assertEqual(sorted({item.energy_ev for item in configurations}), [5000, 10000])
 
+    def test_six_coil_feed_fine_study_refines_the_ion_timestep_and_lowers_pressure(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-feed-fine")
+        configurations = [ion_parser().parse_args(command[2:]) for command in argv]
+        self.assertEqual(len(configurations), 8)
+        for item in configurations:
+            validate_coupled(item)
+            self.assertEqual((item.coils, item.energy_ev, item.cycles), (6, 10000, 32))
+            self.assertEqual(item.dt * item.inject_every, 4e-12)
+        fine = [item for item in configurations if item.gas_pa == 1e-2]
+        self.assertEqual(len(fine), 5)
+        self.assertTrue(all(item.ion_dt == 2e-10 and item.cycle_duration == 1e-6 for item in fine))
+        low = [item for item in configurations if item.gas_pa == 1e-3]
+        self.assertEqual(sorted(item.current_a for item in low), [10, 30, 100])
+        self.assertTrue(all(item.cycle_duration == 1e-5 for item in low))
+
     def test_six_coil_gas_study_compares_uniform_fill_with_inlets(self) -> None:
         argv = commands(Path("/campaign"), "a" * 40, "six-coil-gas")
         configurations = [ion_parser().parse_args(command[2:]) for command in argv]

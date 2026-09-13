@@ -125,6 +125,18 @@ SIX_COIL_FEED = {
     "feed_30A_10keV_10kAt": (30, 10000, 10000, 2e-12, 2),
     "feed_100A_10keV_10kAt": (100, 10000, 10000, 2e-12, 2),
 }
+SIX_COIL_FEED_FINE = {
+    "feed_10A_10keV_idt2": ("feed_10A_10keV", ("--ion-dt", "2e-10")),
+    "feed_30A_10keV_idt2": ("feed_30A_10keV", ("--ion-dt", "2e-10")),
+    "feed_100A_10keV_idt2": ("feed_100A_10keV", ("--ion-dt", "2e-10")),
+    "feed_30A_10keV_60kAt_idt2": ("feed_30A_10keV_60kAt", ("--ion-dt", "2e-10")),
+    "feed_100A_10keV_10kAt_idt2": ("feed_100A_10keV_10kAt", ("--ion-dt", "2e-10")),
+    "feed_10A_10keV_p1e-3": ("feed_10A_10keV", ("--gas-pa", "1e-3", "--cycle-duration", "1e-5")),
+    "feed_30A_10keV_p1e-3": ("feed_30A_10keV", ("--gas-pa", "1e-3", "--cycle-duration", "1e-5",
+                                              "--ion-dt", "5e-10")),
+    "feed_100A_10keV_p1e-3": ("feed_100A_10keV", ("--gas-pa", "1e-3", "--cycle-duration", "1e-5",
+                                                "--ion-dt", "5e-10")),
+}
 FACE_INLET, CORNER_INLET, GUN_INLET = ("0.7", "0", "0"), ("0.68", "0.68", "0.68"), ("0.1", "0", "-0.95")
 SIX_COIL_GAS = {
     "d2_uniform_p1e-3": ("--gas-pa", "1e-3"),
@@ -166,7 +178,10 @@ SIX_COIL_DEUTERON = {  # coil kA-turn, electron dt, inject interval, seed, extra
     "dplus_10mA_100eV_60kAt": (60000, 1e-12, 4, 1234, ("--ion-gun-current", "1e-2", *DEUTERON_GUN)),
     "d2plus_10mA_100eV": (30000, 2e-12, 2, 1234, ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP)),
 }
-COUPLED = ("ions", "six-coil-ions", "six-coil-feed", "six-coil-gas", "six-coil-ion-gun", "six-coil-deuteron")
+COUPLED = (
+    "ions", "six-coil-ions", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas", "six-coil-ion-gun",
+    "six-coil-deuteron",
+)
 
 
 def case_specs(
@@ -220,6 +235,10 @@ def case_specs(
         "six-coil-feed": tuple(
             (name, current, dt, 8, interval, 15000, 65, 1234, "cuda")
             for name, (current, _, _, dt, interval) in SIX_COIL_FEED.items()
+        ),
+        "six-coil-feed-fine": tuple(
+            (name, SIX_COIL_FEED[base][0], SIX_COIL_FEED[base][3], 8, SIX_COIL_FEED[base][4], 15000, 65, 1234, "cuda")
+            for name, (base, _) in SIX_COIL_FEED_FINE.items()
         ),
         "six-coil-gas": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_GAS),
         "six-coil-ion-gun": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_ION_GUN),
@@ -298,7 +317,7 @@ def commands(
                 "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
                 "--casing-voltage", str(voltage), "--coils", str(count), "--coil-offset", str(offset),
             ]
-        if study in ("six-coil-ions", "six-coil-feed", "six-coil-gas", "six-coil-ion-gun", "six-coil-deuteron"):
+        if study in COUPLED[1:]:
             width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
             result[-1] += [
                 "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
@@ -307,11 +326,12 @@ def commands(
             ]
         if study == "six-coil-ions":
             result[-1] += ["--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_IONS[name][2]]
-        if study == "six-coil-feed":
-            _, coil_current, energy, _, _ = SIX_COIL_FEED[name]
+        if study in ("six-coil-feed", "six-coil-feed-fine"):
+            base, extra = SIX_COIL_FEED_FINE[name] if study == "six-coil-feed-fine" else (name, ())
+            _, coil_current, energy, _, _ = SIX_COIL_FEED[base]
             result[-1] += [
                 "--coil-current", str(coil_current), "--energy-ev", str(energy), "--gas-pa", "1e-2",
-                "--cycle-duration", "1e-6", "--cycles", "32", "--save-every-cycles", "4",
+                "--cycle-duration", "1e-6", "--cycles", "32", "--save-every-cycles", "4", *extra,
             ]
         if study == "six-coil-gas":
             result[-1] += ["--fuel", "D2", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_GAS[name]]
@@ -349,7 +369,7 @@ def main() -> None:
         "--study",
         choices=(
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
-            "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-gas",
+            "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas",
             "six-coil-ion-gun", "six-coil-deuteron", "six-coil-tracks",
         ),
         default="startup",
@@ -446,6 +466,13 @@ def main() -> None:
             "magnetic pressure. Non-relativistic pusher (10 keV: gamma 1.02). No Coulomb collisions, gas "
             "depletion or plasma magnetic feedback."
         ) if args.study == "six-coil-feed" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (imposed vacuum field, 32 cycles after a 500 ns electron "
+            "startup), following up six-coil-feed, where 30 A and 100 A stopped on the ion plasma-frequency check "
+            "omega_pi * ion_dt <= 0.1 at 1 ns: 10, 30 and 100 A (10 keV, 30 kA-turn), 30 A at 60 kA-turn and 100 A at "
+            "10 kA-turn at 1e-2 Pa over 1 us cycles with a 0.2 ns ion timestep, and 10, 30 and 100 A at 1e-3 Pa over "
+            "10 us cycles. The 10 A case checks the ion timestep against the passing 1 ns run. No Coulomb "
+            "collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-feed-fine" else (
             "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV gun, 30 kA-turn, 40 x 10 us cycles) "
             "comparing fuel delivery: uniform D2 at 1e-3 and 1e-4 Pa; a steady face inlet (0.7, 0, 0) m at 1e-3 "
             "and 1e-4 Pa m^3/s with a 1 m^3/s pump, where the pumped background Q/S dominates the plume; and "
