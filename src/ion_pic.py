@@ -30,6 +30,7 @@ import torch
 from cusp_sim import E_CHARGE, M_E
 from electrostatic import EPSILON_0
 from run_transient_pic import (
+    GUN_FACES,
     GunSource,
     create_simulation,
     source_geometry,
@@ -283,7 +284,7 @@ class CoupledPIC:
         self.ion_gun_charge = 0.0
         self.generator = torch.Generator(device=device).manual_seed(args.seed + 7919)
         self.source = GunSource(electron_args)
-        self.origin, _ = source_geometry(args)
+        self.origins = [source_geometry(args, face)[0] for face in GUN_FACES[args.guns]]
         self.electron_step = 0
         self.time = 0.0
         empty = self.mesh.lower.new_empty(0)
@@ -597,7 +598,8 @@ class CoupledPIC:
             "potential_max_V": float(potential.max()),
             "potential_origin_V": float(mesh.gather(potential, mesh.lower.new_zeros((1, 3)))[0][0]),
             "core_mean_potential_V": float(potential[core_nodes].mean()),
-            "source_potential_V": source_potential(self.electrons, potential, self.origin),
+            "source_potential_V": source_potential(self.electrons, potential, self.origins[0]),
+            "source_potentials_V": [source_potential(self.electrons, potential, origin) for origin in self.origins],
             "field_energy_J": float(mesh.field_energy(potential)),
             "ion_conductor_charge_C": self.ion_conductor_charge.tolist(),
             "electrons": electrons,
