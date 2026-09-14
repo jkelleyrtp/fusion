@@ -15,6 +15,7 @@ from electrostatic import (
     Torus,
     clip_segment,
     sphere_segment_fraction,
+    tiled_spd_inverse,
 )
 from steady_space_charge import E_CHARGE, M_E, thermal_source, trace_packet
 
@@ -31,6 +32,15 @@ class ElectrostaticTests(unittest.TestCase):
     def mesh(self, nodes: int = 17) -> ElectrostaticMesh:
         lower = torch.tensor([-1, -1, -1], dtype=torch.float64)
         return ElectrostaticMesh(lower, -lower, (nodes,) * 3)
+
+    def test_tiled_spd_inverse_matches_single_block_inverse(self) -> None:
+        generator = torch.Generator().manual_seed(4)
+        basis = torch.randn(53, 53, dtype=torch.float64, generator=generator)
+        matrix = basis @ basis.T + 53 * torch.eye(53, dtype=torch.float64)
+        expected = torch.cholesky_inverse(torch.linalg.cholesky(matrix))
+        for tile in (53, 16, 7):
+            inverse = tiled_spd_inverse(matrix.clone(), tile)
+            torch.testing.assert_close(inverse, expected, rtol=1e-12, atol=1e-14)
 
     def test_charge_conservation_including_boundary_shapes(self) -> None:
         mesh = self.mesh()

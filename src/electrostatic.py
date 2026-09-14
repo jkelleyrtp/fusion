@@ -195,6 +195,46 @@ class Torus:
 
 Shape = Cylinder | Torus
 
+INVERSE_TILE = 16384
+
+
+def tiled_spd_inverse(matrix: torch.Tensor, tile: int = INVERSE_TILE) -> torch.Tensor:
+    """Inverse of a symmetric positive-definite matrix; overwrites `matrix` with its Cholesky factor.
+
+    Every factorization and BLAS call works on blocks of at most `tile` rows, which keeps dense
+    solver element counts below the 32-bit limits that single-call cuSOLVER Cholesky hits above
+    ~65k rows.
+    """
+    count = len(matrix)
+    tiles = [(start, min(start + tile, count)) for start in range(0, count, tile)]
+    for start, end in tiles:
+        matrix[start:end, start:end] = torch.linalg.cholesky(matrix[start:end, start:end])
+        diagonal = matrix[start:end, start:end]
+        if end == count:
+            break
+        panel = torch.linalg.solve_triangular(diagonal.mT, matrix[end:, start:end], upper=True, left=False)
+        matrix[end:, start:end] = panel
+        for row_start, row_end in tiles:
+            if row_start >= end:
+                matrix[row_start:row_end, end:] -= panel[row_start - end:row_end - end] @ panel.mT
+    inverse = matrix.new_empty((count, count))
+    for column_start, column_end in tiles:
+        block = matrix.new_zeros((count, column_end - column_start))
+        block[column_start:column_end].fill_diagonal_(1.0)
+        for start, end in tiles:
+            block[start:end] = torch.linalg.solve_triangular(matrix[start:end, start:end], block[start:end], upper=False)
+            if end < count:
+                block[end:] -= matrix[end:, start:end] @ block[start:end]
+        for start, end in reversed(tiles):
+            block[start:end] = torch.linalg.solve_triangular(
+                matrix[start:end, start:end].mT, block[start:end], upper=True,
+            )
+            if start:
+                block[:start] -= matrix[start:end, :start].mT @ block[start:end]
+        inverse[:, column_start:column_end] = block
+        del block
+    return inverse
+
 
 class Conductors:
     """Conductor surface nodes held at fixed potentials by induced nodal charge (capacitance matrix).
@@ -240,9 +280,8 @@ class Conductors:
             capacitance[start:end, start:] = symmetric
             capacitance[start:, start:end] = symmetric.T
             del symmetric
-        factor = torch.linalg.cholesky(capacitance)
+        self._inverse = tiled_spd_inverse(capacitance)
         del capacitance
-        self._inverse = torch.cholesky_inverse(factor)
 
     def absorbing(self, points: torch.Tensor) -> torch.Tensor:
         """Index of the first shape containing each point, or -1."""

@@ -300,6 +300,20 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(configurations["guns6_1000A_20keV_s2345"].seed, 2345)
         self.assertEqual(configurations["guns6_100A_20keV"].energy_ev, 20000)
 
+    def test_six_coil_mesh_matches_base_cases_on_refined_meshes(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-mesh")
+        configurations = {Path(command[3]).name: ion_parser().parse_args(command[2:]) for command in argv}
+        self.assertEqual(len(configurations), 8)
+        for name, item in configurations.items():
+            validate_coupled(item)
+            self.assertEqual(item.nodes, int(name.rsplit("_n", 1)[1]))
+            self.assertEqual((item.gas_pa, item.cycle_duration, item.cycles, item.dt), (1e-3, 1e-5, 16, 2e-12))
+            self.assertEqual(item.inject_per_step % item.guns, 0)
+        sustain = configurations["sustain_10A_10keV_n81"]
+        self.assertEqual((sustain.guns, sustain.current_a, sustain.inject_per_step, sustain.ion_dt), (1, 10, 8, 1e-9))
+        self.assertEqual(configurations["guns3_100A_10keV_n49"].guns, 3)
+        self.assertEqual(configurations["guns6_1000A_20keV_n81"].ion_dt, 2e-10)
+
     def test_six_coil_gas_study_compares_uniform_fill_with_inlets(self) -> None:
         argv = commands(Path("/campaign"), "a" * 40, "six-coil-gas")
         configurations = [ion_parser().parse_args(command[2:]) for command in argv]

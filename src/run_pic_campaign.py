@@ -198,6 +198,16 @@ SIX_COIL_MULTI_GUN_SCALE = {  # total current, energy, seed, nodes, electron dt,
     "guns6_3000A_20keV": (3000, 20000, 1234, 65, 2e-12, 2, ("--ion-dt", "1e-10", "--cycles", "16")),
     "guns6_3000A_20keV_n49": (3000, 20000, 1234, 49, 2e-12, 2, ("--ion-dt", "1e-10", "--cycles", "16")),
 }
+SIX_COIL_MESH = {  # guns, total current, energy, nodes, particles per step, extra; 16 x 10 us at 1e-3 Pa
+    "guns6_100A_10keV_n81": (6, 100, 10000, 81, 12, ()),
+    "guns6_1000A_20keV_n81": (6, 1000, 20000, 81, 12, ("--ion-dt", "2e-10")),
+    "guns6_100A_20keV_n81": (6, 100, 20000, 81, 12, ()),
+    "guns6_100A_20keV_n49": (6, 100, 20000, 49, 12, ()),
+    "guns3_100A_10keV_n81": (3, 100, 10000, 81, 12, ()),
+    "guns3_100A_10keV_n49": (3, 100, 10000, 49, 12, ()),
+    "sustain_10A_10keV_n81": (1, 10, 10000, 81, 8, ("--ion-dt", "1e-9")),
+    "sustain_10A_10keV_n49": (1, 10, 10000, 49, 8, ("--ion-dt", "1e-9")),
+}
 FACE_INLET, CORNER_INLET, GUN_INLET = ("0.7", "0", "0"), ("0.68", "0.68", "0.68"), ("0.1", "0", "-0.95")
 SIX_COIL_GAS = {
     "d2_uniform_p1e-3": ("--gas-pa", "1e-3"),
@@ -279,6 +289,7 @@ COUPLED = (
     "ions", "six-coil-ions", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas", "six-coil-ion-gun",
     "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture", "six-coil-sustain",
     "six-coil-splitting", "six-coil-gun-limit", "six-coil-multi-gun", "six-coil-multi-gun-check", "six-coil-multi-gun-scale",
+    "six-coil-mesh",
 )
 
 
@@ -361,6 +372,10 @@ def case_specs(
         "six-coil-multi-gun-scale": tuple(
             (name, current, dt, 12, interval, 15000, nodes, seed, "cuda")
             for name, (current, _, seed, nodes, dt, interval, _) in SIX_COIL_MULTI_GUN_SCALE.items()
+        ),
+        "six-coil-mesh": tuple(
+            (name, current, 2e-12, packet, 2, 15000, nodes, 1234, "cuda")
+            for name, (_, current, _, nodes, packet, _) in SIX_COIL_MESH.items()
         ),
         "six-coil-gas": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_GAS),
         "six-coil-ion-gun": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_ION_GUN),
@@ -483,8 +498,11 @@ def commands(
                 "--coil-current", "30000", "--energy-ev", str(energy), "--gas-pa", "1e-3", "--cycle-duration", "1e-5",
                 "--ion-dt", "5e-10", "--cycles", "32", "--save-every-cycles", "4", *extra,
             ]
-        if study in ("six-coil-multi-gun", "six-coil-multi-gun-check", "six-coil-multi-gun-scale"):
-            if study == "six-coil-multi-gun-scale":
+        if study in ("six-coil-multi-gun", "six-coil-multi-gun-check", "six-coil-multi-gun-scale", "six-coil-mesh"):
+            if study == "six-coil-mesh":
+                guns, _, energy, _, _, extra = SIX_COIL_MESH[name]
+                check = ("--cycles", "16")
+            elif study == "six-coil-multi-gun-scale":
                 guns, energy, extra, check = 6, SIX_COIL_MULTI_GUN_SCALE[name][1], (), SIX_COIL_MULTI_GUN_SCALE[name][6]
             else:
                 base, check = (
@@ -546,7 +564,7 @@ def main() -> None:
             "six-coil-ion-gun", "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture",
             "six-coil-sustain", "six-coil-splitting", "six-coil-gun-limit", "six-coil-multi-gun",
             "six-coil-multi-gun-check",
-            "six-coil-multi-gun-scale", "six-coil-tracks",
+            "six-coil-multi-gun-scale", "six-coil-mesh", "six-coil-tracks",
         ),
         default="startup",
     )
@@ -693,6 +711,12 @@ def main() -> None:
             "capacitance factorization (87k and 139k surface nodes; cuSOLVER potrf fails above ~65.5k). "
             "Non-relativistic pusher. No Coulomb collisions, gas depletion or plasma magnetic feedback."
         ) if args.study == "six-coil-multi-gun-scale" else (
+            "Mesh refinement for the multi-gun and sustain traps (30 kA-turn, H2 at 1e-3 Pa, 16 x 10 us, 0.5 ns ion "
+            "steps): six guns at 100 A 10 keV, 1000 A 20 keV and 100 A 20 keV, three guns at 100 A 10 keV, and one "
+            "10 A 10 keV gun on 81-node meshes (87k conductor surface nodes, factored in 16k tiles), with 49-node "
+            "partners where no coarse run exists. Compared with the 65-node runs at 160 us. Non-relativistic pusher. "
+            "No Coulomb collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-mesh" else (
             "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV gun, 30 kA-turn, 40 x 10 us cycles) "
             "comparing fuel delivery: uniform D2 at 1e-3 and 1e-4 Pa; a steady face inlet (0.7, 0, 0) m at 1e-3 "
             "and 1e-4 Pa m^3/s with a 1 m^3/s pump, where the pumped background Q/S dominates the plume; and "
