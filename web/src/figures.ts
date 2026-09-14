@@ -28,6 +28,11 @@ const studies: Study[] = [
     doc: "ion-pic-design.md", figures: pair("six-coil-feed-fine", "High feed"),
   },
   {
+    id: "six-coil-gun-limit", title: "Single-gun limit: 30–300 A at 10–20 keV (six-coil)",
+    summary: "One external gun, H2 at 1e-3 Pa, 320 µs, all 8 cases complete. The choke follows gun perveance I/V^1.5: 100 A at 10 keV and 300 A at 20 keV (~1e-4 A/V^1.5) both choke, with the centre within 270 V of ground and 99.8% of lost ions returning into the gun. 100 A at 20 keV (3.5e-5) reaches the centre: −13.8 kV, neutralization 0.50, 2.5 keV core ions. 30° divergence and +5 kV casings do not unchoke the 10 keV gun. 30 A at 20 keV is still drifting (seed repeat within 3%).",
+    doc: "ion-pic-design.md", figures: pair("six-coil-gun-limit", "Single-gun limit"),
+  },
+  {
     id: "six-coil-gas", title: "D2 fuel delivery: uniform fill, inlets and puffs (six-coil)",
     summary: "1 A 5 keV gun, D2 and D2+ ions, 400 µs, all 8 cases complete. A steady inlet with a normal pump matches uniform gas within 0.1%. Pressure sets the neutralization clock linearly: 148 µs at 1e-3 Pa, 1.36 ms at 1e-4 Pa, ~7.9 ms at 1e-5 Pa, where the well holds −3.0 kV and core ions carry ~770 eV. A puff at the same background speeds ionization by 19–61% because the plume overlaps the electrons; ions are still born deep in the well.",
     doc: "ion-pic-design.md", figures: pair("six-coil-gas", "D2 fuel delivery"),

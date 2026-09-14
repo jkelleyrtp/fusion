@@ -275,6 +275,53 @@ For comparison, 1 A and 300 mA at 5 keV and 1e-3 Pa neutralize to 1.02–1.04 wi
   gas), no plasma magnetic field, one seed, and no cycle-duration control at 10–30 A yet. The
   plateau needs those controls and a longer run before it is a design number.
 
+## Single-gun limit results (job `jonathan-pic-94804d2b895b`, source `ec9a898`)
+
+`run_pic_campaign.py --study six-coil-gun-limit`: where does one external gun choke? Same trap and
+gas as the 1e-3 Pa high-feed group (30 kA-turn, H2 at 1e-3 Pa, 32 × 10 µs cycles, 0.5 ns ion
+step), varying current, gun energy, angular divergence and casing bias. All eight cases have
+`DONE`, every requested cycle, finite records and ion charge balance ≤ 4e-19 C; the ion step guard
+raises on violation, so every case passed it.
+Raw output: `/public/jonathan/cusp/runs/pic-94804d2b895b/attempt-20260913-224801-086294209`.
+Summary: `docs/data/pic-six-coil-gun-limit-ec9a898.json`. Last-quarter means ± half-range; perveance
+is I / V^1.5 of the gun; "gun" is the share of lost ions absorbed by the gun barrel.
+
+| Case | Perveance (A/V^1.5) | Neutralization | Origin | Domain minimum | Electron charge | Core ion KE | Ions lost | Gun |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `limit_30A_20keV` | 1.1e-5 | 0.713 ± 0.021 | −5.0 ± 0.5 kV | −10.1 kV | −1730 nC | 1226 eV | 33% | 3% |
+| `limit_30A_20keV_s2345` | 1.1e-5 | 0.718 ± 0.023 | −4.9 ± 0.5 kV | −9.7 kV | −1721 nC | 1160 eV | 33% | 3% |
+| `limit_100A_20keV` | 3.5e-5 | 0.505 ± 0.027 | −13.8 ± 0.3 kV | −26.5 kV | −2850 nC | 2544 eV | 17% | 60% |
+| `limit_100A_20keV_div30` | 3.5e-5 | 0.570 ± 0.025 | −14.0 ± 0.3 kV | −24.4 kV | −3438 nC | 2716 eV | 22% | 21% |
+| `limit_100A_20keV_bias5kV` | 3.5e-5 | 0.462 ± 0.028 | −12.7 ± 0.3 kV | −26.4 kV | −2915 nC | 2848 eV | 25% | 58% |
+| `limit_300A_20keV` | 1.1e-4 | 0.095 | −267 V | −48.0 kV | −418 nC | 260 eV | 91% | 99.8% |
+| `limit_100A_10keV_div30` | 1.0e-4 | 0.076 | −146 V | −21.6 kV | −165 nC | 85 eV | 95% | 99.8% |
+| `limit_100A_10keV_bias5kV` | 1.0e-4 | 0.077 | +2.77 kV | −23.1 kV | −162 nC | 23 eV | 95% | 99.9% |
+
+![Six-coil single-gun limit evolution](images/pic-six-coil-gun-limit-evolution.png)
+![Six-coil single-gun limit fields](images/pic-six-coil-gun-limit-fields.png)
+
+### Single-gun limit interpretation
+
+- **The choke follows gun perveance.** Every case at ~1e-4 A/V^1.5 (100 A at 10 keV, 300 A at
+  20 keV) chokes the same way as `feed_100A_10keV_p1e-3`: the centre stays within ~270 V of ground,
+  the live electron charge falls to ~0.16–0.4 µC and 99.8% of lost ions return into the gun. Every
+  case at ≤ 3.5e-5 A/V^1.5 reaches the centre. For this emitter the threshold lies between those
+  values; it has not been bracketed more finely.
+- **Raising the gun energy opens 100 A.** At 20 keV the centre holds −13.8 kV, core ions carry
+  2.5 keV and neutralization settles at 0.50, against −98 V at 10 keV. That is 2.8 times the
+  30 A / 20 keV well. The gun mouth is still a strong negative region (−26 kV domain minimum) and
+  60% of lost ions fall into the barrel.
+- **30° divergence does not unchoke a 10 keV gun.** It changes where the beam's charge sits but not
+  the barrier. At 20 keV it lowers the gun's ion share from 60% to 21% with a similar centre.
+- **+5 kV casings do not unchoke it either,** and at 20 keV they make the centre 8% shallower.
+- **30 A at 20 keV is not settled.** The centre drifts across ±0.5 kV in the last quarter; the seed
+  repeat agrees within 3%. It is shallower than 30 A at 10 keV (−5.7 kV) because the faster beam
+  carries less charge at the same current.
+- **Consequence:** a single brighter gun works only up to the perveance limit. Higher total feed
+  needs higher energy or several guns sharing the current, which `six-coil-multi-gun` tests. The
+  −20 to −48 kV mouth minima sit in a few-cell region near the barrel and need a mesh refinement
+  check before they are quantitative.
+
 ## D2 fuel-delivery results (job `jonathan-pic-f74373c4cc21`, source `09f2191`)
 
 `run_pic_campaign.py --study six-coil-gas`: the six-coil trap (30 kA-turn, 0 V casings, 1 A 5 keV
