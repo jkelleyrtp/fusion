@@ -496,3 +496,126 @@ capture figure plots alive and bound D+ per unit injected gun charge.
 
 Limits: cycle-boundary switching only, frozen-ion electron windows, no induced fields, no gas
 depletion, and no plasma magnetic field.
+
+### Capture results
+
+All eight cases reached 48 cycles with `DONE` = `complete`, finite metrics and charge-balance
+residuals of ~1e-20 C. Raw output:
+`/public/devcontainer-shared/jonathan/cusp/runs/pic-7acf9e969fe4/attempt-20260913-205430-211674719`.
+Summary: `docs/data/pic-six-coil-capture-65d4592.json`. Bound D+ is taken at the last electron-on
+cycle of each period, because at period ends the gun is off, the well has collapsed and nothing
+is bound.
+
+| case | gun charge injected | D+ bound, last three periods | bound / injected | alive D+ (well on) | on-phase mean origin | core ion KE |
+|---|---:|---|---:|---:|---:|---:|
+| `capture_off_1keV` | 80 nC | 0.80, 1.36, 1.56 nC | 2.0% | 3.4 nC | −2.97 kV | 1.81 keV |
+| `capture_on_1keV` | 400 nC | 1.11, 1.48, 1.71 nC | 0.43% | 43.0 nC | −2.78 kV | 2.80 keV |
+| `capture_always_1keV` | 480 nC | 0.05, 0.10, 0.15 nC | 0.03% | 42.0 nC | −2.75 kV | 3.03 keV |
+| `capture_continuous_1keV` | 480 nC | 0 at every cycle | 0 | 40.7 nC | −2.94 kV (last quarter) | 3.29 keV |
+| `capture_off_300eV` | 80 nC | 0.47, 0.79, 0.97 nC | 1.2% | 2.1 nC | −3.00 kV | 1.52 keV |
+| `capture_off_1keV_on4_off2` | 160 nC | 2.39, 2.39, 2.47 nC | 1.5% | 13.0 nC | −2.78 kV | 1.84 keV |
+| `capture_off_1keV_s2345` | 80 nC | 0.81, 1.34, 1.59 nC | 2.0% | 3.4 nC | −2.97 kV | 1.80 keV |
+| `capture_off_1keV_idt2` | 80 nC | 0.85, 1.42, 1.70 nC | 2.1% | 3.5 nC | −2.97 kV | 1.80 keV |
+
+![Six-coil capture evolution](images/pic-six-coil-capture-evolution.png)
+![Six-coil capture bound D+](images/pic-six-coil-capture-bound.png)
+![Six-coil capture fields](images/pic-six-coil-capture-fields.png)
+
+### Capture interpretation
+
+- **A static well captures nothing; a well that rebuilds around the ions does.** With the
+  electron gun continuous no D+ is ever energetically bound, as energy conservation requires.
+  Injecting while the gun is off leaves 1.6 nC bound once the well has rebuilt, 2% of all gun
+  charge, and the bound inventory survives the off phases: it is re-bound each time the gun
+  returns. Seed and 0.2 ns ion-step repeats agree within 2% and 9%.
+- **Gating is efficient but the inventory is small.** The on-phase control also binds 1.7 nC,
+  from ions still in flight when the well collapses and rebuilds, but it needs five times the
+  gun charge. Injecting in both phases binds 10× less than either; that non-monotonic result is
+  not yet understood and is not used for any conclusion. 1.6 nC is ~1% of the trapped electron
+  charge, so captured ions do not yet matter for the well.
+- **Not settled.** The 10 on / 2 off inventory still grew 15% over the last period; the 4 on /
+  2 off case has levelled at ~2.4 nC. 300 eV binds less than 1 keV (1.0 against 1.6 nC).
+- **Diagnostic limits.** "Bound" uses the frozen end-of-cycle potential and grounded walls; it
+  ignores lower escape paths between casings, induced fields and the pulse's own time variation.
+
+## Pulsed electron-gun results (job `jonathan-pic-e1d5a1a9bc22`, source `a873e08`)
+
+`run_pic_campaign.py --study six-coil-pulse`: six coils at 30 kA-turn, 1 A / 5 keV electron gun,
+D2 at 1e-4 Pa (a ~1.4 ms neutralization clock), 60 × 10 µs cycles, 200 ns switch-on settle. The gun
+switches at cycle boundaries: `pulse_on150_off50` is on for 150 µs and off for 50 µs. All eight cases
+reached 60 cycles with `DONE` = `complete`, finite metrics and charge-balance residuals ~1e-20 C.
+Raw output: `/public/devcontainer-shared/jonathan/cusp/runs/pic-e1d5a1a9bc22/attempt-20260913-202830-174645790`.
+Summary: `docs/data/pic-six-coil-pulse-a873e08.json`. Duty means average over the final whole
+periods; alive ions are sampled at period ends.
+
+| case | duty-mean neutralization | origin, duty mean | origin, gun on | core ion KE | ions alive at period ends | settled |
+|---|---:|---:|---:|---:|---|---|
+| `pulse_continuous` (last quarter) | 0.403 | −1.38 kV | −1.38 kV | 217 eV | still rising, 70.6 nC at 600 µs | no |
+| `pulse_on150_off50` | 0.207 | −1.99 kV | −2.58 kV | 510 eV | 8.8, 9.9, 10.1 nC | yes |
+| `pulse_on150_off20` | 0.173 | −2.27 kV | −2.52 kV | 631 eV | 11.1, 13.6, 14.1 nC | nearly |
+| `pulse_on50_off50` | 0.148 | −1.49 kV | −2.69 kV | 440 eV | 4.8 nC over the last four | yes |
+| `pulse_on300_off100` | 0.279 | −2.04 kV | −2.68 kV | 430 eV | one period only | no |
+| `pulse_on50_off50_p1e-3` | 0.668 | −0.81 kV | −1.56 kV | 269 eV | 21.0–21.2 nC | yes |
+| `pulse_on150_off50_s2345` | 0.206 | −2.00 kV | −2.58 kV | 509 eV | 8.9, 9.8, 10.0 nC | yes |
+| `pulse_on150_off50_settle400` | 0.189 | −2.14 kV | −2.82 kV | 523 eV | 3.7, 4.0, 3.9 nC | yes |
+
+![Six-coil pulsed gun evolution](images/pic-six-coil-pulse-evolution.png)
+![Six-coil pulsed gun fields](images/pic-six-coil-pulse-fields.png)
+
+### Pulse interpretation
+
+- **Pulsing flushes the ions and keeps the well.** The trap empties within one off phase, gas ions
+  drain out of the collapsed well, and every settled pulse case reaches a periodic state. At
+  150 / 50 µs the centre averages −2.0 kV (−2.6 kV while on) against −1.4 kV and still rising
+  neutralization for continuous injection at 600 µs; core ions are 2.3× more energetic (510 eV).
+  The seed repeat agrees within 1%. A pulsed gun also delivers less charge: the duty-mean trapped
+  electron charge is 126 nC against 157 nC continuous.
+- **Short gaps suffice.** 150 / 20 µs holds −2.3 kV duty-mean with 631 eV core ions, the best
+  settled case, but its ion inventory still grew 4% over the last period.
+- **Pressure still dominates.** At 1e-3 Pa even 50 / 50 µs pulsing leaves 0.67 neutralization and a
+  −0.8 kV duty-mean centre.
+- **The switch-on model matters.** Doubling the frozen-ion settle from 200 to 400 ns (the trap
+  fills in ~450 ns) makes the on-phase centre 9% deeper and cuts the period-end ion inventory from
+  10 to 4 nC. Duty-mean potentials are good to ~10%; ion inventories are not converged in this
+  numerical parameter, and a coupled switch-on is needed before quoting them.
+- **Limits.** Cycle-boundary switching, frozen-ion electron windows, no induced fields from the
+  coils, and the continuous comparison had not settled at 600 µs.
+
+## D+ ion gun at 0.2 ns ion steps (job `jonathan-pic-a551941178c2`, source `31dc258`)
+
+`run_pic_campaign.py --study six-coil-deuteron-fine` reruns the D+ gun study at higher current with
+0.2 ns ion steps, which the 100 mA case needs for `omega_pi * dt <= 0.1`. All eight cases reached their
+requested cycles with `DONE` = `complete`, finite metrics and charge-balance residuals ≤1e-16 C against
+~4e-5 C injected. Raw output: `/public/devcontainer-shared/jonathan/cusp/runs/pic-a551941178c2/attempt-20260913-203030-043044119`.
+Summary: `docs/data/pic-six-coil-deuteron-fine-31dc258.json`. Exit fractions count all exiting ion
+macroparticles. Gas ions are under 1% of them, except with +5 kV casings, where the well is gone and
+gas ions are ~34% of exits and most of the side and conductor exits.
+
+| case | mouth hill | top face | sides | conductors | D+ alive / injected | core ion KE | origin |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 30 mA, 100 eV | +700 V | 99.7% | 0.1% | 0.1% | 0.14% | 697 eV | −3047 V |
+| 100 mA, 100 eV | +1010 V | 92.8% | 6.9% | 0.1% | 0.10% | 697 eV | −3041 V |
+| 100 mA, 100 eV, seed 2345 | +1015 V | 92.8% | 7.0% | 0.2% | 0.10% | 705 eV | −3037 V |
+| 100 mA, 1 keV | +562 V | 98.1% | 0.3% | 1.5% | 0.05% | 699 eV | −3046 V |
+| 300 mA, 1 keV | +705 V | 96.8% | 2.9% | 0.2% | 0.02% | 702 eV | −3057 V |
+| 100 mA, 100 eV, +5 kV casings | casings | 73.0% | 21.3% | 5.3% | 0.04% | 304 eV | +163 V |
+| 100 mA, 100 eV, 60 kA-turn | +1045 V | 99.7% | 0.1% | 0.1% | 0.09% | 619 eV | −3617 V |
+
+Timestep control at 20 cycles: 0.1 ns against 0.2 ns gives the origin within 0.3%, the mouth hill
+990 against 1092 V, and D+ alive / injected 0.22% against 0.20%. The seed repeat differs by a similar
+12% in the hill at that time, so the 0.2 ns step is within seed noise.
+
+![Six-coil D+ gun at 0.2 ns evolution](images/pic-six-coil-deuteron-fine-evolution.png)
+![Six-coil D+ gun at 0.2 ns fields](images/pic-six-coil-deuteron-fine-fields.png)
+
+### D+ 0.2 ns interpretation
+
+- **Higher gun current makes the choke worse.** 30–300 mA builds a +0.56 to +1.05 kV mouth hill
+  and 93–99.7% of ions leave through the top face. Unlike the 10 mA, 1 keV beam, which transited,
+  100 and 300 mA at 1 keV reflect even though the mesh-resolved hill (+562 and +705 V) is below
+  1 keV: the 9.4 mm cells smear the 5 mm beam, so the real hill is higher.
+- **Nothing is retained and the core is unchanged.** D+ alive / injected is 0.02–0.14%, and core
+  ion energy (~700 eV) and core neutralization (0.10) match the no-gun case. Casing bias removes
+  the well again; 60 kA-turn deepens the centre 19% without opening the gun.
+- **Consequence.** A higher-current cusp ion gun is not a fuelling route without extraction
+  optics or beam neutralization; the capture campaign above is the only case with bound gun ions.

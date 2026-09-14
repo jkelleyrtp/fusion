@@ -48,6 +48,24 @@ const studies: Study[] = [
     doc: "ion-pic-design.md", figures: pair("six-coil-deuteron", "D+ ion gun"),
   },
   {
+    id: "six-coil-deuteron-fine", title: "D+ ion gun at 30–300 mA, 0.2 ns ion steps (six-coil)",
+    summary: "Same setup as the D+ gun study, 400 µs, all 8 cases complete. 30–300 mA builds a +0.56 to +1.05 kV mouth hill and 93–99.7% of gun ions leave back through the top, even at 1 keV. D+ alive / injected is 0.02–0.14%; core ions (~700 eV) and core neutralization (0.10) match the no-gun case. Seed repeat and a 0.1 ns ion-step control agree within seed noise.",
+    doc: "ion-pic-design.md", figures: pair("six-coil-deuteron-fine", "D+ gun at 0.2 ns"),
+  },
+  {
+    id: "six-coil-pulse", title: "Pulsed electron gun with D2 ions (six-coil)",
+    summary: "1 A 5 keV gun switched on and off in 10 µs cycles, D2 at 1e-4 Pa, 600 µs, all 8 cases complete. Gas ions drain out while the gun is off and the trap reaches a periodic state: 150 µs on / 50 off averages −2.0 kV at the centre (−2.6 kV while on) with 510 eV core ions, against −1.4 kV and still-rising neutralization for continuous injection. 150 / 20 gives −2.3 kV. At 1e-3 Pa pulsing leaves 0.67 neutralization. Seed repeat within 1%; the period-end ion inventory changes 2.5× with the switch-on settle time, so only potentials are quoted.",
+    doc: "ion-pic-design.md", figures: pair("six-coil-pulse", "Pulsed gun"),
+  },
+  {
+    id: "six-coil-capture", title: "Phase-gated D+ capture (six-coil)",
+    summary: "1 A electron gun pulsed 10 µs on / 2 off, 10 mA 1 keV D+ gun gated to the off, on or both phases, D2 at 1e-5 Pa, 48 µs, all 8 cases complete. A continuous well binds no gun ions. Injecting while the well is down leaves 1.6 nC (2% of gun charge) energetically bound when it rebuilds, and the inventory is re-bound every period; seed and ion-step repeats agree within 2% and 9%. Captured charge is ~1% of the trapped electrons and still growing.",
+    doc: "ion-pic-design.md", figures: [
+      ...pair("six-coil-capture", "Phase-gated capture"),
+      { image: "pic-six-coil-capture-bound.png", title: "Alive and bound D+ per injected gun charge" },
+    ],
+  },
+  {
     id: "six-coil-bias", title: "Six-coil casing (magrid) bias sweep",
     summary: "1 µs, 1 A, 5 keV gun, casings at +1 to +10 kV, with a second seed, a 1 mA control, 3 A and a 2 keV gun at +5 kV. Electrons only; imposed vacuum field. Positive casings raise repeated core entries from 26% to 37%, but the ion escape barrier (lowest path from the centre to the grounded walls) falls from 3.1 kV at 0 V to 338 V at +5 kV and 96 V at +10 kV.",
     doc: "six-coil-design.md", figures: pair("six-coil-bias", "Bias sweep"),
