@@ -175,3 +175,56 @@ only if the trend is monotone, and it is weaker evidence than a finer mesh. The 
 packets, so injected current is unchanged. At 3000 A each gun carries 500 A at 20 keV, 1.8e-4 A/V^1.5,
 above the single-gun choke estimate of ~1e-4; that tests whether six guns hold off the choke at the
 same per-gun perveance.
+
+### Results (job `jonathan-pic-8a4c5736957a`, source `c701274`)
+
+All eight cases have `DONE`, their requested cycles, finite records and ion charge balance ≤ 1.6e-18 C.
+Raw output: `/public/jonathan/cusp/runs/pic-8a4c5736957a/attempt-20260914-023431-204625945`.
+Summary: `docs/data/pic-six-coil-multi-gun-scale-c701274.json`. Columns as in the `six-coil-multi-gun`
+table; last-quarter means ± half-range. "Status" applies the same drift test to the change across the
+final quarter. The 16-cycle cases are compared with their 65-node, 30 kA-turn base case over the same
+cycles 13–16, not with the base case's final quarter.
+
+| Case | Per-gun perveance | Neutralization | Origin | Domain minimum | Source | Electron charge | Core ion KE | Exits wall/barrel/casing | Status |
+|---|---:|---:|---:|---:|---:|---:|---:|---|---|
+| `guns6_100A_10keV` cycles 13–16 (base) | 1.7e-5 | 0.597 | −9.57 kV | −13.6 kV | −4.3 kV | | | | |
+| `guns6_100A_10keV_n49` | 1.7e-5 | 0.639 ± 0.035 | −9.25 ± 0.31 kV | −12.5 kV | −5.1 kV | −3441 nC | 993 eV | 0.63/0.12/0.25 | drifting |
+| `guns6_100A_10keV_60kAt` | 1.7e-5 | 0.646 ± 0.032 | −9.61 ± 0.09 kV | −13.9 kV | −3.7 kV | −2795 nC | 1285 eV | 0.87/0.06/0.07 | drifting |
+| `guns6_1000A_20keV` cycles 13–16 (base) | 5.9e-5 | 0.410 | −25.2 kV | −44.1 kV | −17.5 kV | | | | |
+| `guns6_1000A_20keV_n49` | 5.9e-5 | 0.367 ± 0.033 | −27.93 ± 0.08 kV | −41.0 kV | −23.4 kV | −6399 nC | 3081 eV | 0.06/0.90/0.04 | drifting |
+| `guns6_1000A_20keV_60kAt` | 5.9e-5 | 0.463 ± 0.031 | −28.21 ± 0.51 kV | −44.3 kV | −17.9 kV | −6167 nC | 2919 eV | 0.44/0.41/0.14 | drifting |
+| `guns6_1000A_20keV_s2345` (32 cycles) | 5.9e-5 | 0.595 ± 0.027 | −23.39 ± 0.35 kV | −43.0 kV | −17.7 kV | −9400 nC | 3643 eV | 0.46/0.28/0.27 | drifting |
+| `guns6_100A_20keV` (32 cycles) | 5.9e-6 | 0.512 ± 0.007 | −19.03 ± 0.19 kV | −20.6 kV | −4.2 kV | −4010 nC | 2852 eV | 0.65/0.03/0.31 | settled |
+| `guns6_3000A_20keV_n49` | 1.8e-4 | 0.171 ± 0.012 | −35.34 ± 0.93 kV | −84.3 kV | −43.9 kV | −6553 nC | 7691 eV | 0.01/0.99/0.01 | drifting |
+| `guns6_3000A_20keV` | 1.8e-4 | 0.078 ± 0.003 | −1.11 ± 0.16 kV | −65.3 kV | −32.0 kV | −1062 nC | 152 eV | 0.00/1.00/0.00 | choked |
+
+![Multi-gun scale evolution](images/pic-six-coil-multi-gun-scale-evolution.png)
+![Multi-gun scale fields](images/pic-six-coil-multi-gun-scale-fields.png)
+
+### Interpretation
+
+- **The 1000 A result repeats across seeds.** Over the full 32 cycles the second seed matches
+  `guns6_1000A_20keV` within 0.4% in origin potential (−23.39 vs −23.30 kV) and 0.000 in
+  neutralization, with the same exit split. Seed noise is not what limits these numbers.
+- **The 100 A, 10 keV well is insensitive to the coarser mesh; the 1000 A well is not.** At matched
+  cycles the 49-node mesh changes the 100 A origin by 3% and neutralization by +0.04. At 1000 A it
+  deepens the origin by 11%, lowers neutralization by 0.04, deepens the gun mouth from −17.5 to
+  −23.4 kV and sends 90% of lost ions into the barrels instead of 28%. The gun-mouth region is not
+  resolved at 1000 A, and the finer 81-node comparison in `six-coil-mesh` is needed before the
+  1000 A mouth potential or ion exit split is used.
+- **Six guns at 3000 A choke on the 65-node mesh.** Each gun carries 500 A at 20 keV (1.8e-4 A/V^1.5,
+  above the ~1e-4 single-gun choke). The mouths sit at −32 kV, only 1–2k electron macroparticles stay
+  alive, the centre is at −1.1 kV and every lost ion falls into a barrel. This is the same signature
+  as the single-gun 100 A choke. On the 49-node mesh the beams do reach the centre (−35 kV), so the
+  choke threshold itself depends on the mesh; the 65-node choke is the more resolved result but is
+  not mesh-converged. Six guns do not remove the per-gun perveance limit; they only multiply it.
+- **Energy at fixed current deepens the well without choking.** Six guns at 100 A and 20 keV settle
+  at −19.0 kV and 0.51 neutralization with 2.9 keV core ions, against −10.1 kV at 10 keV. The single
+  20 keV gun at 100 A gave −13.8 kV. This is the only new case that passes the drift test.
+- **Coils double, depth barely moves.** 60 kA-turn leaves the 100 A origin unchanged (+0.4%) and
+  deepens the 1000 A origin by 12%, with neutralization up 0.05 in both. These runs also halve the
+  electron step, which the refinement study showed is a small effect. Stronger coils stay a weak
+  knob in the vacuum field.
+- **Limits.** All 16-cycle cases are still drifting (neutralization rising 0.02–0.07 across the final
+  quarter), so the differences above are 160 µs transients, not plateau values. All use 10 µs ion
+  cycles pending `six-coil-splitting`. The field is the vacuum coil field.

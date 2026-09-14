@@ -43,6 +43,11 @@ const studies: Study[] = [
     doc: "multi-gun-design.md", figures: pair("six-coil-multi-gun", "Multi-gun"),
   },
   {
+    id: "six-coil-multi-gun-scale", title: "Six guns: seed, 49-node mesh, 60 kA-turn, 20 keV at 100 A, 3000 A (six-coil)",
+    summary: "H2 at 1e-3 Pa, 10 µs ion cycles, all 8 cases complete. The 1000 A, 20 keV well repeats across seeds within 0.4%. A coarser 49-node mesh moves the 100 A origin by 3% but the 1000 A origin by 11% and its gun-mouth potential from −17.5 to −23.4 kV, so the mouth region is unresolved at 1000 A. At 3000 A (500 A per gun) the 65-node run chokes: mouths at −32 kV, centre −1.1 kV, all lost ions into the barrels; the 49-node run does not, so the threshold is mesh-dependent. 100 A at 20 keV settles at −19.0 kV and 0.51 neutralization. 60 kA-turn deepens the centre by 0–12%. 16-cycle cases are still drifting.",
+    doc: "multi-gun-design.md", figures: pair("six-coil-multi-gun-scale", "Six-gun scale"),
+  },
+  {
     id: "six-coil-gas", title: "D2 fuel delivery: uniform fill, inlets and puffs (six-coil)",
     summary: "1 A 5 keV gun, D2 and D2+ ions, 400 µs, all 8 cases complete. A steady inlet with a normal pump matches uniform gas within 0.1%. Pressure sets the neutralization clock linearly: 148 µs at 1e-3 Pa, 1.36 ms at 1e-4 Pa, ~7.9 ms at 1e-5 Pa, where the well holds −3.0 kV and core ions carry ~770 eV. A puff at the same background speeds ionization by 19–61% because the plume overlaps the electrons; ions are still born deep in the well.",
     doc: "ion-pic-design.md", figures: pair("six-coil-gas", "D2 fuel delivery"),
