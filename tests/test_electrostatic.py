@@ -9,9 +9,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from electrostatic import (
     EPSILON_0,
+    Conductors,
+    Cylinder,
     ElectrostaticMesh,
+    Torus,
     clip_segment,
     sphere_segment_fraction,
+    tiled_spd_inverse,
 )
 from steady_space_charge import E_CHARGE, M_E, thermal_source, trace_packet
 
@@ -29,6 +33,15 @@ class ElectrostaticTests(unittest.TestCase):
         lower = torch.tensor([-1, -1, -1], dtype=torch.float64)
         return ElectrostaticMesh(lower, -lower, (nodes,) * 3)
 
+    def test_tiled_spd_inverse_matches_single_block_inverse(self) -> None:
+        generator = torch.Generator().manual_seed(4)
+        basis = torch.randn(53, 53, dtype=torch.float64, generator=generator)
+        matrix = basis @ basis.T + 53 * torch.eye(53, dtype=torch.float64)
+        expected = torch.cholesky_inverse(torch.linalg.cholesky(matrix))
+        for tile in (53, 16, 7):
+            inverse = tiled_spd_inverse(matrix.clone(), tile)
+            torch.testing.assert_close(inverse, expected, rtol=1e-12, atol=1e-14)
+
     def test_charge_conservation_including_boundary_shapes(self) -> None:
         mesh = self.mesh()
         torch.manual_seed(10)
@@ -40,6 +53,18 @@ class ElectrostaticTests(unittest.TestCase):
         self.assertEqual(float(deposited[0, 0, 0]), float(charges[0]))
         with self.assertRaises(ValueError):
             mesh.deposit(points + 4, charges)
+
+    def test_revalidates_positions_modified_after_a_check(self) -> None:
+        mesh = self.mesh()
+        points = torch.zeros(4, 3, dtype=torch.float64)
+        mesh.check_positions(points)
+        mesh.check_positions(points)
+        points[0, 0] = 2
+        with self.assertRaisesRegex(ValueError, "inside the box"):
+            mesh.check_positions(points)
+        points[0, 0] = math.nan
+        with self.assertRaisesRegex(ValueError, "Nonfinite"):
+            mesh.deposit(points, torch.ones(4, dtype=torch.float64))
 
     def test_poisson_discrete_manufactured_solution_and_energy(self) -> None:
         lower = torch.tensor([-1, -2, -3], dtype=torch.float64)
@@ -91,6 +116,57 @@ class ElectrostaticTests(unittest.TestCase):
         self.assertLess(float(potential.min()), 0)
         self.assertLess(float(potential.max()), 1e-14)
         self.assertEqual(float(potential[0].abs().sum()), 0)
+
+    def test_conductors_hold_voltages_and_induce_charge(self) -> None:
+        mesh = self.mesh(13)
+        shapes = (
+            Cylinder((0, 0, -0.5), (0, 0, 1), 1.0, 0.2),
+            Cylinder((0.4, 0, -0.3), (1, 0, 0), 0.4, 0.25, voltage=-100.0),
+        )
+        conductors = Conductors(mesh, shapes, mesh.potential)
+        self.assertTrue(all(count > 0 for count in conductors.node_counts))
+        charge = mesh.deposit(
+            torch.tensor([[-0.5, 0.4, 0.1]], dtype=torch.float64),
+            torch.tensor([-1e-12], dtype=torch.float64),
+        )
+        potential, induced = conductors.potential(charge)
+        torch.testing.assert_close(
+            potential.flatten()[conductors.indices], conductors.voltage, rtol=0, atol=1e-9,
+        )
+        free = torch.ones(mesh.shape, dtype=torch.bool)
+        free.view(-1)[conductors.indices] = False
+        rhs = charge / (EPSILON_0 * mesh.volume)
+        residual = (mesh.negative_laplacian(potential) - rhs[1:-1, 1:-1, 1:-1])[free[1:-1, 1:-1, 1:-1]]
+        self.assertLess(float(residual.abs().max() / rhs.abs().max()), 1e-9)
+        self.assertLess(float(potential.max()), 1e-9)
+        self.assertGreater(float(potential.min()), -100 - 1e-9)
+        self.assertLess(float(induced[1]), 0)
+        grounded = Conductors(mesh, shapes[:1], mesh.potential)
+        _, induced = grounded.potential(charge)
+        self.assertGreater(float(induced[0]), 0)
+        self.assertLess(float(induced[0]), 1e-12)
+        points = torch.tensor([[0, 0, 0], [0.6, 0, -0.3], [0.9, 0.9, 0.9]], dtype=torch.float64)
+        self.assertEqual(conductors.absorbing(points).tolist(), [0, 1, -1])
+
+    def test_torus_surface_nodes_hold_the_enclosed_volume(self) -> None:
+        mesh = self.mesh(25)
+        torus = Torus(0.2, 0.55, 0.3, voltage=250.0)
+        points = torch.tensor([[0.55, 0, 0.2], [0, 0.8, 0.2], [0, 0, 0.2], [0.55, 0, 0.55]],
+                              dtype=torch.float64)
+        self.assertEqual(torus.contains(points).tolist(), [True, True, False, False])
+        conductors = Conductors(mesh, (torus,), mesh.potential)
+        axes = [torch.linspace(-1, 1, 25, dtype=torch.float64)] * 3
+        nodes = torch.stack(torch.meshgrid(*axes, indexing="ij"), dim=-1).reshape(-1, 3)
+        inside = torus.contains(nodes)
+        self.assertLess(len(conductors.indices), int(inside.sum()))
+        charge = mesh.deposit(points[2:3], torch.tensor([-1e-12], dtype=torch.float64))
+        potential, induced = conductors.potential(charge)
+        torch.testing.assert_close(
+            potential.flatten()[inside], potential.new_full((int(inside.sum()),), 250.0), rtol=0, atol=1e-8,
+        )
+        self.assertGreater(float(induced[0]), 0)
+        with self.assertRaises(ValueError):
+            Torus(0, 0.3, 0.3)
 
     def test_segment_absorption_and_core_crossing(self) -> None:
         mesh = self.mesh()

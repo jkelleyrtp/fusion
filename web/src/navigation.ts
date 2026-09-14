@@ -1,4 +1,4 @@
-export type Page = "campaigns" | "campaign" | "jobs" | "sweeps" | "trajectories" | "residence" | "space-charge" | "reports";
+export type Page = "campaigns" | "campaign" | "pic" | "jobs" | "sweeps" | "trajectories" | "residence" | "space-charge" | "reports";
 
 export function setupNavigation(onChange: (page: Page) => void): void {
   const links = [...document.querySelectorAll<HTMLAnchorElement>("[data-page]")];

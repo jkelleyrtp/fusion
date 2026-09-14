@@ -1,0 +1,166 @@
+"""Measure FP64 repeatability and isolated CUDA operators at unchanged tolerances."""
+
+import argparse
+import json
+from pathlib import Path
+from typing import Literal
+
+import torch
+
+from cusp_sim import E_CHARGE
+from diagnose_pic_cuda import difference
+from electrostatic import ElectrostaticMesh
+from pic_cuda import CUDAKernels
+from pic_kernels import ReferenceKernels
+from run_transient_pic import GunSource, create_simulation, parser, validate
+from transient_pic import PIC
+from validate_pic_gpu import LIMITS, compare_states, state
+
+
+class SingleCUDAOperator(ReferenceKernels):
+    def __init__(self, mesh: ElectrostaticMesh, operator: Literal["deposit", "gather"]) -> None:
+        super().__init__(mesh)
+        self.operator = operator
+        self.cuda = CUDAKernels(mesh)
+
+    def deposit(self, position: torch.Tensor, charge: torch.Tensor) -> torch.Tensor:
+        if self.operator == "deposit":
+            return self.cuda.deposit(position, charge)
+        return super().deposit(position, charge)
+
+    def gather(self, potential: torch.Tensor, position: torch.Tensor) -> torch.Tensor:
+        if self.operator == "gather":
+            return self.cuda.gather(potential, position)
+        return super().gather(potential, position)
+
+
+def repeated_operators(simulation: PIC, h: float) -> dict[str, object]:
+    p = simulation.particles
+    charge = -E_CHARGE * p.weight
+    reference, actual = simulation.kernels, CUDAKernels(simulation.mesh)
+    deposited = reference.deposit(p.position, charge)
+    potential = simulation.mesh.potential(deposited)
+    electric = reference.gather(potential, p.position)
+    magnetic = simulation.magnetic_field(p.position)
+    repeats: dict[str, object] = {}
+    for name, kernels in (("reference", reference), ("cuda", actual)):
+        first = kernels.deposit(p.position, charge)
+        repeats[f"{name}_deposit_repeats"] = [
+            difference(first, kernels.deposit(p.position, charge)) for _ in range(8)
+        ]
+        repeats[f"{name}_deposited_sum_C"] = float(first.sum())
+    repeats["particle_charge_C"] = float(charge.sum())
+    repeats["reference_vs_cuda_deposit"] = difference(
+        deposited, actual.deposit(p.position, charge),
+    )
+    repeats["poisson_identical_input"] = difference(
+        potential, simulation.mesh.potential(deposited),
+    )
+    repeats["gather_shared_potential"] = difference(
+        electric, actual.gather(potential, p.position),
+    )
+    repeats["boris_shared_fields"] = difference(
+        reference.boris(p.velocity, electric, magnetic, h),
+        actual.boris(p.velocity, electric, magnetic, h),
+    )
+    return repeats
+
+
+def main() -> None:
+    arguments = argparse.ArgumentParser(description=__doc__)
+    arguments.add_argument("--out", type=Path, required=True)
+    arguments.add_argument("--device", default="cuda:0")
+    arguments.add_argument("--deterministic-reference", action="store_true")
+    arguments.add_argument("--cuda-operator", choices=("deposit", "gather"))
+    options = arguments.parse_args()
+    if options.cuda_operator and not options.deterministic_reference:
+        raise ValueError("Single-operator diagnosis requires --deterministic-reference")
+    device = torch.device(options.device)
+    if device.type != "cuda" or not torch.cuda.is_available():
+        raise ValueError("Reproducibility diagnosis requires a broker-allocated CUDA GPU")
+    if options.deterministic_reference:
+        torch.use_deterministic_algorithms(True, warn_only=False)
+    options.out.mkdir(parents=True, exist_ok=False)
+    args = parser().parse_args([
+        "--out", str(options.out), "--device", str(device),
+        "--nodes", "33", "--coil-current", "30000", "--current-a", "1",
+        "--dt", "4e-12", "--duration", str(8192 * 4e-12),
+        "--save-every", "2048", "--max-snapshots", "16",
+    ])
+    steps = validate(args)
+    reference, configuration = create_simulation(args)
+    configuration["diagnostic_deterministic_reference"] = options.deterministic_reference
+    configuration["diagnostic_cuda_operator"] = options.cuda_operator
+    repeated = PIC(
+        reference.mesh, reference.magnetic_field, reference.core_radius,
+        args.max_live_particles, args.track,
+        kernels=(
+            SingleCUDAOperator(reference.mesh, options.cuda_operator)
+            if options.cuda_operator else None
+        ),
+    )
+    (options.out / "configuration.json").write_text(
+        json.dumps(configuration, indent=2, allow_nan=False) + "\n",
+    )
+    report: dict[str, object] = {
+        "scope": "Reference repeatability or single-operator isolation; not CUDA validation",
+        "gpu": torch.cuda.get_device_name(device),
+        "torch": torch.__version__,
+        "cuda": torch.version.cuda,
+        "relative_tolerance": 1e-10,
+        "absolute_tolerances": LIMITS,
+        "steps": steps,
+        "dt_s": args.dt,
+        "deterministic_reference": options.deterministic_reference,
+        "cuda_operator": options.cuda_operator,
+        "torch_deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
+        "cuda_deposit": "custom atomic kernel; unaffected by Torch deterministic selection",
+    }
+    comparisons: list[dict[str, object]] = []
+    report["comparisons"] = comparisons
+    source = GunSource(args)
+    for step in range(steps):
+        for simulation in (reference, repeated):
+            source.inject(simulation, step)
+            simulation.advance(args.dt)
+            simulation.time = (step + 1) * args.dt
+        if step + 1 in (1, 64, 512, 2048, 8192):
+            prefix = f"cuda-{options.cuda_operator}" if options.cuda_operator else "reference-repeat"
+            name = f"{prefix}-{step + 1}"
+            comparison: dict[str, object] = {"step": step + 1}
+            try:
+                compare_states(options.out, name, reference, repeated)
+            except AssertionError as error:
+                comparison["strict_comparison_passed"] = False
+                comparison["error"] = str(error)
+            else:
+                comparison["strict_comparison_passed"] = True
+            if options.deterministic_reference:
+                expected, observed = state(reference), state(repeated)
+                try:
+                    for key in expected:
+                        torch.testing.assert_close(
+                            observed[key], expected[key], rtol=0, atol=0, equal_nan=True,
+                            msg=f"{name}/{key}: exact state comparison",
+                        )
+                except AssertionError as error:
+                    comparison["exact_state_passed"] = False
+                    comparison["exact_error"] = str(error)
+                else:
+                    comparison["exact_state_passed"] = True
+            comparisons.append(comparison)
+            (options.out / "reproducibility.json").write_text(
+                json.dumps(report, indent=2, allow_nan=False) + "\n",
+            )
+            print(json.dumps(comparison), flush=True)
+    report["fixed_input_operators"] = repeated_operators(reference, args.dt)
+    text = json.dumps(report, indent=2, allow_nan=False) + "\n"
+    (options.out / "reproducibility.json").write_text(text)
+    (options.out / "DIAGNOSTIC_COMPLETE").write_text(
+        "Diagnostic completed; inspect comparisons. This is not a CUDA validation pass.\n",
+    )
+    print(text, flush=True)
+
+
+if __name__ == "__main__":
+    main()

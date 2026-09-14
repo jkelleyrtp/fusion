@@ -1,0 +1,891 @@
+{
+  "scope": "Physics-level acceptance of CUDA operators: paired-seed differences against 0.1 of the reference seed-to-seed spread with numerical floors. Not bitwise parity and not physical convergence.",
+  "source_revision": "af7c8781a59ff46886528f655617ddacd8ecc69f",
+  "seeds": [
+    1234,
+    2345,
+    3456,
+    4567
+  ],
+  "passed": true,
+  "failures": [],
+  "comparisons": [
+    {
+      "metric": "minimum_potential_V",
+      "seed": 1234,
+      "reference": -3462.394281581012,
+      "cuda": -3462.394281581013,
+      "difference": 9.094947017729282e-13,
+      "reference_seed_spread": 12.85576151549185,
+      "bound": 1.285576151549185,
+      "passed": true
+    },
+    {
+      "metric": "minimum_potential_V",
+      "seed": 2345,
+      "reference": -3470.1550634030427,
+      "cuda": -3470.1550634030436,
+      "difference": 9.094947017729282e-13,
+      "reference_seed_spread": 12.85576151549185,
+      "bound": 1.285576151549185,
+      "passed": true
+    },
+    {
+      "metric": "minimum_potential_V",
+      "seed": 3456,
+      "reference": -3475.2500430965038,
+      "cuda": -3475.250043096493,
+      "difference": 1.0913936421275139e-11,
+      "reference_seed_spread": 12.85576151549185,
+      "bound": 1.285576151549185,
+      "passed": true
+    },
+    {
+      "metric": "minimum_potential_V",
+      "seed": 4567,
+      "reference": -3474.4225679453166,
+      "cuda": -3474.4225679453166,
+      "difference": 0.0,
+      "reference_seed_spread": 12.85576151549185,
+      "bound": 1.285576151549185,
+      "passed": true
+    },
+    {
+      "metric": "field_energy_J",
+      "seed": 1234,
+      "reference": 2.6835456010882487e-05,
+      "cuda": 2.6835456010882483e-05,
+      "difference": 3.3881317890172014e-21,
+      "reference_seed_spread": 7.753173454093284e-08,
+      "bound": 7.753173454093285e-09,
+      "passed": true
+    },
+    {
+      "metric": "field_energy_J",
+      "seed": 2345,
+      "reference": 2.6765319521197155e-05,
+      "cuda": 2.6765319521197145e-05,
+      "difference": 1.0164395367051604e-20,
+      "reference_seed_spread": 7.753173454093284e-08,
+      "bound": 7.753173454093285e-09,
+      "passed": true
+    },
+    {
+      "metric": "field_energy_J",
+      "seed": 3456,
+      "reference": 2.6801088000515454e-05,
+      "cuda": 2.680108800051541e-05,
+      "difference": 4.404571325722362e-20,
+      "reference_seed_spread": 7.753173454093284e-08,
+      "bound": 7.753173454093285e-09,
+      "passed": true
+    },
+    {
+      "metric": "field_energy_J",
+      "seed": 4567,
+      "reference": 2.6842851255738088e-05,
+      "cuda": 2.684285125573807e-05,
+      "difference": 1.6940658945086007e-20,
+      "reference_seed_spread": 7.753173454093284e-08,
+      "bound": 7.753173454093285e-09,
+      "passed": true
+    },
+    {
+      "metric": "observed_dwell_s",
+      "seed": 1234,
+      "reference": 1.4988257007947814e-08,
+      "cuda": 1.4988257007947814e-08,
+      "difference": 0.0,
+      "reference_seed_spread": 1.6919389559932006e-12,
+      "bound": 1.6919389559932007e-13,
+      "passed": true
+    },
+    {
+      "metric": "observed_dwell_s",
+      "seed": 2345,
+      "reference": 1.4987691336721245e-08,
+      "cuda": 1.4987691336721245e-08,
+      "difference": 0.0,
+      "reference_seed_spread": 1.6919389559932006e-12,
+      "bound": 1.6919389559932007e-13,
+      "passed": true
+    },
+    {
+      "metric": "observed_dwell_s",
+      "seed": 3456,
+      "reference": 1.4987802975241364e-08,
+      "cuda": 1.4987802975241364e-08,
+      "difference": 0.0,
+      "reference_seed_spread": 1.6919389559932006e-12,
+      "bound": 1.6919389559932007e-13,
+      "passed": true
+    },
+    {
+      "metric": "observed_dwell_s",
+      "seed": 4567,
+      "reference": 1.4989383275677238e-08,
+      "cuda": 1.4989383275677238e-08,
+      "difference": 0.0,
+      "reference_seed_spread": 1.6919389559932006e-12,
+      "bound": 1.6919389559932007e-13,
+      "passed": true
+    },
+    {
+      "metric": "observed_core_dwell_s",
+      "seed": 1234,
+      "reference": 1.564690265750787e-09,
+      "cuda": 1.5646902657507871e-09,
+      "difference": 2.0679515313825692e-25,
+      "reference_seed_spread": 4.90424818589734e-12,
+      "bound": 4.904248185897341e-13,
+      "passed": true
+    },
+    {
+      "metric": "observed_core_dwell_s",
+      "seed": 2345,
+      "reference": 1.5597860175648896e-09,
+      "cuda": 1.5597860175648896e-09,
+      "difference": 0.0,
+      "reference_seed_spread": 4.90424818589734e-12,
+      "bound": 4.904248185897341e-13,
+      "passed": true
+    },
+    {
+      "metric": "observed_core_dwell_s",
+      "seed": 3456,
+      "reference": 1.5628288334718938e-09,
+      "cuda": 1.5628288334718938e-09,
+      "difference": 0.0,
+      "reference_seed_spread": 4.90424818589734e-12,
+      "bound": 4.904248185897341e-13,
+      "passed": true
+    },
+    {
+      "metric": "observed_core_dwell_s",
+      "seed": 4567,
+      "reference": 1.5643900663132326e-09,
+      "cuda": 1.564390066313232e-09,
+      "difference": 6.203854594147708e-25,
+      "reference_seed_spread": 4.90424818589734e-12,
+      "bound": 4.904248185897341e-13,
+      "passed": true
+    },
+    {
+      "metric": "core_electron_count",
+      "seed": 1234,
+      "reference": 32755439622.77008,
+      "cuda": 32755439622.77008,
+      "difference": 0.0,
+      "reference_seed_spread": 268384890.20180893,
+      "bound": 26838489.020180896,
+      "passed": true
+    },
+    {
+      "metric": "core_electron_count",
+      "seed": 2345,
+      "reference": 32674300004.80209,
+      "cuda": 32674300004.80209,
+      "difference": 0.0,
+      "reference_seed_spread": 268384890.20180893,
+      "bound": 26838489.020180896,
+      "passed": true
+    },
+    {
+      "metric": "core_electron_count",
+      "seed": 3456,
+      "reference": 32608764159.520256,
+      "cuda": 32608764159.520256,
+      "difference": 0.0,
+      "reference_seed_spread": 268384890.20180893,
+      "bound": 26838489.020180896,
+      "passed": true
+    },
+    {
+      "metric": "core_electron_count",
+      "seed": 4567,
+      "reference": 32877149049.722065,
+      "cuda": 32877149049.722065,
+      "difference": 0.0,
+      "reference_seed_spread": 268384890.20180893,
+      "bound": 26838489.020180896,
+      "passed": true
+    },
+    {
+      "metric": "loss_fraction",
+      "seed": 1234,
+      "reference": 0.007666666666666666,
+      "cuda": 0.007666666666666666,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0008000000000000004,
+      "bound": 8.000000000000005e-05,
+      "passed": true
+    },
+    {
+      "metric": "loss_fraction",
+      "seed": 2345,
+      "reference": 0.008033333333333333,
+      "cuda": 0.008033333333333333,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0008000000000000004,
+      "bound": 8.000000000000005e-05,
+      "passed": true
+    },
+    {
+      "metric": "loss_fraction",
+      "seed": 3456,
+      "reference": 0.0077666666666666665,
+      "cuda": 0.0077666666666666665,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0008000000000000004,
+      "bound": 8.000000000000005e-05,
+      "passed": true
+    },
+    {
+      "metric": "loss_fraction",
+      "seed": 4567,
+      "reference": 0.007233333333333333,
+      "cuda": 0.007233333333333333,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0008000000000000004,
+      "bound": 8.000000000000005e-05,
+      "passed": true
+    },
+    {
+      "metric": "core_entry_events_per_injected_particle",
+      "seed": 1234,
+      "reference": 0.30491666666666667,
+      "cuda": 0.30491666666666667,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0007499999999999729,
+      "bound": 7.49999999999973e-05,
+      "passed": true
+    },
+    {
+      "metric": "core_entry_events_per_injected_particle",
+      "seed": 2345,
+      "reference": 0.30543333333333333,
+      "cuda": 0.30543333333333333,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0007499999999999729,
+      "bound": 7.49999999999973e-05,
+      "passed": true
+    },
+    {
+      "metric": "core_entry_events_per_injected_particle",
+      "seed": 3456,
+      "reference": 0.30566666666666664,
+      "cuda": 0.30566666666666664,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0007499999999999729,
+      "bound": 7.49999999999973e-05,
+      "passed": true
+    },
+    {
+      "metric": "core_entry_events_per_injected_particle",
+      "seed": 4567,
+      "reference": 0.3055,
+      "cuda": 0.3055,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0007499999999999729,
+      "bound": 7.49999999999973e-05,
+      "passed": true
+    },
+    {
+      "metric": "repeated_entry_particle_fraction",
+      "seed": 1234,
+      "reference": 0.0118,
+      "cuda": 0.0118,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0008333333333333335,
+      "bound": 8.333333333333336e-05,
+      "passed": true
+    },
+    {
+      "metric": "repeated_entry_particle_fraction",
+      "seed": 2345,
+      "reference": 0.0112,
+      "cuda": 0.0112,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0008333333333333335,
+      "bound": 8.333333333333336e-05,
+      "passed": true
+    },
+    {
+      "metric": "repeated_entry_particle_fraction",
+      "seed": 3456,
+      "reference": 0.012033333333333333,
+      "cuda": 0.012033333333333333,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0008333333333333335,
+      "bound": 8.333333333333336e-05,
+      "passed": true
+    },
+    {
+      "metric": "repeated_entry_particle_fraction",
+      "seed": 4567,
+      "reference": 0.011883333333333333,
+      "cuda": 0.011883333333333333,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0008333333333333335,
+      "bound": 8.333333333333336e-05,
+      "passed": true
+    },
+    {
+      "metric": "charge_balance_C",
+      "seed": 1234,
+      "reference": -4.033332666808563e-21,
+      "cuda": -4.033332666808563e-21,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0,
+      "bound": 1e-24,
+      "passed": true
+    },
+    {
+      "metric": "charge_balance_C",
+      "seed": 2345,
+      "reference": -4.033332666808563e-21,
+      "cuda": -4.033332666808563e-21,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0,
+      "bound": 1e-24,
+      "passed": true
+    },
+    {
+      "metric": "charge_balance_C",
+      "seed": 3456,
+      "reference": -4.033332666808563e-21,
+      "cuda": -4.033332666808563e-21,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0,
+      "bound": 1e-24,
+      "passed": true
+    },
+    {
+      "metric": "charge_balance_C",
+      "seed": 4567,
+      "reference": -4.033332666808563e-21,
+      "cuda": -4.033332666808563e-21,
+      "difference": 0.0,
+      "reference_seed_spread": 0.0,
+      "bound": 1e-24,
+      "passed": true
+    },
+    {
+      "metric": "exit_xlo",
+      "seed": 1234,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_xlo",
+      "seed": 2345,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_xlo",
+      "seed": 3456,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_xlo",
+      "seed": 4567,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_xhi",
+      "seed": 1234,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_xhi",
+      "seed": 2345,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_xhi",
+      "seed": 3456,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_xhi",
+      "seed": 4567,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_ylo",
+      "seed": 1234,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_ylo",
+      "seed": 2345,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_ylo",
+      "seed": 3456,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_ylo",
+      "seed": 4567,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_yhi",
+      "seed": 1234,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_yhi",
+      "seed": 2345,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_yhi",
+      "seed": 3456,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_yhi",
+      "seed": 4567,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_zlo",
+      "seed": 1234,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_zlo",
+      "seed": 2345,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_zlo",
+      "seed": 3456,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_zlo",
+      "seed": 4567,
+      "reference": 0,
+      "cuda": 0,
+      "difference": 0,
+      "reference_seed_spread": 0,
+      "bound": 2,
+      "passed": true
+    },
+    {
+      "metric": "exit_zhi",
+      "seed": 1234,
+      "reference": 460,
+      "cuda": 460,
+      "difference": 0,
+      "reference_seed_spread": 48,
+      "bound": 4.800000000000001,
+      "passed": true
+    },
+    {
+      "metric": "exit_zhi",
+      "seed": 2345,
+      "reference": 482,
+      "cuda": 482,
+      "difference": 0,
+      "reference_seed_spread": 48,
+      "bound": 4.800000000000001,
+      "passed": true
+    },
+    {
+      "metric": "exit_zhi",
+      "seed": 3456,
+      "reference": 466,
+      "cuda": 466,
+      "difference": 0,
+      "reference_seed_spread": 48,
+      "bound": 4.800000000000001,
+      "passed": true
+    },
+    {
+      "metric": "exit_zhi",
+      "seed": 4567,
+      "reference": 434,
+      "cuda": 434,
+      "difference": 0,
+      "reference_seed_spread": 48,
+      "bound": 4.800000000000001,
+      "passed": true
+    },
+    {
+      "metric": "deposition_error_C",
+      "seed": 1234,
+      "reference": null,
+      "cuda": 0.0,
+      "difference": 0.0,
+      "reference_seed_spread": null,
+      "bound": 1.6543612251060553e-22,
+      "passed": true
+    },
+    {
+      "metric": "deposition_error_C",
+      "seed": 2345,
+      "reference": null,
+      "cuda": 3.308722450212111e-24,
+      "difference": 3.308722450212111e-24,
+      "reference_seed_spread": null,
+      "bound": 1.6543612251060553e-22,
+      "passed": true
+    },
+    {
+      "metric": "deposition_error_C",
+      "seed": 3456,
+      "reference": null,
+      "cuda": 3.308722450212111e-24,
+      "difference": 3.308722450212111e-24,
+      "reference_seed_spread": null,
+      "bound": 1.6543612251060553e-22,
+      "passed": true
+    },
+    {
+      "metric": "deposition_error_C",
+      "seed": 4567,
+      "reference": null,
+      "cuda": 1.9852334701272664e-23,
+      "difference": 1.9852334701272664e-23,
+      "reference_seed_spread": null,
+      "bound": 1.6543612251060553e-22,
+      "passed": true
+    }
+  ],
+  "summaries": {
+    "reference": {
+      "1234": {
+        "case": "pic_1A_s1234_reference",
+        "time_s": 3e-08,
+        "step": 7500,
+        "injected_particles": 60000,
+        "lost_particles": 460,
+        "loss_fraction": 0.007666666666666666,
+        "observed_dwell_s": 1.4988257007947814e-08,
+        "observed_core_dwell_s": 1.564690265750787e-09,
+        "core_entry_events_per_injected_particle": 0.30491666666666667,
+        "repeated_entry_particle_fraction": 0.0118,
+        "core_electron_count": 32755439622.77008,
+        "minimum_potential_V": -3462.394281581012,
+        "field_energy_J": 2.6835456010882487e-05,
+        "open_energy_balance_fraction": 1.660838515532867e-06,
+        "charge_balance_C": -4.033332666808563e-21,
+        "deposition_error_C": 0.0,
+        "boundary_shape_charge_C": -6.2624408906747e-10,
+        "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          460
+        ]
+      },
+      "2345": {
+        "case": "pic_1A_s2345_reference",
+        "time_s": 3e-08,
+        "step": 7500,
+        "injected_particles": 60000,
+        "lost_particles": 482,
+        "loss_fraction": 0.008033333333333333,
+        "observed_dwell_s": 1.4987691336721245e-08,
+        "observed_core_dwell_s": 1.5597860175648896e-09,
+        "core_entry_events_per_injected_particle": 0.30543333333333333,
+        "repeated_entry_particle_fraction": 0.0112,
+        "core_electron_count": 32674300004.80209,
+        "minimum_potential_V": -3470.1550634030427,
+        "field_energy_J": 2.6765319521197155e-05,
+        "open_energy_balance_fraction": 1.791444729696168e-06,
+        "charge_balance_C": -4.033332666808563e-21,
+        "deposition_error_C": -6.617444900424222e-24,
+        "boundary_shape_charge_C": -6.340196847874989e-10,
+        "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          482
+        ]
+      },
+      "3456": {
+        "case": "pic_1A_s3456_reference",
+        "time_s": 3e-08,
+        "step": 7500,
+        "injected_particles": 60000,
+        "lost_particles": 466,
+        "loss_fraction": 0.0077666666666666665,
+        "observed_dwell_s": 1.4987802975241364e-08,
+        "observed_core_dwell_s": 1.5628288334718938e-09,
+        "core_entry_events_per_injected_particle": 0.30566666666666664,
+        "repeated_entry_particle_fraction": 0.012033333333333333,
+        "core_electron_count": 32608764159.520256,
+        "minimum_potential_V": -3475.2500430965038,
+        "field_energy_J": 2.6801088000515454e-05,
+        "open_energy_balance_fraction": -5.186014899906884e-07,
+        "charge_balance_C": -4.033332666808563e-21,
+        "deposition_error_C": -6.617444900424222e-24,
+        "boundary_shape_charge_C": -6.296711363104255e-10,
+        "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          466
+        ]
+      },
+      "4567": {
+        "case": "pic_1A_s4567_reference",
+        "time_s": 3e-08,
+        "step": 7500,
+        "injected_particles": 60000,
+        "lost_particles": 434,
+        "loss_fraction": 0.007233333333333333,
+        "observed_dwell_s": 1.4989383275677238e-08,
+        "observed_core_dwell_s": 1.5643900663132326e-09,
+        "core_entry_events_per_injected_particle": 0.3055,
+        "repeated_entry_particle_fraction": 0.011883333333333333,
+        "core_electron_count": 32877149049.722065,
+        "minimum_potential_V": -3474.4225679453166,
+        "field_energy_J": 2.6842851255738088e-05,
+        "open_energy_balance_fraction": 2.9836768448414224e-06,
+        "charge_balance_C": -4.033332666808563e-21,
+        "deposition_error_C": 1.6543612251060553e-23,
+        "boundary_shape_charge_C": -6.34524611404001e-10,
+        "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          434
+        ]
+      }
+    },
+    "cuda": {
+      "1234": {
+        "case": "pic_1A_s1234_cuda",
+        "time_s": 3e-08,
+        "step": 7500,
+        "injected_particles": 60000,
+        "lost_particles": 460,
+        "loss_fraction": 0.007666666666666666,
+        "observed_dwell_s": 1.4988257007947814e-08,
+        "observed_core_dwell_s": 1.5646902657507871e-09,
+        "core_entry_events_per_injected_particle": 0.30491666666666667,
+        "repeated_entry_particle_fraction": 0.0118,
+        "core_electron_count": 32755439622.77008,
+        "minimum_potential_V": -3462.394281581013,
+        "field_energy_J": 2.6835456010882483e-05,
+        "open_energy_balance_fraction": 1.6608385162556104e-06,
+        "charge_balance_C": -4.033332666808563e-21,
+        "deposition_error_C": 0.0,
+        "boundary_shape_charge_C": -6.262440890674733e-10,
+        "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          460
+        ]
+      },
+      "2345": {
+        "case": "pic_1A_s2345_cuda",
+        "time_s": 3e-08,
+        "step": 7500,
+        "injected_particles": 60000,
+        "lost_particles": 482,
+        "loss_fraction": 0.008033333333333333,
+        "observed_dwell_s": 1.4987691336721245e-08,
+        "observed_core_dwell_s": 1.5597860175648896e-09,
+        "core_entry_events_per_injected_particle": 0.30543333333333333,
+        "repeated_entry_particle_fraction": 0.0112,
+        "core_electron_count": 32674300004.80209,
+        "minimum_potential_V": -3470.1550634030436,
+        "field_energy_J": 2.6765319521197145e-05,
+        "open_energy_balance_fraction": 1.791444730238226e-06,
+        "charge_balance_C": -4.033332666808563e-21,
+        "deposition_error_C": -3.308722450212111e-24,
+        "boundary_shape_charge_C": -6.340196847874956e-10,
+        "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          482
+        ]
+      },
+      "3456": {
+        "case": "pic_1A_s3456_cuda",
+        "time_s": 3e-08,
+        "step": 7500,
+        "injected_particles": 60000,
+        "lost_particles": 466,
+        "loss_fraction": 0.0077666666666666665,
+        "observed_dwell_s": 1.4987802975241364e-08,
+        "observed_core_dwell_s": 1.5628288334718938e-09,
+        "core_entry_events_per_injected_particle": 0.30566666666666664,
+        "repeated_entry_particle_fraction": 0.012033333333333333,
+        "core_electron_count": 32608764159.520256,
+        "minimum_potential_V": -3475.250043096493,
+        "field_energy_J": 2.680108800051541e-05,
+        "open_energy_balance_fraction": -5.186014896293164e-07,
+        "charge_balance_C": -4.033332666808563e-21,
+        "deposition_error_C": 3.308722450212111e-24,
+        "boundary_shape_charge_C": -6.296711363104354e-10,
+        "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          466
+        ]
+      },
+      "4567": {
+        "case": "pic_1A_s4567_cuda",
+        "time_s": 3e-08,
+        "step": 7500,
+        "injected_particles": 60000,
+        "lost_particles": 434,
+        "loss_fraction": 0.007233333333333333,
+        "observed_dwell_s": 1.4989383275677238e-08,
+        "observed_core_dwell_s": 1.564390066313232e-09,
+        "core_entry_events_per_injected_particle": 0.3055,
+        "repeated_entry_particle_fraction": 0.011883333333333333,
+        "core_electron_count": 32877149049.722065,
+        "minimum_potential_V": -3474.4225679453166,
+        "field_energy_J": 2.684285125573807e-05,
+        "open_energy_balance_fraction": 2.9836768453834803e-06,
+        "charge_balance_C": -4.033332666808563e-21,
+        "deposition_error_C": 1.9852334701272664e-23,
+        "boundary_shape_charge_C": -6.34524611404001e-10,
+        "exit_counts_xlo_xhi_ylo_yhi_zlo_zhi": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          434
+        ]
+      }
+    }
+  },
+  "seconds_per_step": {
+    "reference": {
+      "1234": 0.004658399926126003,
+      "2345": 0.004490052209794522,
+      "3456": 0.004353136003017425,
+      "4567": 0.0043278783857822415
+    },
+    "cuda": {
+      "1234": 0.001663517864048481,
+      "2345": 0.0016740453012287616,
+      "3456": 0.0016280042737722396,
+      "4567": 0.0016490789487957954
+    }
+  },
+  "median_step_speedup": 2.678033188340952
+}

@@ -19,7 +19,6 @@ from torch.utils.cpp_extension import CUDA_HOME, load_inline
 
 CACHE_FORMAT_VERSION = 3
 
-_FUNCTIONS = ["push"]
 _COMPILE_ENV_VARS = (
     "PATH",
     "CC",
@@ -91,6 +90,8 @@ def fingerprint(
     extra_cuda_cflags: list[str],
     toolchain: dict[str, object] | None = None,
     arch: str | None = None,
+    *,
+    functions: tuple[str, ...] = ("push",),
 ) -> str:
     """Deterministic 24-hex-char key for the extension build inputs. ``toolchain``
     and ``arch`` are injectable for tests; the rest is explicit environment reads."""
@@ -102,7 +103,7 @@ def fingerprint(
         "cache_format": CACHE_FORMAT_VERSION,
         "cpp_source": cpp_source,
         "cuda_source": cuda_source,
-        "functions": _FUNCTIONS,
+        "functions": list(functions),
         "extra_cuda_cflags": list(extra_cuda_cflags),
         "platform": {
             "system": platform.system(),
@@ -148,6 +149,8 @@ def load_cached_extension(
     cuda_source: str,
     device_index: int,
     extra_cuda_cflags: list[str],
+    *,
+    functions: tuple[str, ...] = ("push",),
 ) -> types.ModuleType:
     """Build or load the fused kernel under a shared fingerprint-keyed directory.
 
@@ -155,7 +158,9 @@ def load_cached_extension(
     signature is stable; identical workers on different GPUs share one build.
     """
     del device_index  # not part of the fingerprint or module name
-    key = fingerprint(cpp_source, cuda_source, list(extra_cuda_cflags))
+    key = fingerprint(
+        cpp_source, cuda_source, list(extra_cuda_cflags), functions=functions,
+    )
     name = f"cusp_push_{key}"
     keydir = cache_root() / name
     keydir.mkdir(parents=True, exist_ok=True)
@@ -180,7 +185,7 @@ def load_cached_extension(
                 name=name,
                 cpp_sources=cpp_source,
                 cuda_sources=cuda_source,
-                functions=_FUNCTIONS,
+                functions=list(functions),
                 build_directory=str(keydir),
                 extra_cuda_cflags=list(extra_cuda_cflags),
                 verbose=verbose,

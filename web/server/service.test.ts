@@ -176,6 +176,14 @@ test("registration preserves the selected profile and rejects unknown profiles",
     assert.equal(highVoltage.gpus, 4);
     assert.equal(highVoltage.campaignId, null);
     assert.equal(highVoltage.purpose, "Compare 30 and 100 kA-turn at 5 keV with vacuum controls and a 1 A electron beam.");
+    const reregistered = await service.register(
+      "jonathan-cusp-poisson-5kev-1ce5bd", "poisson-5kev-070652d", null, "5 keV", "poisson-high-voltage", 8,
+    );
+    assert.equal(reregistered.gpus, 8);
+    await assert.rejects(
+      service.register("broker-456", "run-3", null, "Too many", "poisson-high-voltage", 9),
+      /Invalid GPU count/,
+    );
     await assert.rejects(
       service.register("unknown-profile", "run-2", null, "Unknown", "unknown"),
       /Invalid profile/,

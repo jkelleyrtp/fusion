@@ -1,0 +1,827 @@
+"""Four bounded transient PIC controls on one broker-allocated GPU node."""
+
+import argparse
+import concurrent.futures
+import json
+import math
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from ion_pic import parser as ion_parser
+from ion_pic import validate_coupled
+from run_transient_pic import parser as pic_parser
+from run_transient_pic import validate as validate_config
+
+DOMAIN_BOXES = {
+    "pic_1A_box": (0.6, 1.3, 1.3),
+    "pic_1A_box_w0525": (0.525, 1.3, 1.3),
+    "pic_1A_box_w045": (0.45, 1.3, 1.3),
+    "pic_1A_box_t195": (0.6, 1.3, 1.95),
+    "pic_1A_box_t26": (0.6, 1.3, 2.6),
+    "pic_1A_box_b1625": (0.6, 1.625, 1.3),
+    "pic_1A_box_b195": (0.6, 1.95, 1.3),
+    "pic_1A_box_b195_t26": (0.6, 1.95, 2.6),
+}
+
+GUN_BARRELS = {
+    "pic_1A_gun_wall": ((0.6, 1.3, 1.3), 0.0, 65, 1234),
+    "pic_1A_gun_b1625": ((0.6, 1.625, 1.3), 0.06, 65, 1234),
+    "pic_1A_gun_b195": ((0.6, 1.95, 1.3), 0.06, 65, 1234),
+    "pic_1A_gun_b26": ((0.6, 2.6, 1.3), 0.06, 65, 1234),
+    "pic_1A_gun_b195_r004": ((0.6, 1.95, 1.3), 0.04, 65, 1234),
+    "pic_1A_gun_b195_r010": ((0.6, 1.95, 1.3), 0.10, 65, 1234),
+    "pic_1A_gun_b195_s2345": ((0.6, 1.95, 1.3), 0.06, 65, 2345),
+    "pic_1A_gun_b195_n97": ((0.6, 1.95, 1.3), 0.06, 97, 1234),
+}
+
+SIX_COIL_CASING = 0.1
+SIX_COILS = {
+    "pic_1A_two_coil_c010": (2, 0.5, (1.425, 1.95, 1.4625), 0.0, 1, 1234),
+    "pic_1A_six_d120": (6, 1.2, (1.425, 1.95, 1.4625), 0.0, 1, 1234),
+    "pic_1A_six_d120_1mA": (6, 1.2, (1.425, 1.95, 1.4625), 0.0, 1e-3, 1234),
+    "pic_1A_six_d130": (6, 1.3, (1.5, 1.95, 1.54375), 0.0, 1, 1234),
+    "pic_1A_six_d120_w1575": (6, 1.2, (1.575, 1.95, 1.4625), 0.0, 1, 1234),
+    "pic_1A_six_d120_t195": (6, 1.2, (1.425, 1.95, 1.95), 0.0, 1, 1234),
+    "pic_1A_six_d120_p1kV": (6, 1.2, (1.425, 1.95, 1.4625), 1000.0, 1, 1234),
+    "pic_1A_six_d120_s2345": (6, 1.2, (1.425, 1.95, 1.4625), 0.0, 1, 2345),
+}
+
+SIX_COIL_LONG = {
+    "six_long": (1, 30000, 0.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_long_s2345": (1, 30000, 0.0, 2345, 2e-12, 2, 1e-6, 5000),
+    "six_long_1mA": (1e-3, 30000, 0.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_long_300mA": (0.3, 30000, 0.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_long_3A": (3, 30000, 0.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_long_m1kV": (1, 30000, -1000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_long_60kAt": (1, 60000, 0.0, 1234, 1e-12, 4, 6e-7, 5000),
+    "six_long_60kAt_1mA": (1e-3, 60000, 0.0, 1234, 1e-12, 4, 6e-7, 5000),
+}
+
+SIX_COIL_BIAS = {
+    "six_bias_p1kV": (1, 30000, 1000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p2p5kV": (1, 30000, 2500.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p5kV": (1, 30000, 5000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p10kV": (1, 30000, 10000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p5kV_s2345": (1, 30000, 5000.0, 2345, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p5kV_1mA": (1e-3, 30000, 5000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p5kV_3A": (3, 30000, 5000.0, 1234, 2e-12, 2, 1e-6, 5000),
+    "six_bias_p5kV_2keV": (1, 30000, 5000.0, 1234, 2e-12, 2, 1e-6, 2000),
+}
+SIX_COIL_TRACKS = {
+    "track_0V": (1.0, 30000, 0.0, 1234, 2e-12, 2, 8e-7, 5000),
+    "track_0V_s2345": (1.0, 30000, 0.0, 2345, 2e-12, 2, 8e-7, 5000),
+    "track_p5kV": (1.0, 30000, 5000.0, 1234, 2e-12, 2, 8e-7, 5000),
+    "track_p10kV": (1.0, 30000, 10000.0, 1234, 2e-12, 2, 8e-7, 5000),
+    "track_m1kV": (1.0, 30000, -1000.0, 1234, 2e-12, 2, 8e-7, 5000),
+    "track_3A": (3.0, 30000, 0.0, 1234, 2e-12, 2, 8e-7, 5000),
+    "track_p5kV_2keV": (1.0, 30000, 5000.0, 1234, 2e-12, 2, 8e-7, 2000),
+    "track_60kAt": (1.0, 60000, 0.0, 1234, 1e-12, 4, 8e-7, 5000),
+}
+TRACK_AFTER, TRACK_SAMPLE_INTERVAL = 5e-7, 2e-12
+LONG = {"six-coil-long": SIX_COIL_LONG, "six-coil-bias": SIX_COIL_BIAS, "six-coil-tracks": SIX_COIL_TRACKS}
+
+COIL_CASINGS = {
+    "pic_1A_casing_none": ((0.6, 1.95, 1.3), 0.0, 0.0, 1234),
+    "pic_1A_casing_r015": ((1.2, 1.95, 1.3), 0.15, 0.0, 1234),
+    "pic_1A_casing_r015_w1275": ((1.275, 1.95, 1.3), 0.15, 0.0, 1234),
+    "pic_1A_casing_r020": ((1.275, 1.95, 1.3), 0.20, 0.0, 1234),
+    "pic_1A_casing_r015_p1kV": ((1.2, 1.95, 1.3), 0.15, 1000.0, 1234),
+    "pic_1A_casing_r015_m1kV": ((1.2, 1.95, 1.3), 0.15, -1000.0, 1234),
+    "pic_1A_casing_r015_s2345": ((1.2, 1.95, 1.3), 0.15, 0.0, 2345),
+    "pic_1A_casing_r015_t195": ((1.2, 1.95, 1.95), 0.15, 0.0, 1234),
+}
+CASING_GUN_RADIUS = 0.06
+
+ION_CASES = {
+    "ions_p1e-3": (),
+    "ions_p1e-3_nocx": ("--cx-cross-section", "0"),
+    "ions_p1e-3_nosec": ("--no-secondaries",),
+    "ions_p1e-2": ("--gas-pa", "1e-2", "--cycle-duration", "1e-6"),
+    "ions_p1e-3_dt05": ("--ion-dt", "5e-10"),
+    "ions_p1e-3_cycle5": ("--cycle-duration", "5e-6", "--cycles", "80", "--save-every-cycles", "8"),
+    "ions_p1e-3_window80": ("--electron-window", "8e-8"),
+    "ions_p1e-3_ions2x": ("--ions-per-cycle", "16384"),
+}
+
+SIX_COIL_IONS = {
+    "ions6_p1e-3": (1, 1234, ()),
+    "ions6_p1e-3_s2345": (1, 2345, ()),
+    "ions6_p1e-3_300mA": (0.3, 1234, ()),
+    "ions6_p1e-2": (1, 1234, ("--gas-pa", "1e-2", "--cycle-duration", "1e-6")),
+    "ions6_p1e-3_dt05": (1, 1234, ("--ion-dt", "5e-10")),
+    "ions6_p1e-3_cycle5": (1, 1234, ("--cycle-duration", "5e-6", "--cycles", "80", "--save-every-cycles", "8")),
+    "ions6_p1e-3_window80": (1, 1234, ("--electron-window", "8e-8")),
+    "ions6_p1e-3_ions2x": (1, 1234, ("--ions-per-cycle", "16384")),
+}
+SIX_COIL_FEED = {
+    "feed_1A_5keV": (1, 30000, 5000, 2e-12, 2),
+    "feed_10A_5keV": (10, 30000, 5000, 2e-12, 2),
+    "feed_10A_10keV": (10, 30000, 10000, 2e-12, 2),
+    "feed_30A_10keV": (30, 30000, 10000, 2e-12, 2),
+    "feed_100A_10keV": (100, 30000, 10000, 2e-12, 2),
+    "feed_30A_10keV_60kAt": (30, 60000, 10000, 1e-12, 4),
+    "feed_30A_10keV_10kAt": (30, 10000, 10000, 2e-12, 2),
+    "feed_100A_10keV_10kAt": (100, 10000, 10000, 2e-12, 2),
+}
+SIX_COIL_FEED_FINE = {
+    "feed_10A_10keV_idt2": ("feed_10A_10keV", ("--ion-dt", "2e-10")),
+    "feed_30A_10keV_idt2": ("feed_30A_10keV", ("--ion-dt", "2e-10")),
+    "feed_100A_10keV_idt2": ("feed_100A_10keV", ("--ion-dt", "2e-10")),
+    "feed_30A_10keV_60kAt_idt2": ("feed_30A_10keV_60kAt", ("--ion-dt", "2e-10")),
+    "feed_100A_10keV_10kAt_idt2": ("feed_100A_10keV_10kAt", ("--ion-dt", "2e-10")),
+    "feed_10A_10keV_p1e-3": ("feed_10A_10keV", ("--gas-pa", "1e-3", "--cycle-duration", "1e-5")),
+    "feed_30A_10keV_p1e-3": ("feed_30A_10keV", ("--gas-pa", "1e-3", "--cycle-duration", "1e-5",
+                                              "--ion-dt", "5e-10")),
+    "feed_100A_10keV_p1e-3": ("feed_100A_10keV", ("--gas-pa", "1e-3", "--cycle-duration", "1e-5",
+                                                "--ion-dt", "5e-10")),
+}
+SIX_COIL_SUSTAIN = {  # electron-gun current, seed, extra arguments; 10 keV, 30 kA-turn, 1e-3 Pa, 32 x 10 us
+    "sustain_1A_10keV": (1, 1234, ()),
+    "sustain_3A_10keV": (3, 1234, ()),
+    "sustain_10A_10keV_long": (10, 1234, ("--cycles", "64", "--save-every-cycles", "8")),
+    "sustain_10A_10keV_s2345": (10, 2345, ()),
+    "sustain_10A_10keV_cycle5": (10, 1234, ("--cycle-duration", "5e-6", "--cycles", "64", "--save-every-cycles", "8")),
+    "sustain_30A_10keV_long": (30, 1234, ("--ion-dt", "5e-10", "--cycles", "64", "--save-every-cycles", "8")),
+    "sustain_10A_10keV_D2": (10, 1234, ("--fuel", "D2")),
+    "sustain_10A_10keV_p1e-4": (10, 1234, ("--gas-pa", "1e-4", "--cycle-duration", "1e-4")),
+}
+SIX_COIL_SPLITTING = {  # ion cycle (us), electron window (ns), cycles, seed, extra; 10 A 10 keV sustain case
+    "split_c10_w80": (10, 80, 40, 1234, ()),
+    "split_c5_w20": (5, 20, 80, 1234, ()),
+    "split_c10_w40_ions2x": (10, 40, 40, 1234, ("--ions-per-cycle", "16384")),
+    "split_c5_w40_ions05x": (5, 40, 80, 1234, ("--ions-per-cycle", "4096")),
+    "split_c5_w40_s2345": (5, 40, 80, 2345, ()),
+    "split_c2p5_w40": (2.5, 40, 128, 1234, ()),
+    "split_c20_w40": (20, 40, 20, 1234, ()),
+    "split_c10_w40_idt05": (10, 40, 40, 1234, ("--ion-dt", "5e-10")),
+}
+SIX_COIL_GUN_LIMIT = {  # current, energy, seed, extra arguments; 30 kA-turn, 1e-3 Pa, 32 x 10 us, 0.5 ns ion steps
+    "limit_30A_20keV": (30, 20000, 1234, ()),
+    "limit_30A_20keV_s2345": (30, 20000, 2345, ()),
+    "limit_100A_20keV": (100, 20000, 1234, ()),
+    "limit_300A_20keV": (300, 20000, 1234, ()),
+    "limit_100A_10keV_div30": (100, 10000, 1234, ("--divergence-deg", "30")),
+    "limit_100A_20keV_div30": (100, 20000, 1234, ("--divergence-deg", "30")),
+    "limit_100A_10keV_bias5kV": (100, 10000, 1234, ("--casing-voltage", "5000")),
+    "limit_100A_20keV_bias5kV": (100, 20000, 1234, ("--casing-voltage", "5000")),
+}
+SIX_COIL_MULTI_GUN = {  # guns, total current, energy, seed, extra arguments; 30 kA-turn, 1e-3 Pa, 32 x 10 us
+    "guns6_30A_10keV": (6, 30, 10000, 1234, ()),
+    "guns6_100A_10keV": (6, 100, 10000, 1234, ()),
+    "guns6_100A_10keV_s2345": (6, 100, 10000, 2345, ()),
+    "guns3_100A_10keV": (3, 100, 10000, 1234, ()),
+    "guns2_100A_10keV": (2, 100, 10000, 1234, ()),
+    "guns6_300A_10keV": (6, 300, 10000, 1234, ("--ion-dt", "2e-10")),
+    "guns6_300A_20keV": (6, 300, 20000, 1234, ("--ion-dt", "2e-10")),
+    "guns6_1000A_20keV": (6, 1000, 20000, 1234, ("--ion-dt", "2e-10")),
+}
+SIX_COIL_MULTI_GUN_CHECK = {  # base multi-gun case, nodes, particles per step, extra arguments
+    "guns6_100A_10keV_ppc4": ("guns6_100A_10keV", 65, 48, ("--cycles", "16")),
+    "guns6_1000A_20keV_ppc4": ("guns6_1000A_20keV", 65, 48, ("--cycles", "16")),
+    "guns6_100A_10keV_cycle5": ("guns6_100A_10keV", 65, 12, ("--cycle-duration", "5e-6", "--cycles", "64",
+                                                            "--save-every-cycles", "8")),
+    "guns6_100A_10keV_p1e-4": ("guns6_100A_10keV", 65, 12, ("--gas-pa", "1e-4", "--cycle-duration", "1e-4",
+                                                           "--cycles", "16", "--save-every-cycles", "2")),
+    "guns6_1000A_20keV_p1e-4": ("guns6_1000A_20keV", 65, 12, ("--gas-pa", "1e-4", "--cycle-duration", "1e-4",
+                                                             "--cycles", "8", "--save-every-cycles", "2")),
+}
+SIX_COIL_MULTI_GUN_SCALE = {  # total current, energy, seed, nodes, electron dt, packet interval, extra; six guns
+    "guns6_100A_10keV_n49": (100, 10000, 1234, 49, 2e-12, 2, ("--cycles", "16")),
+    "guns6_1000A_20keV_n49": (1000, 20000, 1234, 49, 2e-12, 2, ("--ion-dt", "2e-10", "--cycles", "16")),
+    "guns6_100A_10keV_60kAt": (100, 10000, 1234, 65, 1e-12, 4, ("--coil-current", "60000", "--cycles", "16")),
+    "guns6_1000A_20keV_60kAt": (1000, 20000, 1234, 65, 1e-12, 4, ("--coil-current", "60000", "--ion-dt", "2e-10",
+                                                                  "--cycles", "16")),
+    "guns6_1000A_20keV_s2345": (1000, 20000, 2345, 65, 2e-12, 2, ("--ion-dt", "2e-10")),
+    "guns6_100A_20keV": (100, 20000, 1234, 65, 2e-12, 2, ()),
+    "guns6_3000A_20keV": (3000, 20000, 1234, 65, 2e-12, 2, ("--ion-dt", "1e-10", "--cycles", "16")),
+    "guns6_3000A_20keV_n49": (3000, 20000, 1234, 49, 2e-12, 2, ("--ion-dt", "1e-10", "--cycles", "16")),
+}
+SIX_COIL_MESH = {  # guns, total current, energy, nodes, particles per step, extra; 16 x 10 us at 1e-3 Pa
+    "guns6_100A_10keV_n81": (6, 100, 10000, 81, 12, ()),
+    "guns6_1000A_20keV_n81": (6, 1000, 20000, 81, 12, ("--ion-dt", "2e-10")),
+    "guns6_100A_20keV_n81": (6, 100, 20000, 81, 12, ()),
+    "guns6_100A_20keV_n49": (6, 100, 20000, 49, 12, ()),
+    "guns3_100A_10keV_n81": (3, 100, 10000, 81, 12, ()),
+    "guns3_100A_10keV_n49": (3, 100, 10000, 49, 12, ()),
+    "sustain_10A_10keV_n81": (1, 10, 10000, 81, 8, ("--ion-dt", "1e-9")),
+    "sustain_10A_10keV_n49": (1, 10, 10000, 49, 8, ("--ion-dt", "1e-9")),
+}
+FACE_INLET, CORNER_INLET, GUN_INLET = ("0.7", "0", "0"), ("0.68", "0.68", "0.68"), ("0.1", "0", "-0.95")
+SIX_COIL_GAS = {
+    "d2_uniform_p1e-3": ("--gas-pa", "1e-3"),
+    "d2_uniform_p1e-4": ("--gas-pa", "1e-4"),
+    "d2_inlet_face_Q1e-3_S1": ("--gas-pa", "0", "--gas-inlet", *FACE_INLET, "--gas-inlet-throughput", "1e-3"),
+    "d2_inlet_face_Q1e-4_S1": ("--gas-pa", "0", "--gas-inlet", *FACE_INLET, "--gas-inlet-throughput", "1e-4"),
+    "d2_puff_face_Q1e-2_S1e3": ("--gas-pa", "0", "--gas-inlet", *FACE_INLET, "--gas-inlet-throughput", "1e-2",
+                                "--pump-speed", "1e3"),
+    "d2_puff_face_Q1e-1_S1e3": ("--gas-pa", "0", "--gas-inlet", *FACE_INLET, "--gas-inlet-throughput", "1e-1",
+                                "--pump-speed", "1e3"),
+    "d2_puff_corner_Q1e-1_S1e3": ("--gas-pa", "0", "--gas-inlet", *CORNER_INLET, "--gas-inlet-throughput", "1e-1",
+                                  "--pump-speed", "1e3"),
+    "d2_puff_gun_Q1e-1_S1e3": ("--gas-pa", "0", "--gas-inlet", *GUN_INLET, "--gas-inlet-throughput", "1e-1",
+                               "--pump-speed", "1e3"),
+}
+TOP_CUSP = ("0", "0", "0.7")
+SIX_COIL_ION_GUN = {
+    "gun_none": (),
+    "gun_10mA_100eV": ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP, "--ion-gun-energy-ev", "100"),
+    "gun_10mA_10eV": ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP, "--ion-gun-energy-ev", "10"),
+    "gun_10mA_1keV": ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP, "--ion-gun-energy-ev", "1000"),
+    "gun_1mA_100eV": ("--ion-gun-current", "1e-3", "--ion-gun-position", *TOP_CUSP, "--ion-gun-energy-ev", "100"),
+    "gun_100mA_100eV": ("--ion-gun-current", "1e-1", "--ion-gun-position", *TOP_CUSP, "--ion-gun-energy-ev", "100"),
+    "gun_corner_10mA_100eV": ("--ion-gun-current", "1e-2", "--ion-gun-position", *CORNER_INLET,
+                              "--ion-gun-energy-ev", "100"),
+    "gun_10mA_100eV_bias5kV": ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP,
+                               "--ion-gun-energy-ev", "100", "--casing-voltage", "5000"),
+}
+DEUTERON_GUN = ("--ion-gun-species", "atomic", "--ion-gun-position", *TOP_CUSP)
+SIX_COIL_DEUTERON = {  # coil kA-turn, electron dt, inject interval, seed, extra arguments
+    "diss5_gun_none": (30000, 2e-12, 2, 1234, ()),
+    "dplus_10mA_100eV": (30000, 2e-12, 2, 1234, ("--ion-gun-current", "1e-2", *DEUTERON_GUN)),
+    "dplus_10mA_100eV_s2345": (30000, 2e-12, 2, 2345, ("--ion-gun-current", "1e-2", *DEUTERON_GUN)),
+    "dplus_10mA_1keV": (30000, 2e-12, 2, 1234, ("--ion-gun-current", "1e-2", *DEUTERON_GUN,
+                                                "--ion-gun-energy-ev", "1000")),
+    "dplus_100mA_100eV": (30000, 2e-12, 2, 1234, ("--ion-gun-current", "1e-1", *DEUTERON_GUN)),
+    "dplus_10mA_100eV_bias5kV": (30000, 2e-12, 2, 1234, ("--ion-gun-current", "1e-2", *DEUTERON_GUN,
+                                                         "--casing-voltage", "5000")),
+    "dplus_10mA_100eV_60kAt": (60000, 1e-12, 4, 1234, ("--ion-gun-current", "1e-2", *DEUTERON_GUN)),
+    "d2plus_10mA_100eV": (30000, 2e-12, 2, 1234, ("--ion-gun-current", "1e-2", "--ion-gun-position", *TOP_CUSP)),
+}
+DPLUS_100MA = ("--ion-gun-current", "1e-1", *DEUTERON_GUN)
+SIX_COIL_DEUTERON_FINE = {  # as SIX_COIL_DEUTERON, with 0.2 ns ion steps unless noted
+    "dplus_100mA_100eV_idt2": (30000, 2e-12, 2, 1234, (*DPLUS_100MA, "--ion-dt", "2e-10")),
+    "dplus_100mA_100eV_idt2_s2345": (30000, 2e-12, 2, 2345, (*DPLUS_100MA, "--ion-dt", "2e-10")),
+    "dplus_100mA_100eV_idt1_20cyc": (30000, 2e-12, 2, 1234, (*DPLUS_100MA, "--ion-dt", "1e-10", "--cycles", "20")),
+    "dplus_30mA_100eV_idt2": (30000, 2e-12, 2, 1234,
+                              ("--ion-gun-current", "3e-2", *DEUTERON_GUN, "--ion-dt", "2e-10")),
+    "dplus_100mA_1keV_idt2": (30000, 2e-12, 2, 1234, (*DPLUS_100MA, "--ion-gun-energy-ev", "1000", "--ion-dt", "2e-10")),
+    "dplus_300mA_1keV_idt2": (30000, 2e-12, 2, 1234, ("--ion-gun-current", "3e-1", *DEUTERON_GUN,
+                                                      "--ion-gun-energy-ev", "1000", "--ion-dt", "2e-10")),
+    "dplus_100mA_100eV_bias5kV_idt2": (30000, 2e-12, 2, 1234,
+                                       (*DPLUS_100MA, "--casing-voltage", "5000", "--ion-dt", "2e-10")),
+    "dplus_100mA_100eV_60kAt_idt2": (60000, 1e-12, 4, 1234, (*DPLUS_100MA, "--ion-dt", "2e-10")),
+}
+SIX_COIL_PULSE = {  # gun period and on cycles (10 us each), seed, extra arguments
+    "pulse_continuous": (0, 0, 1234, ()),
+    "pulse_on150_off50": (20, 15, 1234, ()),
+    "pulse_on150_off20": (17, 15, 1234, ()),
+    "pulse_on50_off50": (10, 5, 1234, ()),
+    "pulse_on300_off100": (40, 30, 1234, ()),
+    "pulse_on50_off50_p1e-3": (10, 5, 1234, ("--gas-pa", "1e-3")),
+    "pulse_on150_off50_s2345": (20, 15, 2345, ()),
+    "pulse_on150_off50_settle400": (20, 15, 1234, ("--gun-settle", "4e-7")),
+}
+DPLUS_10MA_1KEV = ("--ion-gun-current", "1e-2", *DEUTERON_GUN, "--ion-gun-energy-ev", "1000")
+SIX_COIL_CAPTURE = {  # electron-gun period and on cycles (1 us each), ion-gun phase, seed, extra arguments
+    "capture_off_1keV": (12, 10, "electron-off", 1234, DPLUS_10MA_1KEV),
+    "capture_on_1keV": (12, 10, "electron-on", 1234, DPLUS_10MA_1KEV),
+    "capture_always_1keV": (12, 10, "always", 1234, DPLUS_10MA_1KEV),
+    "capture_continuous_1keV": (0, 0, "always", 1234, DPLUS_10MA_1KEV),
+    "capture_off_300eV": (12, 10, "electron-off", 1234,
+                          ("--ion-gun-current", "1e-2", *DEUTERON_GUN, "--ion-gun-energy-ev", "300")),
+    "capture_off_1keV_on4_off2": (6, 4, "electron-off", 1234, DPLUS_10MA_1KEV),
+    "capture_off_1keV_s2345": (12, 10, "electron-off", 2345, DPLUS_10MA_1KEV),
+    "capture_off_1keV_idt2": (12, 10, "electron-off", 1234, (*DPLUS_10MA_1KEV, "--ion-dt", "2e-10")),
+}
+COUPLED = (
+    "ions", "six-coil-ions", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas", "six-coil-ion-gun",
+    "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture", "six-coil-sustain",
+    "six-coil-splitting", "six-coil-gun-limit", "six-coil-multi-gun", "six-coil-multi-gun-check", "six-coil-multi-gun-scale",
+    "six-coil-mesh",
+)
+
+
+def case_specs(
+    study: str, kernels: str,
+) -> list[tuple[str, float, float, int, int, int, int, int, str]]:
+    cases = {
+        "startup": (
+            ("pic_vacuum", 0, 4e-12, 8, 1, 625, 33, 1234, kernels),
+            ("pic_1mA", 1e-3, 4e-12, 8, 1, 625, 33, 1234, kernels),
+            ("pic_1A", 1, 4e-12, 8, 1, 625, 33, 1234, kernels),
+            ("pic_1A_dt", 1, 2e-12, 8, 2, 1250, 33, 1234, kernels),
+        ),
+        "refinement": (
+            ("pic_1A", 1, 4e-12, 8, 1, 625, 33, 1234, kernels),
+            ("pic_1A_dt", 1, 2e-12, 8, 2, 1250, 33, 1234, kernels),
+            ("pic_1A_mesh", 1, 4e-12, 8, 1, 625, 65, 1234, kernels),
+            ("pic_1A_particles", 1, 4e-12, 16, 1, 625, 33, 1234, kernels),
+        ),
+        "acceptance": tuple(
+            (f"pic_1A_s{seed}_{backend}", 1, 4e-12, 8, 1, 625, 33, seed, backend)
+            for seed in (1234, 2345, 3456, 4567)
+            for backend in ("reference", "cuda")
+        ),
+        "window": (
+            *((f"pic_1A_n{nodes}", 1, 4e-12, 8, 1, 7500, nodes, 1234, "cuda")
+              for nodes in (33, 49, 65, 97, 129)),
+            ("pic_1A_n65_particles", 1, 4e-12, 16, 1, 7500, 65, 1234, "cuda"),
+            ("pic_1A_n65_dt", 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda"),
+            ("pic_1A_n65_s2345", 1, 4e-12, 8, 1, 7500, 65, 2345, "cuda"),
+        ),
+        "domain": tuple(
+            (name, 1, 4e-12, 8, 1, 7500, 65, 1234, "cuda") for name in DOMAIN_BOXES
+        ),
+        "gun": tuple(
+            (name, 1, 4e-12, 8, 1, 7500, nodes, seed, "cuda")
+            for name, (_, _, nodes, seed) in GUN_BARRELS.items()
+        ),
+        "casing": tuple(
+            (name, 1, 4e-12, 8, 1, 7500, 65, seed, "cuda")
+            for name, (_, _, _, seed) in COIL_CASINGS.items()
+        ),
+        "ions": tuple((name, 1, 4e-12, 8, 1, 7500, 65, 1234, "cuda") for name in ION_CASES),
+        "six-coil": tuple(
+            (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
+            for name, (_, _, _, _, current, seed) in SIX_COILS.items()
+        ),
+        "six-coil-ions": tuple(
+            (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
+            for name, (current, seed, _) in SIX_COIL_IONS.items()
+        ),
+        "six-coil-feed": tuple(
+            (name, current, dt, 8, interval, 15000, 65, 1234, "cuda")
+            for name, (current, _, _, dt, interval) in SIX_COIL_FEED.items()
+        ),
+        "six-coil-feed-fine": tuple(
+            (name, SIX_COIL_FEED[base][0], SIX_COIL_FEED[base][3], 8, SIX_COIL_FEED[base][4], 15000, 65, 1234, "cuda")
+            for name, (base, _) in SIX_COIL_FEED_FINE.items()
+        ),
+        "six-coil-sustain": tuple(
+            (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
+            for name, (current, seed, _) in SIX_COIL_SUSTAIN.items()
+        ),
+        "six-coil-splitting": tuple(
+            (name, 10, 2e-12, 8, 2, 15000, 65, seed, "cuda")
+            for name, (_, _, _, seed, _) in SIX_COIL_SPLITTING.items()
+        ),
+        "six-coil-gun-limit": tuple(
+            (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
+            for name, (current, _, seed, _) in SIX_COIL_GUN_LIMIT.items()
+        ),
+        "six-coil-multi-gun": tuple(
+            (name, current, 2e-12, 12, 2, 15000, 65, seed, "cuda")
+            for name, (_, current, _, seed, _) in SIX_COIL_MULTI_GUN.items()
+        ),
+        "six-coil-multi-gun-check": tuple(
+            (name, SIX_COIL_MULTI_GUN[base][1], 2e-12, packet, 2, 15000, nodes, SIX_COIL_MULTI_GUN[base][3], "cuda")
+            for name, (base, nodes, packet, _) in SIX_COIL_MULTI_GUN_CHECK.items()
+        ),
+        "six-coil-multi-gun-scale": tuple(
+            (name, current, dt, 12, interval, 15000, nodes, seed, "cuda")
+            for name, (current, _, seed, nodes, dt, interval, _) in SIX_COIL_MULTI_GUN_SCALE.items()
+        ),
+        "six-coil-mesh": tuple(
+            (name, current, 2e-12, packet, 2, 15000, nodes, 1234, "cuda")
+            for name, (_, current, _, nodes, packet, _) in SIX_COIL_MESH.items()
+        ),
+        "six-coil-gas": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_GAS),
+        "six-coil-ion-gun": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_ION_GUN),
+        "six-coil-deuteron": tuple(
+            (name, 1, dt, 8, interval, 15000, 65, seed, "cuda")
+            for name, (_, dt, interval, seed, _) in SIX_COIL_DEUTERON.items()
+        ),
+        "six-coil-deuteron-fine": tuple(
+            (name, 1, dt, 8, interval, 15000, 65, seed, "cuda")
+            for name, (_, dt, interval, seed, _) in SIX_COIL_DEUTERON_FINE.items()
+        ),
+        "six-coil-pulse": tuple(
+            (name, 1, 2e-12, 8, 2, 15000, 65, seed, "cuda") for name, (_, _, seed, _) in SIX_COIL_PULSE.items()
+        ),
+        "six-coil-capture": tuple(
+            (name, 1, 2e-12, 8, 2, 15000, 65, seed, "cuda") for name, (_, _, _, seed, _) in SIX_COIL_CAPTURE.items()
+        ),
+        **{
+            long: tuple(
+                (name, current, dt, 8, interval, math.ceil(duration / dt / 15), 65, seed, "cuda")
+                for name, (current, _, _, seed, dt, interval, duration, _) in LONG[long].items()
+            )
+            for long in LONG
+        },
+    }[study]
+    return list(cases)
+
+
+def commands(
+    out: Path, revision: str, study: str = "startup", kernels: str = "reference",
+) -> list[list[str]]:
+    result = []
+    window = study in ("window", "domain", "gun", "casing", "six-coil", *LONG, *COUPLED)
+    for device, (name, current, dt, packet, interval, stride, nodes, seed, backend) in enumerate(
+        case_specs(study, kernels),
+    ):
+        limits = [
+            "--duration", "3e-7", "--diagnostic-every", str(stride // 30),
+            "--max-steps", "160000", "--max-live-particles", "3000000",
+        ] if window else [
+            "--duration", "3e-8", "--max-steps", "20000", "--max-live-particles", "150000",
+        ]
+        if study in COUPLED:
+            limits = ["--max-live-particles", "3000000" if study == "ions" else "6000000"]
+        if study in LONG:
+            limits = [
+                "--duration", str(LONG[study][name][6]), "--diagnostic-every", str(stride // 30),
+                "--max-steps", "1000000", "--max-live-particles", "6000000",
+            ]
+        result.append([
+            sys.executable, str(Path(__file__).with_name("ion_pic.py" if study in COUPLED else "run_transient_pic.py")),
+            "--out", str(out / name), "--device", f"cuda:{device}",
+            "--kernels", backend, "--source-revision", revision,
+            "--nodes", str(nodes), "--current-a", str(current),
+            "--dt", str(dt), *limits, "--inject-per-step", str(packet),
+            "--inject-every", str(interval),
+            "--coil-current", "30000", "--radius", "0.5", "--energy-ev", "5000",
+            "--temperature-ev", "0.2", "--source-sigma", "5e-5",
+            "--divergence-deg", "10", "--aim-deg", "30", "--seed", str(seed),
+            "--save-every", str(stride), "--track", "64", "--max-snapshots", "16",
+        ])
+        if study == "domain":
+            width, bottom, top = DOMAIN_BOXES[name]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+            ]
+        if study == "gun":
+            (width, bottom, top), radius, _, _ = GUN_BARRELS[name]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+                "--gun-radius", str(radius),
+            ]
+        if study in ("casing", "ions"):
+            (width, bottom, top), casing, voltage, _ = COIL_CASINGS[
+                "pic_1A_casing_r015" if study == "ions" else name
+            ]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+                "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(casing),
+                "--casing-voltage", str(voltage),
+            ]
+        if study == "six-coil":
+            count, offset, (width, bottom, top), voltage, _, _ = SIX_COILS[name]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+                "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
+                "--casing-voltage", str(voltage), "--coils", str(count), "--coil-offset", str(offset),
+            ]
+        if study in COUPLED[1:]:
+            width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+                "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
+                "--coils", "6", "--coil-offset", "1.2", "--electron-startup", "5e-7",
+            ]
+        if study == "six-coil-ions":
+            result[-1] += ["--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_IONS[name][2]]
+        if study in ("six-coil-feed", "six-coil-feed-fine"):
+            base, extra = SIX_COIL_FEED_FINE[name] if study == "six-coil-feed-fine" else (name, ())
+            _, coil_current, energy, _, _ = SIX_COIL_FEED[base]
+            result[-1] += [
+                "--coil-current", str(coil_current), "--energy-ev", str(energy), "--gas-pa", "1e-2",
+                "--cycle-duration", "1e-6", "--cycles", "32", "--save-every-cycles", "4", *extra,
+            ]
+        if study == "six-coil-sustain":
+            result[-1] += [
+                "--coil-current", "30000", "--energy-ev", "10000", "--gas-pa", "1e-3", "--cycle-duration", "1e-5",
+                "--cycles", "32", "--save-every-cycles", "4", *SIX_COIL_SUSTAIN[name][2],
+            ]
+        if study == "six-coil-splitting":
+            cycle_us, window_ns, cycles, _, extra = SIX_COIL_SPLITTING[name]
+            result[-1] += [
+                "--coil-current", "30000", "--energy-ev", "10000", "--gas-pa", "1e-3",
+                "--cycle-duration", repr(cycle_us * 1e-6), "--electron-window", repr(window_ns * 1e-9),
+                "--cycles", str(cycles), "--save-every-cycles", str(cycles // 8), *extra,
+            ]
+        if study == "six-coil-gun-limit":
+            _, energy, _, extra = SIX_COIL_GUN_LIMIT[name]
+            result[-1] += [
+                "--coil-current", "30000", "--energy-ev", str(energy), "--gas-pa", "1e-3", "--cycle-duration", "1e-5",
+                "--ion-dt", "5e-10", "--cycles", "32", "--save-every-cycles", "4", *extra,
+            ]
+        if study in ("six-coil-multi-gun", "six-coil-multi-gun-check", "six-coil-multi-gun-scale", "six-coil-mesh"):
+            if study == "six-coil-mesh":
+                guns, _, energy, _, _, extra = SIX_COIL_MESH[name]
+                check = ("--cycles", "16")
+            elif study == "six-coil-multi-gun-scale":
+                guns, energy, extra, check = 6, SIX_COIL_MULTI_GUN_SCALE[name][1], (), SIX_COIL_MULTI_GUN_SCALE[name][6]
+            else:
+                base, check = (
+                    (SIX_COIL_MULTI_GUN_CHECK[name][0], SIX_COIL_MULTI_GUN_CHECK[name][3])
+                    if study == "six-coil-multi-gun-check" else (name, ())
+                )
+                guns, _, energy, _, extra = SIX_COIL_MULTI_GUN[base]
+            result[-1] += [
+                "--coil-current", "30000", "--energy-ev", str(energy), "--gas-pa", "1e-3", "--cycle-duration", "1e-5",
+                "--ion-dt", "5e-10", "--cycles", "32", "--save-every-cycles", "4", "--guns", str(guns), *extra, *check,
+            ]
+        if study == "six-coil-gas":
+            result[-1] += ["--fuel", "D2", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_GAS[name]]
+        if study == "six-coil-ion-gun":
+            result[-1] += ["--fuel", "D2", "--gas-pa", "1e-5", "--cycles", "40", "--save-every-cycles", "4",
+                           *SIX_COIL_ION_GUN[name]]
+        if study in ("six-coil-deuteron", "six-coil-deuteron-fine"):
+            coil_current, _, _, _, extra = (SIX_COIL_DEUTERON | SIX_COIL_DEUTERON_FINE)[name]
+            result[-1] += ["--coil-current", str(coil_current), "--fuel", "D2", "--gas-pa", "1e-5",
+                           "--dissociative-fraction", "0.05", "--cycles", "40", "--save-every-cycles", "4", *extra]
+        if study == "six-coil-pulse":
+            period, on, _, extra = SIX_COIL_PULSE[name]
+            result[-1] += ["--fuel", "D2", "--gas-pa", "1e-4", "--cycles", "60", "--save-every-cycles", "5",
+                           "--gun-period-cycles", str(period), "--gun-on-cycles", str(on), "--gun-settle", "2e-7",
+                           *extra]
+        if study == "six-coil-capture":
+            period, on, phase, _, extra = SIX_COIL_CAPTURE[name]
+            result[-1] += ["--fuel", "D2", "--gas-pa", "1e-5", "--cycle-duration", "1e-6", "--cycles", "48",
+                           "--save-every-cycles", "4", "--ion-dt", "5e-10", "--gun-period-cycles", str(period),
+                           "--gun-on-cycles", str(on), "--gun-settle", "2e-7", "--ion-gun-phase", phase, *extra]
+        if study in LONG:
+            width, bottom, top = SIX_COILS["pic_1A_six_d120"][2]
+            _, coil_current, voltage, _, _, _, _, energy = LONG[study][name]
+            result[-1] += [
+                "--box-half-width", str(width), "--box-bottom", str(bottom), "--box-top", str(top),
+                "--gun-radius", str(CASING_GUN_RADIUS), "--casing-radius", str(SIX_COIL_CASING),
+                "--casing-voltage", str(voltage), "--coils", "6", "--coil-offset", "1.2",
+                "--coil-current", str(coil_current), "--energy-ev", str(energy),
+            ]
+        if study == "six-coil-tracks":
+            result[-1] += [
+                "--track", "64", "--track-after", str(TRACK_AFTER),
+                "--track-every", str(round(TRACK_SAMPLE_INTERVAL / dt)), "--track-samples", "65536",
+            ]
+        if study == "ions":
+            result[-1] += ["--gas-pa", "1e-3", "--cycles", "40", "--save-every-cycles", "4", *ION_CASES[name]]
+    return result
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--case-timeout", type=float, default=900)
+    parser.add_argument(
+        "--study",
+        choices=(
+            "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
+            "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas",
+            "six-coil-ion-gun", "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture",
+            "six-coil-sustain", "six-coil-splitting", "six-coil-gun-limit", "six-coil-multi-gun",
+            "six-coil-multi-gun-check",
+            "six-coil-multi-gun-scale", "six-coil-mesh", "six-coil-tracks",
+        ),
+        default="startup",
+    )
+    parser.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
+    args = parser.parse_args()
+    if not math.isfinite(args.case_timeout) or args.case_timeout <= 0:
+        parser.error("case-timeout must be finite and positive")
+    revision = os.environ["CUSP_SOURCE_REVISION"]
+    argv = commands(args.out, revision, args.study, args.kernels)
+    targets = []
+    for command in argv:
+        if args.study in COUPLED:
+            configuration = ion_parser().parse_args(command[2:])
+            validate_coupled(configuration)
+            targets.append(configuration.cycles)
+        else:
+            targets.append(validate_config(pic_parser().parse_args(command[2:])))
+    args.out.mkdir(parents=True, exist_ok=False)
+    manifest = {
+        "source_revision": revision, "commands": argv,
+        "progress_unit": "cycles" if args.study in COUPLED else "steps",
+        "step_targets": targets,
+        "purpose": (
+            "FP64 transient electron startup, 5 keV compact external gun, 30 kA-turn, "
+            "30 ns: vacuum, 1 mA, 1 A and half-step 1 A. Half-step retains the same "
+            "packet charge, particles and physical pulse times. Numerical exploration, "
+            "not physical convergence."
+        ) if args.study == "startup" else (
+            "FP64 1 A transient sensitivity: baseline, matched-packet half timestep, "
+            "65-cubed mesh and twice the particles per packet. All use 30 ns and "
+            "identical physical source geometry/current/cadence. Particle refinement "
+            "changes Monte Carlo samples; one realization does not establish convergence."
+        ) if args.study == "refinement" else (
+            "Physics-level CUDA acceptance: four independent seeds, each run with "
+            "FP64 reference and CUDA operators (1 A, 5 keV, 30 kA-turn, 33-cubed, "
+            "30 ns). Paired differences are judged against reference seed-to-seed "
+            "spread; not bitwise parity, not physical convergence."
+        ) if args.study == "acceptance" else (
+            "CUDA 1 A long-window sensitivity: 300 ns (10x startup) to test whether the "
+            "electron population, potential and losses saturate. Meshes 33/49/65/97/129, "
+            "plus at 65-cubed: twice the particles per packet, matched-packet half "
+            "timestep and a second seed. Scalar diagnostics every 1 ns. One realization "
+            "per setting; grounded box, imposed two-coil field, electron-only."
+        ) if args.study == "window" else (
+            "CUDA 1 A grounded-box sensitivity, 300 ns, cells of the 65-cubed reference box: "
+            "narrower transverse walls (the coils bound widening), a farther top wall, "
+            "and a farther bottom wall that leaves the gun inside the box. Same gun, "
+            "field, seed and packets. One realization per box; electron-only."
+        ) if args.study == "domain" else (
+            "CUDA 1 A grounded gun barrel, 300 ns: gun on the lower wall versus a grounded, "
+            "absorbing barrel behind the emitter with the lower wall at 1.625a, 1.95a and 2.6a; "
+            "barrel radius 0.04a/0.06a/0.10a, a second seed and a 97-node mesh at 1.95a. "
+            "Tests whether a fixed emitter reference removes the bottom-wall sensitivity. "
+            "Grounded outer box, imposed two-coil field, electron-only."
+        ) if args.study == "gun" else (
+            "CUDA 1 A absorbing toroidal coil casings, 300 ns, grounded 0.06a gun barrel with the "
+            "lower wall at 1.95a: no casings in the coil-bounded 0.6a box versus 0.15a casings in "
+            "1.2a and 1.275a boxes, 0.20a casings, casings at +1 kV and -1 kV, a second seed and "
+            "a farther top wall. Tests whether the side-wall sensitivity survives once the box "
+            "encloses the coils. Imposed two-coil field, electron-only."
+        ) if args.study == "casing" else (
+            "Coupled electron and H2+ PIC with electron-impact ionization in the 0.15a casing geometry "
+            "(1 A, 5 keV): 1e-3 Pa over 40 x 10 us cycles, with charge exchange off, secondaries off, "
+            "1e-2 Pa over 1 us cycles, half ion timestep, 5 us cycles, 80 ns electron windows and twice "
+            "the ion macroparticles. Tests how fast ions neutralize the electron well and whether the "
+            "operator-split cycle is converged. Imposed two-coil field, no Coulomb collisions."
+        ) if args.study == "ions" else (
+            "CUDA electron-only PIC, 300 ns at 2 ps with matched packets, 0.10a casings and the grounded "
+            "0.06a gun barrel: two-coil cusp versus a six-coil cube (one coil per face, imposed vacuum "
+            "field, coil planes 1.2a or 1.3a from the centre so adjacent casings stay separated), a 1 mA "
+            "six-coil control, a wider box, a farther top wall, casings at +1 kV and a second seed. Tests "
+            "whether the six-coil geometry changes the potential structure and core dwell. No plasma "
+            "magnetic feedback, no ions."
+        ) if args.study == "six-coil" else (
+            "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel), 1 us at "
+            "2 ps: the 300 ns runs were still filling the cube, so this tests whether the live population, core "
+            "potential and losses saturate. 1 A with two seeds, a 1 mA control, 0.3 A and 3 A current scaling, "
+            "casings at -1 kV, and 60 kA-turn at 1 ps with matched packet timing for 600 ns (1 A and 1 mA). "
+            "No plasma magnetic feedback, no ions."
+        ) if args.study == "six-coil-long" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (imposed vacuum field, coil planes 1.2a, 0.10a "
+            "casings, grounded 0.06a barrel, 2 ps), starting from the 500 ns saturated electron population: "
+            "1 A at 1e-3 Pa over 40 x 10 us cycles with a second seed, 0.3 A, 1e-2 Pa over 1 us cycles, half "
+            "ion timestep, 5 us cycles, 80 ns electron windows and twice the ion macroparticles. Tests how "
+            "fast ions neutralize the six-coil well, where they go, and whether the operator split is "
+            "converged. No Coulomb collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-ions" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (imposed vacuum field, coil planes 1.2a, 0.10a "
+            "casings, grounded 0.06a barrel) at 1e-2 Pa over 32 x 1 us cycles after a 500 ns electron startup: "
+            "feed scaling 1, 10, 30 and 100 A with 5 and 10 keV guns at 30 kA-turn, and 30 A at 10 and 60 kA-turn "
+            "plus 100 A at 10 kA-turn. Tests whether ions relieve the gun-mouth space-charge limit, how the "
+            "electron inventory and well scale with feed, and how close electron pressure comes to the imposed "
+            "magnetic pressure. Non-relativistic pusher (10 keV: gamma 1.02). No Coulomb collisions, gas "
+            "depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-feed" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (imposed vacuum field, 32 cycles after a 500 ns electron "
+            "startup), following up six-coil-feed, where 30 A and 100 A stopped on the ion plasma-frequency check "
+            "omega_pi * ion_dt <= 0.1 at 1 ns: 10, 30 and 100 A (10 keV, 30 kA-turn), 30 A at 60 kA-turn and 100 A at "
+            "10 kA-turn at 1e-2 Pa over 1 us cycles with a 0.2 ns ion timestep, and 10, 30 and 100 A at 1e-3 Pa over "
+            "10 us cycles. The 10 A case checks the ion timestep against the passing 1 ns run. No Coulomb "
+            "collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-feed-fine" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (10 keV gun, 30 kA-turn, H2 at 1e-3 Pa, 32 x 10 us cycles) "
+            "following up six-coil-feed-fine, where 10 A and 30 A kept a -2.7 kV and -5.7 kV well at 0.71-0.76 "
+            "neutralization while 1 A at 5 keV neutralized fully: 1 A and 3 A at 10 keV separate current from gun "
+            "energy; 10 A with a second seed, 5 us cycles, D2 fuel and 1e-4 Pa (100 us cycles), and 10 A and 30 A "
+            "over 640 us, test whether the partially neutralized plateau is physical and settled. No Coulomb "
+            "collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-sustain" else (
+            "Operator-splitting convergence on the six-coil-sustain 10 A case (10 keV gun, 30 kA-turn, H2 at 1e-3 Pa), "
+            "where 5 us ion cycles gave 0.91 neutralization and a -1.1 kV centre at 320 us and still rising, against a "
+            "settled 0.745 and -2.8 kV with 10 us cycles: 2.5, 5, 10 and 20 us cycles; 20 and 80 ns electron windows "
+            "matching the electron-to-ion time ratio of the other cycle length; half and double ion macroparticles per "
+            "unit time; a 5 us second seed and a 0.5 ns ion step. Tests whether the partially neutralized plateau is "
+            "set by the ion field coupling interval, electron lag, ion macroparticle noise or chance. No Coulomb "
+            "collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-splitting" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (30 kA-turn, H2 at 1e-3 Pa, 32 x 10 us cycles, 0.5 ns ion "
+            "steps) following up six-coil-feed-fine, where a 100 A 10 keV gun made a -15 to -23 kV virtual cathode at "
+            "its mouth: 30, 100 and 300 A at 20 keV (with a second 30 A seed), 30 degree beam divergence at 10 and "
+            "20 keV, and +5 kV casings at 10 and 20 keV. Tests whether gun energy, a wider beam or a positive magrid "
+            "lifts the gun-mouth space-charge limit. Non-relativistic pusher (20 keV: gamma 1.04, speed 3% high). "
+            "No Coulomb collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-gun-limit" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (30 kA-turn, H2 at 1e-3 Pa, 32 x 10 us cycles) with the "
+            "total electron current split over identical guns on the face-axis cusps (docs/multi-gun-design.md), "
+            "following up six-coil-feed-fine, where one 100 A 10 keV gun made a -15 to -23 kV virtual cathode at its "
+            "mouth: 30, 100 and 300 A over six 10 keV guns (with a second 100 A seed), 100 A over two and three guns, "
+            "and 300 and 1000 A over six 20 keV guns (0.2 ns ion steps). Tests whether a lower per-gun perveance "
+            "deepens the central well. Non-relativistic pusher (20 keV: gamma 1.04). No Coulomb collisions, gas "
+            "depletion or plasma magnetic feedback; the electron Debye length can fall below the mesh spacing at "
+            "the highest feed."
+        ) if args.study == "six-coil-multi-gun" else (
+            "Numerical and physics checks on six-coil-multi-gun (six face-cusp guns, 30 kA-turn, H2): 100 A at 10 keV "
+            "and 1000 A at 20 keV with 4x electron macroparticles (16 x 10 us), 100 A with 5 us cycles (64 cycles), "
+            "and 100 A and 1000 A at 1e-4 Pa with 100 us cycles (1.6 and 0.8 ms). Tests whether the multi-gun well "
+            "depth is particle-converged, independent of the ion cycle splitting, and survives lower pressure. No "
+            "Coulomb collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-multi-gun-check" else (
+            "Mesh, coil and feed scaling on six-coil-multi-gun (six face-cusp guns, H2 at 1e-3 Pa): 100 A at 10 keV, "
+            "1000 A and 3000 A at 20 keV on a coarser 49-node mesh (16 x 10 us); 100 A and 1000 A with 60 kA-turn "
+            "coils and 1 ps electron steps; a second 1000 A seed; 100 A at 20 keV; and 3000 A at 20 keV (1.8e-4 "
+            "A/V^1.5 per gun, 0.1 ns ion steps). Finer meshes (81 and 97 nodes) exceed the dense conductor "
+            "capacitance factorization (87k and 139k surface nodes; cuSOLVER potrf fails above ~65.5k). "
+            "Non-relativistic pusher. No Coulomb collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-multi-gun-scale" else (
+            "Mesh refinement for the multi-gun and sustain traps (30 kA-turn, H2 at 1e-3 Pa, 16 x 10 us, 0.5 ns ion "
+            "steps): six guns at 100 A 10 keV, 1000 A 20 keV and 100 A 20 keV, three guns at 100 A 10 keV, and one "
+            "10 A 10 keV gun on 81-node meshes (87k conductor surface nodes, factored in 16k tiles), with 49-node "
+            "partners where no coarse run exists. Compared with the 65-node runs at 160 us. Non-relativistic pusher. "
+            "No Coulomb collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-mesh" else (
+            "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV gun, 30 kA-turn, 40 x 10 us cycles) "
+            "comparing fuel delivery: uniform D2 at 1e-3 and 1e-4 Pa; a steady face inlet (0.7, 0, 0) m at 1e-3 "
+            "and 1e-4 Pa m^3/s with a 1 m^3/s pump, where the pumped background Q/S dominates the plume; and "
+            "early-time puffs (pump speed 1e3 m^3/s standing in for t < V/S before the vessel fills) from the "
+            "face, the (0.68, 0.68, 0.68) m corner and next to the gun at (0.1, 0, -0.95) m. Free-molecular "
+            "cosine-law plume without conductor shadowing. Tests where ions are born, their energy in the well, "
+            "and the neutralization rate per unit fuel. No gas depletion, Coulomb collisions or plasma magnetic "
+            "feedback."
+        ) if args.study == "six-coil-gas" else (
+            "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV electron gun, 30 kA-turn, D2 at 1e-5 Pa, "
+            "40 x 10 us cycles) with a D2+ ion gun (5 mm spot, 5 degree divergence) aimed at the centre: from the "
+            "top face cusp (0, 0, 0.7) m at 10 mA with 10 eV, 100 eV and 1 keV, 1 mA and 100 mA at 100 eV, from "
+            "the corner cusp (0.68, 0.68, 0.68) m, and with +5 kV casings, plus a no-gun control. Tests whether "
+            "edge-injected ions fall through the electron well, how long they stay, and how the well tolerates "
+            "the injected ion charge. No extraction optics, D+ species, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-ion-gun" else (
+            "Coupled electron and D2+/D+ PIC in the six-coil cube (1 A, 5 keV electron gun, D2 at 1e-5 Pa, 40 x 10 us "
+            "cycles, 5% of ionizations dissociative with 5 eV D+) with an atomic D+ ion gun (5 mm spot, 5 degree "
+            "divergence) from the top face cusp (0, 0, 0.7) m aimed at the centre: 10 mA at 100 eV with a second "
+            "seed, 1 keV, 100 mA, +5 kV casings and 60 kA-turn coils, a D2+ gun control and a no-gun control. "
+            "Tests how the lighter D+ beam falls through and resides in the electron well against D2+. The D+ "
+            "charge-exchange product is a thermal D2+ ion; electron-impact dissociation of D2+, the neutral D "
+            "atoms, extraction optics, gas depletion and plasma magnetic feedback are not modelled."
+        ) if args.study == "six-coil-deuteron" else (
+            "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV electron gun, D2 at 1e-4 Pa, 60 x 10 us "
+            "cycles) with the electron gun switched on and off at cycle boundaries: continuous, 150/50, 150/20, "
+            "50/50 and 300/100 us on/off, 50/50 at 1e-3 Pa, a second 150/50 seed, and a 400 ns settle-window "
+            "control. Tests whether gun-off intervals let trapped ions leave so the well rebuilds against less "
+            "neutralizing charge. Each switch advances electrons 200 ns on frozen ions; electron time is "
+            "subsampled (40 ns per 10 us cycle), so drain in the off phase is not resolved in real time. "
+            "No coil pulsing, induced fields, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-pulse" else (
+            "Coupled electron and D2+/D+ PIC in the six-coil cube (1 A, 5 keV electron gun, D2 at 1e-5 Pa, 40 x 10 us "
+            "cycles, 5% dissociative) with a high-current atomic D+ gun from the top face cusp (0, 0, 0.7) m aimed at "
+            "the centre, at 0.2 ns ion steps: 100 mA at 100 eV with a second seed and a 0.1 ns 20-cycle timestep "
+            "control, 30 mA, 100 mA and 300 mA at 1 keV, +5 kV casings and 60 kA-turn coils. The 100 mA case at "
+            "1 ns failed omega_pi dt <= 0.1. Tests how much injected D+ current the electron well tolerates. No "
+            "extraction optics, D+ dissociation products, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-deuteron-fine" else (
+            "Coupled electron and D2+/D+ PIC in the six-coil cube (1 A, 5 keV electron gun, D2 at 1e-5 Pa, 48 x 1 us "
+            "cycles, 0.5 ns ion steps, no dissociation so every D+ is a gun ion until charge exchange) testing capture "
+            "of injected ions by switching the well: a 10 mA 1 keV D+ gun from the top face cusp (0, 0, 0.7) m fires "
+            "only while the electron gun is off (10/2 us on/off), so ions in transit when the gun turns back on "
+            "see the well deepen around them and lose total energy. Controls fire the ion gun during the on phase, "
+            "always, or with a continuous electron gun; variants use 300 eV, 4/2 us on/off, a second seed and 0.2 ns "
+            "ion steps. Bound charge counts ions with kinetic plus potential energy below the grounded walls in the "
+            "frozen end-of-cycle potential. Ions see the well change only at cycle boundaries (1 us, against ~2 us "
+            "1 keV D+ transit); each switch advances electrons 200 ns on frozen ions. No coil pulsing, induced "
+            "fields, extraction optics, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-capture" else (
+            "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel), 800 ns at 2 ps, "
+            "recording paths of the first 64 electrons injected after 500 ns, once the trap has saturated, every "
+            "2 ps into tracks.npz (float32, at most 65536 samples = 131 ns): 1 A at 0 V with a second seed, casings at +5 kV, "
+            "+10 kV and -1 kV, 3 A, +5 kV with a 2 keV gun, and 60 kA-turn at 1 ps. Shows how settled electrons "
+            "bounce, where they leave and how many core passes they make. No plasma magnetic feedback, no ions."
+        ) if args.study == "six-coil-tracks" else (
+            "CUDA electron-only six-coil PIC (coil planes 1.2a, 0.10a casings, grounded 0.06a barrel and box), 1 us "
+            "at 2 ps: casing (magrid) bias +1, +2.5, +5 and +10 kV at 1 A with a second +5 kV seed, a +5 kV 1 mA "
+            "vacuum-potential control, +5 kV at 3 A, and +5 kV with a 2 keV gun. Tests whether a positive magrid "
+            "deepens the well relative to the casings and relieves the gun-mouth space-charge limit seen at 3 A. "
+            "No plasma magnetic feedback, no ions."
+        ),
+        "study": args.study, "kernels": args.kernels,
+        "cases": [
+            {"name": name, "kernels": backend, "seed": seed, "device": f"cuda:{device}"}
+            for device, (name, _, _, _, _, _, _, seed, backend) in enumerate(
+                case_specs(args.study, args.kernels),
+            )
+        ],
+    }
+    (args.out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    with (args.out / "preflight.log").open("w") as log:
+        preflight = subprocess.run(
+            [sys.executable, str(Path(__file__).with_name("validate_pic_gpu.py")),
+             "--out", str(args.out / "preflight"), "--device", "cuda:0"],
+            stdout=log, stderr=subprocess.STDOUT, timeout=args.case_timeout, check=False,
+        )
+    if preflight.returncode:
+        (args.out / "STATUS").write_text("CPU/GPU preflight failed; no physical cases launched.\n")
+        raise SystemExit(preflight.returncode)
+
+    def run(index: int) -> int:
+        name = Path(argv[index][3]).name
+        with (args.out / f"{name}.log").open("w") as log:
+            try:
+                return subprocess.run(
+                    argv[index], stdout=log, stderr=subprocess.STDOUT,
+                    timeout=args.case_timeout, check=False,
+                ).returncode
+            except subprocess.TimeoutExpired:
+                log.write("\nTIMEOUT: partial history preserved\n")
+                return 124
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(argv)) as executor:
+        codes = list(executor.map(run, range(len(argv))))
+    (args.out / "exit_codes.json").write_text(json.dumps(codes) + "\n")
+    message = (
+        "All transient cases completed; inspect accounting and convergence before interpretation.\n"
+        if not any(codes) else "Incomplete transient campaign; inspect exit_codes.json and partial histories.\n"
+    )
+    (args.out / "STATUS").write_text(message)
+    if any(codes):
+        raise SystemExit(1)
+    (args.out / "DONE").write_text("complete\n")
+
+
+if __name__ == "__main__":
+    main()

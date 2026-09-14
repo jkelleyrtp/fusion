@@ -55,38 +55,40 @@ def thermal_source(origin: list[float], direction: list[float], energy_ev: float
         raise ValueError("Source sigma must be finite and nonnegative")
     if not math.isfinite(divergence_deg) or not 0 <= divergence_deg < 90:
         raise ValueError("Source divergence must be finite in [0, 90) degrees")
-    torch.manual_seed(seed)
-    properties = {"device": device, "dtype": torch.float64}  # legacy untyped sampler dict
-    speed = math.sqrt(2 * energy_ev * E_CHARGE / M_E)
-    positions, velocity, unit = sample_gun_beam(origin, direction, speed, count, 0, 0, 0, properties)
-    positions[:, :2] += sigma * torch.randn(count, 2, device=device, dtype=torch.float64)
-    if temperature_ev > 0:
-        e1, e2 = gun_beam_basis(unit)
-        thermal_speed = math.sqrt(temperature_ev * E_CHARGE / M_E)
-        parallel = torch.sqrt(speed * speed - 2 * thermal_speed ** 2
-                              * torch.log1p(-torch.rand(count, device=device, dtype=torch.float64)))
-        velocity = parallel[:, None] * torch.as_tensor(unit, device=device, dtype=torch.float64)
-        velocity += thermal_speed * (
-            torch.randn(count, device=device, dtype=torch.float64)[:, None]
-            * torch.as_tensor(e1, device=device, dtype=torch.float64)
-            + torch.randn(count, device=device, dtype=torch.float64)[:, None]
-            * torch.as_tensor(e2, device=device, dtype=torch.float64))
-    if divergence_deg > 0:
-        e1, e2 = gun_beam_basis(unit)
-        cosine = 1 - torch.rand(count, device=device, dtype=torch.float64) * (
-            1 - math.cos(math.radians(divergence_deg)))
-        sine = (1 - cosine.square()).clamp_min(0).sqrt()
-        azimuth = 2 * math.pi * torch.rand(count, device=device, dtype=torch.float64)
-        axis = (
-            azimuth.cos()[:, None] * torch.as_tensor(e1, device=device, dtype=torch.float64)
-            + azimuth.sin()[:, None] * torch.as_tensor(e2, device=device, dtype=torch.float64)
-        )
-        velocity = (
-            cosine[:, None] * velocity
-            + sine[:, None] * torch.linalg.cross(axis, velocity)
-            + (1 - cosine)[:, None] * axis * (axis * velocity).sum(dim=1, keepdim=True)
-        )
-    return positions, velocity
+    cpu = torch.device("cpu")
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(seed)
+        properties = {"device": cpu, "dtype": torch.float64}  # legacy untyped sampler dict
+        speed = math.sqrt(2 * energy_ev * E_CHARGE / M_E)
+        positions, velocity, unit = sample_gun_beam(origin, direction, speed, count, 0, 0, 0, properties)
+        positions[:, :2] += sigma * torch.randn(count, 2, device=cpu, dtype=torch.float64)
+        if temperature_ev > 0:
+            e1, e2 = gun_beam_basis(unit)
+            thermal_speed = math.sqrt(temperature_ev * E_CHARGE / M_E)
+            parallel = torch.sqrt(speed * speed - 2 * thermal_speed ** 2
+                                  * torch.log1p(-torch.rand(count, device=cpu, dtype=torch.float64)))
+            velocity = parallel[:, None] * torch.as_tensor(unit, device=cpu, dtype=torch.float64)
+            velocity += thermal_speed * (
+                torch.randn(count, device=cpu, dtype=torch.float64)[:, None]
+                * torch.as_tensor(e1, device=cpu, dtype=torch.float64)
+                + torch.randn(count, device=cpu, dtype=torch.float64)[:, None]
+                * torch.as_tensor(e2, device=cpu, dtype=torch.float64))
+        if divergence_deg > 0:
+            e1, e2 = gun_beam_basis(unit)
+            cosine = 1 - torch.rand(count, device=cpu, dtype=torch.float64) * (
+                1 - math.cos(math.radians(divergence_deg)))
+            sine = (1 - cosine.square()).clamp_min(0).sqrt()
+            azimuth = 2 * math.pi * torch.rand(count, device=cpu, dtype=torch.float64)
+            axis = (
+                azimuth.cos()[:, None] * torch.as_tensor(e1, device=cpu, dtype=torch.float64)
+                + azimuth.sin()[:, None] * torch.as_tensor(e2, device=cpu, dtype=torch.float64)
+            )
+            velocity = (
+                cosine[:, None] * velocity
+                + sine[:, None] * torch.linalg.cross(axis, velocity)
+                + (1 - cosine)[:, None] * axis * (axis * velocity).sum(dim=1, keepdim=True)
+            )
+    return positions.to(device), velocity.to(device)
 
 
 def trace_packet(mesh: ElectrostaticMesh, initial_pos: torch.Tensor, initial_vel: torch.Tensor,

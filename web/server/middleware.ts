@@ -56,12 +56,12 @@ export function jobsMiddleware(service: JobService) {
         return;
       }
       const registerKeys = Object.keys(value).sort();
-      if (registerKeys.some((key) => !["brokerJobId", "campaignId", "profile", "runDirectory", "title"].includes(key))) {
+      if (registerKeys.some((key) => !["brokerJobId", "campaignId", "gpus", "profile", "runDirectory", "title"].includes(key))) {
         send(res, 400, { error: "Unknown registration field" });
         return;
       }
       const profile = value.profile === undefined ? "poisson-reference" : value.profile;
-      if (profile !== "poisson-reference" && profile !== "poisson-high-voltage" && profile !== "poisson-filament") {
+      if (typeof profile !== "string" || !["poisson-reference", "poisson-high-voltage", "poisson-filament", "transient-pic", "pic-cuda-validation"].includes(profile)) {
         send(res, 400, { error: "Unknown profile" });
         return;
       }
@@ -69,7 +69,11 @@ export function jobsMiddleware(service: JobService) {
         send(res, 400, { error: "brokerJobId, runDirectory, campaignId and title must have valid types" });
         return;
       }
-      send(res, 202, await service.register(value.brokerJobId, value.runDirectory, value.campaignId === undefined ? null : value.campaignId, value.title, profile));
+      if (value.gpus !== undefined && (typeof value.gpus !== "number" || !Number.isInteger(value.gpus) || value.gpus < 1 || value.gpus > 8)) {
+        send(res, 400, { error: "gpus must be an integer from 1 to 8" });
+        return;
+      }
+      send(res, 202, await service.register(value.brokerJobId, value.runDirectory, value.campaignId === undefined ? null : value.campaignId, value.title, profile, value.gpus));
     } catch (error) {
       send(res, 400, { error: error instanceof Error ? error.message : String(error) });
     }

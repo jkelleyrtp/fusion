@@ -6,7 +6,10 @@ export interface CaseProgress {
   exitCode: number | null;
   updatedAt: string | null;
   settings: Record<string, string>;
+  physicalTimeS?: number;
 }
+
+export type ProgressUnit = "iterations" | "steps" | "cycles";
 
 export interface RunProgress {
   attempt: string;
@@ -14,12 +17,13 @@ export interface RunProgress {
   purpose: string;
   done: boolean;
   statusText: string | null;
+  progressUnit?: ProgressUnit;
   cases: CaseProgress[];
 }
 
 export interface SimulationJob {
   id: string;
-  profile: "poisson-reference" | "poisson-high-voltage" | "poisson-filament";
+  profile: "poisson-reference" | "poisson-high-voltage" | "poisson-filament" | "transient-pic" | "pic-cuda-validation";
   title: string;
   purpose: string;
   createdAt: string;
@@ -31,7 +35,7 @@ export interface SimulationJob {
   cluster: "aws-usw2";
   priority: 1;
   nodes: 1;
-  gpus: 4 | 8;
+  gpus: number;
   runDirectory: string;
   campaignId: string | null;
   progress: RunProgress | null;

@@ -1,28 +1,63 @@
-"""Run a bounded external-gun electrostatic PIC reference."""
+"""Run bounded FP64 external-gun electrostatic PIC."""
 
 import argparse
 import json
 import math
+import time
 from pathlib import Path
 
 import numpy as np
 import torch
 
-from cusp_sim import E_CHARGE, QM, TorchPusher, ring_field_on_grid
-from electrostatic import ElectrostaticMesh
+from cusp_sim import E_CHARGE, M_E, QM, TorchPusher, ring_field_on_grid
+from electrostatic import Conductors, Cylinder, ElectrostaticMesh, Shape, Torus
+from pic_cuda import CUDAKernels
+from pic_kernels import ReferenceKernels
 from steady_space_charge import thermal_source
-from transient_pic import PIC
+from transient_pic import PIC, MagneticField
+
+PACKETS_PER_BLOCK = 256
+GUN_FACES = {1: ("z-",), 2: ("z-", "z+"), 3: ("z-", "x-", "y-"), 6: ("z-", "z+", "x-", "x+", "y-", "y+")}
+GUN_ROTATIONS = {  # proper cube rotations taking the reference z- gun onto each face-axis cusp
+    "z-": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    "z+": ((1, 0, 0), (0, -1, 0), (0, 0, -1)),
+    "x-": ((0, 0, 1), (1, 0, 0), (0, 1, 0)),
+    "x+": ((0, 0, -1), (1, 0, 0), (0, -1, 0)),
+    "y-": ((0, 1, 0), (0, 0, 1), (1, 0, 0)),
+    "y+": ((0, -1, 0), (0, 0, -1), (1, 0, 0)),
+}
 
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--out", type=Path, required=True)
     result.add_argument("--device", default="cpu")
+    result.add_argument("--kernels", choices=("reference", "cuda"), default="reference")
     result.add_argument("--nodes", type=int, default=17)
     result.add_argument("--inject-per-step", type=int, default=8)
+    result.add_argument("--inject-every", type=int, default=1)
     result.add_argument("--current-a", type=float, default=1e-8)
+    result.add_argument("--guns", type=int, choices=tuple(GUN_FACES), default=1,
+                        help="identical guns on the face-axis cusps (z-, z+, x-, x+, y-, y+) sharing --current-a")
     result.add_argument("--coil-current", type=float, default=1000)
+    result.add_argument("--coils", type=int, choices=(2, 6), default=2,
+                        help="2: axisymmetric cusp pair on z; 6: cube of coils, one per face (Polywell-like)")
+    result.add_argument("--coil-offset", type=float, default=0.5,
+                        help="coil-plane distance from the centre in coil radii")
     result.add_argument("--radius", type=float, default=0.5)
+    result.add_argument("--box-half-width", type=float, default=0.6,
+                        help="transverse half-width in coil radii")
+    result.add_argument("--box-bottom", type=float, default=1.3,
+                        help="distance below the coil midplane in coil radii; the gun sits at 1.3")
+    result.add_argument("--box-top", type=float, default=1.3,
+                        help="distance above the coil midplane in coil radii")
+    result.add_argument("--gun-radius", type=float, default=0,
+                        help="radius in coil radii of a grounded, absorbing gun barrel behind the "
+                             "emitter; 0 leaves the gun on the lower wall only")
+    result.add_argument("--casing-radius", type=float, default=0,
+                        help="minor radius in coil radii of absorbing toroidal coil casings; 0 omits them")
+    result.add_argument("--casing-voltage", type=float, default=0,
+                        help="casing potential in volts relative to the grounded box and emitter")
     result.add_argument("--energy-ev", type=float, default=5000)
     result.add_argument("--temperature-ev", type=float, default=0.2)
     result.add_argument("--aim-deg", type=float, default=30)
@@ -33,8 +68,15 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--max-steps", type=int, default=10000)
     result.add_argument("--max-live-particles", type=int, default=100000)
     result.add_argument("--save-every", type=int, default=10)
+    result.add_argument("--diagnostic-every", type=int, default=0)
     result.add_argument("--max-snapshots", type=int, default=128)
     result.add_argument("--track", type=int, default=64)
+    result.add_argument("--track-after", type=float, default=0.0,
+                        help="track the first --track electrons injected at or after this time in seconds")
+    result.add_argument("--track-every", type=int, default=0,
+                        help="record tracked positions every N steps into tracks.npz; 0 disables paths")
+    result.add_argument("--track-samples", type=int, default=2048,
+                        help="maximum recorded path samples; recording stops when full")
     result.add_argument("--seed", type=int, default=1234)
     result.add_argument("--source-revision", default="unversioned")
     return result
@@ -52,12 +94,35 @@ def validate(args: argparse.Namespace) -> int:
         raise ValueError("Invalid source sigma or divergence")
     if not 0 <= args.aim_deg < 90:
         raise ValueError("Aim must point into the box")
-    if args.nodes < 3 or args.inject_per_step < 1 or args.max_live_particles < 1:
+    if args.nodes < 3 or args.inject_per_step < 1 or args.inject_every < 1 or args.max_live_particles < 1:
         raise ValueError("Invalid mesh size or particle limits")
-    if args.save_every < 1 or args.max_snapshots < 2 or args.max_steps < 1:
+    if args.guns > 1 and (args.coils != 6 or args.inject_per_step % args.guns):
+        raise ValueError("Several guns need six coils and inject-per-step divisible by the gun count")
+    if args.save_every < 1 or args.max_snapshots < 2 or args.max_steps < 1 or args.diagnostic_every < 0:
         raise ValueError("Invalid output or step limits")
     if not 0 <= args.track <= 256 or args.seed < 0:
         raise ValueError("Invalid tracking count or seed")
+    if args.track_after < 0 or args.track_every < 0 or not 1 <= args.track_samples <= 65536:
+        raise ValueError("Invalid tracking start, cadence or sample limit")
+    if args.box_half_width <= 0.25 or args.box_top <= 0.25 or args.box_bottom < 1.3:
+        raise ValueError("Box must contain the core and the gun")
+    if args.gun_radius < 0 or (args.gun_radius > 0 and args.box_bottom == 1.3):
+        raise ValueError("A gun barrel needs a positive radius and the lower wall behind the gun")
+    if not 0 <= args.casing_radius < 0.5 or not math.isfinite(args.casing_voltage):
+        raise ValueError("Casing radius must be in [0, 0.5) coil radii with a finite voltage")
+    if args.coils == 2 and args.coil_offset != 0.5:
+        raise ValueError("The two-coil cusp keeps its coils at 0.5 coil radii")
+    if args.casing_radius and args.box_half_width <= 1 + args.casing_radius:
+        raise ValueError("Coil casings must lie inside the box")
+    if not args.casing_radius and args.box_half_width * math.sqrt(2) >= 1:
+        raise ValueError("Coil windings inside the box need casings")
+    if args.coils == 6:
+        extent = args.coil_offset + args.casing_radius
+        if not args.casing_radius or min(args.box_half_width, args.box_top, args.box_bottom) <= extent:
+            raise ValueError("Six coils need casings inside the box on every axis")
+        if math.sqrt(2) * (args.coil_offset - 1) <= 2 * args.casing_radius:
+            raise ValueError("Adjacent coil casings overlap")
+    mesh_shape(args)
     ratio = args.duration / args.dt
     if not math.isfinite(ratio):
         raise ValueError("Duration exceeds max-steps")
@@ -70,9 +135,13 @@ def validate(args: argparse.Namespace) -> int:
     return steps
 
 
+def source_potential(simulation: PIC, potential: torch.Tensor, origin: list[float]) -> float:
+    return float(simulation.mesh.gather(potential, potential.new_tensor([origin]))[0][0])
+
+
 def save_snapshot(
-    simulation: PIC, directory: Path, step: int, h: float,
-) -> dict[str, float | int | list[int] | str]:
+    simulation: PIC, directory: Path, step: int, h: float, origin: list[float] | None = None,
+) -> dict[str, float | int | list[int] | list[float] | str]:
     charge, potential = simulation.fields()
     p = simulation.particles
     arrays = {
@@ -86,64 +155,226 @@ def save_snapshot(
         "tracked_exit_time_s": simulation.tracked_exit_time,
         "tracked_exit_face": simulation.tracked_exit_face,
     }
+    first_id = -1 if simulation.tracked_first_id is None else simulation.tracked_first_id
     name = f"step-{step:08d}.npz"
     path = directory / name
     temporary = path.with_suffix(".tmp")
     with temporary.open("wb") as stream:
         np.savez_compressed(
             stream, allow_pickle=False, time_s=simulation.time, step=step, dt_s=h,
+            tracked_first_id=first_id,
             **{key: value.cpu().numpy() for key, value in arrays.items()},
         )
     temporary.replace(path)
-    record: dict[str, float | int | list[int] | str] = {
+    record: dict[str, float | int | list[int] | list[float] | str] = {
         **simulation.diagnostics(charge, potential),
         "step": step, "dt_s": h, "snapshot": f"snapshots/{name}",
     }
+    if origin is not None:
+        record["source_potential_V"] = source_potential(simulation, potential, origin)
     if not all(math.isfinite(value) for value in record.values()
                if isinstance(value, (int, float))):
         raise ValueError("Nonfinite PIC diagnostics")
     return record
 
 
-def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | str]]:
-    steps = validate(args)
-    device = torch.device(args.device)
-    a = args.radius
-    lower = torch.tensor(
-        [-0.6 * a, -0.6 * a, -1.3 * a], device=device, dtype=torch.float64,
+def _cells(count: int, extent: float, reference: float) -> int:
+    cells = count * extent / reference
+    if abs(cells - round(cells)) > 1e-9:
+        raise ValueError("Box dimensions must keep the reference cell size")
+    return round(cells)
+
+
+def mesh_shape(args: argparse.Namespace) -> tuple[int, int, int]:
+    """Nodes per axis keeping the cells of `--nodes` over the reference 1.2a x 1.2a x 2.6a box."""
+    transverse = _cells(args.nodes - 1, args.box_half_width, 0.6) + 1
+    axial = _cells(args.nodes - 1, args.box_bottom + args.box_top, 2.6) + 1
+    return transverse, transverse, axial
+
+
+def rotate(face: str, vector: list[float]) -> list[float]:
+    return [sum(r * v for r, v in zip(row, vector, strict=True)) for row in GUN_ROTATIONS[face]]
+
+
+def source_geometry(args: argparse.Namespace, face: str = "z-") -> tuple[list[float], list[float]]:
+    angle = math.radians(args.aim_deg)
+    origin, direction = [0.0, 0.008 * args.radius, -1.3 * args.radius], [0.0, -math.sin(angle), math.cos(angle)]
+    return (origin, direction) if face == "z-" else (rotate(face, origin), rotate(face, direction))
+
+
+def gun_barrel(args: argparse.Namespace, face: str = "z-") -> Cylinder:
+    """Grounded barrel extending backwards from the emitter, which sits on its front face."""
+    origin, direction = source_geometry(args, face)
+    return Cylinder(
+        (origin[0], origin[1], origin[2]), (-direction[0], -direction[1], -direction[2]),
+        4 * args.radius, args.gun_radius * args.radius,
     )
-    mesh = ElectrostaticMesh(lower, -lower, (args.nodes,) * 3)
+
+
+COIL_FRAMES = ((1, 2, 0), (2, 0, 1), (0, 1, 2))
+
+
+def coils(args: argparse.Namespace) -> list[tuple[int, float, float]]:
+    """(axis, centre along it, ampere-turns) per coil; every coil's field points the same way at the centre."""
+    d = args.coil_offset * args.radius
+    axes = (2,) if args.coils == 2 else (0, 1, 2)
+    return [(axis, sign * d, -sign * args.coil_current) for axis in axes for sign in (-1, 1)]
+
+
+def coil_names(args: argparse.Namespace) -> list[str]:
+    if args.coils == 2:
+        return ["casing_lower", "casing_upper"]
+    return [f"casing_{'xyz'[axis]}{'-' if center < 0 else '+'}" for axis, center, _ in coils(args)]
+
+
+def coil_casings(args: argparse.Namespace) -> tuple[Torus, ...]:
+    a = args.radius
+    return tuple(
+        Torus(center, a, args.casing_radius * a, args.casing_voltage, axis)
+        for axis, center, _ in coils(args)
+    ) if args.casing_radius else ()
+
+
+class CoilSuperposition:
+    """Sum of one single-loop (r, z) field table translated and rotated onto each coil."""
+
+    def __init__(self, ring: MagneticField, placements: list[tuple[int, float, float]], current: float) -> None:
+        self.ring = ring
+        self.placements = [(list(COIL_FRAMES[axis]), center, turns / current) for axis, center, turns in placements]
+
+    def __call__(self, position: torch.Tensor) -> torch.Tensor:
+        result = torch.zeros_like(position)
+        for frame, center, scale in self.placements:
+            local = position[:, frame]
+            local[:, 2] -= center
+            result[:, frame] += scale * self.ring(local)
+        return result
+
+
+def six_coil_table(
+    args: argparse.Namespace, device: torch.device, lower: torch.Tensor, upper: torch.Tensor,
+) -> tuple[TorchPusher, CoilSuperposition, list[int]]:
+    """Single-loop table with the two-coil table spacing and its six-coil superposition."""
+    a = args.radius
+    extent = float(torch.maximum(lower.abs(), upper.abs()).max())
+    dr, dz = math.sqrt(2) * 0.6 * a / 255, 2.6 * a / 511
+    radial = math.ceil(math.sqrt(2) * extent / dr)
+    half = math.ceil((extent + args.coil_offset * a) / dz)
+    r = torch.arange(radial + 1, device=device, dtype=torch.float64) * dr
+    z = torch.arange(-half, half + 1, device=device, dtype=torch.float64) * dz
+    br, bz = ring_field_on_grid(r, z, a, [0.0], [args.coil_current], 720, device)
+    pusher = TorchPusher(br, bz, 0, dr, float(z[0]), dz, QM)
+    return pusher, CoilSuperposition(pusher.field, coils(args), args.coil_current), [len(z), len(r)]
+
+
+def six_coil_field(
+    args: argparse.Namespace, device: torch.device, lower: torch.Tensor, upper: torch.Tensor,
+) -> tuple[TorchPusher, CoilSuperposition, float, list[int]]:
+    """Six-coil table and the maximum |B| outside the casings on a 4x refined mesh."""
+    pusher, field, table_shape = six_coil_table(args, device, lower, upper)
+    shape = [4 * (count - 1) + 1 for count in mesh_shape(args)]
+    axes = [
+        torch.linspace(float(lower[axis]), float(upper[axis]), count, device=device, dtype=torch.float64)
+        for axis, count in enumerate(shape)
+    ]
+    bmax = 0.0
+    for plane in axes[0]:
+        grid = torch.meshgrid(plane[None], axes[1], axes[2], indexing="ij")
+        points = torch.stack(grid, dim=-1).reshape(-1, 3)
+        windings = torch.zeros(len(points), dtype=torch.bool, device=device)
+        for casing in coil_casings(args):
+            windings |= casing.contains(points)
+        bmax = max(bmax, float(field(points[~windings]).norm(dim=1).max()))
+    if not math.isfinite(bmax):
+        raise ValueError("Nonfinite magnetic field table")
+    return pusher, field, bmax, table_shape
+
+
+def magnetic_table(
+    args: argparse.Namespace, device: torch.device,
+) -> tuple[TorchPusher, float, list[int]]:
+    """Two-coil field table covering the box, and its maximum outside any coil casing."""
+    a = args.radius
+    radial = math.ceil(255 * args.box_half_width / 0.6 - 1e-9)
+    below = math.ceil(511 * (args.box_bottom - 1.3) / 2.6 - 1e-9)
+    above = math.ceil(511 * (args.box_top - 1.3) / 2.6 - 1e-9)
     r = torch.linspace(
-        0, math.sqrt(2) * 0.6 * a, 256, device=device, dtype=torch.float64,
+        0, math.sqrt(2) * 0.6 * a * (radial / 255), radial + 1, device=device, dtype=torch.float64,
     )
     z = torch.linspace(
-        -1.3 * a, 1.3 * a, 512, device=device, dtype=torch.float64,
+        -1.3 * a - below * 2.6 * a / 511, 1.3 * a + above * 2.6 * a / 511, 512 + below + above,
+        device=device, dtype=torch.float64,
     )
     br, bz = ring_field_on_grid(
         r, z, a, [-0.5 * a, 0.5 * a],
         [args.coil_current, -args.coil_current], 720, device,
     )
-    bmax = float(torch.sqrt(br.square() + bz.square()).max())
+    table = torch.stack(torch.meshgrid(r, z, indexing="ij"), dim=-1).reshape(-1, 2)
+    windings = torch.zeros(len(table), dtype=torch.bool, device=device)
+    for casing in coil_casings(args):
+        windings |= casing.contains(torch.nn.functional.pad(table, (1, 0))[:, [1, 0, 2]])
+    magnitude = torch.sqrt(br.square() + bz.square()).T.reshape(-1)
+    bmax = float(magnitude[~windings].max())
     if not math.isfinite(bmax):
         raise ValueError("Nonfinite magnetic field table")
-    if abs(QM) * bmax * min(args.dt, args.duration) > 2 * math.pi / 80:
-        raise ValueError("Timestep requires at least 80 steps per gyration")
     pusher = TorchPusher(
         br, bz, 0, float(r[1]), float(z[0]), float(z[1] - z[0]), QM,
     )
-    simulation = PIC(mesh, pusher.field, 0.25 * a, args.max_live_particles, args.track)
-    angle = math.radians(args.aim_deg)
-    origin = [0.0, 0.008 * a, -1.3 * a]
-    direction = [0.0, -math.sin(angle), math.cos(angle)]
-    source_field = pusher.field(lower.new_tensor([origin]))[0]
+    return pusher, bmax, [len(z), len(r)]
+
+
+def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]:
+    device = torch.device(args.device)
+    a = args.radius
+    width = args.box_half_width * a
+    lower = torch.tensor(
+        [-width, -width, -args.box_bottom * a], device=device, dtype=torch.float64,
+    )
+    upper = torch.tensor(
+        [width, width, args.box_top * a], device=device, dtype=torch.float64,
+    )
+    mesh = ElectrostaticMesh(lower, upper, mesh_shape(args))
+    reference: MagneticField
+    if args.coils == 6:
+        pusher, reference, bmax, table_shape = six_coil_field(args, device, lower, upper)
+    else:
+        pusher, bmax, table_shape = magnetic_table(args, device)
+        reference = pusher.field
+    if abs(QM) * bmax * min(args.dt, args.duration) > 2 * math.pi / 80:
+        raise ValueError("Timestep requires at least 80 steps per gyration")
+    kernels: ReferenceKernels
+    magnetic_field: MagneticField
+    if args.kernels == "cuda":
+        cuda = CUDAKernels(mesh)
+        kernels, magnetic_field = cuda, cuda.magnetic_field(pusher)
+        if args.coils == 6:
+            magnetic_field = CoilSuperposition(magnetic_field, coils(args), args.coil_current)
+    else:
+        kernels = ReferenceKernels(mesh)
+        magnetic_field = reference
+    faces = GUN_FACES[args.guns]
+    barrel_faces = faces if args.gun_radius else ()
+    barrels = tuple(gun_barrel(args, face) for face in barrel_faces)
+    shapes: tuple[Shape, ...] = barrels + coil_casings(args)
+    setup_start = time.perf_counter()
+    conductors = Conductors(mesh, shapes, kernels.potential) if shapes else None
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+    conductor_setup_s = time.perf_counter() - setup_start
+    if conductors is not None and 0 in conductors.node_counts:
+        raise ValueError("A conductor is unresolved on this mesh")
+    simulation = PIC(
+        mesh, magnetic_field, 0.25 * a, args.max_live_particles, args.track, kernels=kernels,
+        conductors=conductors, track_after=args.track_after,
+    )
+    counts = [] if conductors is None else conductors.node_counts
+    origin, direction = source_geometry(args)
+    source_field = reference(lower.new_tensor([origin]))[0]
     source_norm = float(source_field.norm())
     pitch = math.degrees(math.acos(max(-1, min(1, float(
         source_field.dot(lower.new_tensor(direction)),
     ) / source_norm)))) if source_norm else None
-    args.out.mkdir(parents=True, exist_ok=False)
-    snapshots = args.out / "snapshots"
-    snapshots.mkdir()
-    configuration = {
+    configuration: dict[str, object] = {
         key: str(value) if isinstance(value, Path) else value
         for key, value in vars(args).items()
     }
@@ -151,52 +382,211 @@ def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | st
         "model": "transient-electrostatic-pic-v1",
         "precision": "float64",
         "time_semantics": "physical seconds; synchronized end-of-step states",
-        "source_interpretation": "post-extraction grounded-wall inlet, pulsed each step",
+        "source_interpretation": "post-extraction grounded-wall inlet, discrete charge packets",
+        "source_pulse_interval_s": args.dt * args.inject_every,
         "source_origin_m": origin, "source_direction": direction,
+        "source_faces": list(faces),
+        "source_origins_m": [source_geometry(args, face)[0] for face in faces],
+        "source_directions": [source_geometry(args, face)[1] for face in faces],
+        "source_current_per_gun_A": args.current_a / args.guns,
         "source_nominal_pitch_deg": pitch,
         "source_B_T": source_field.cpu().tolist(),
         "magnetic_table_max_T": bmax,
-        "magnetic_table_shape_z_r": [512, 256],
+        "magnetic_table_shape_z_r": table_shape,
+        "magnetic_geometry": (
+            "two-coil axisymmetric cusp" if args.coils == 2
+            else "six-coil cube, one coil per face, all fields pointing along the same radial sense at the centre"
+        ),
+        "coils": [{"axis": "xyz"[axis], "center_m": center, "ampere_turns": turns}
+                  for axis, center, turns in coils(args)],
+        "box_lower_m": lower.cpu().tolist(), "box_upper_m": upper.cpu().tolist(),
+        "mesh_shape": list(mesh.shape),
         "core_radius_m": simulation.core_radius,
-        "boundary": "grounded rectangular box; absorbing particle walls",
+        "boundary": (
+            "grounded rectangular box; absorbing particle walls"
+            + ("; gun inside the box, not on its lower wall" if args.box_bottom > 1.3 else "")
+            + (f"; grounded absorbing gun barrels, surface nodes {counts[:len(barrels)]}, emitters on their front faces"
+               if args.gun_radius else "")
+            + (f"; absorbing toroidal coil casings at {args.casing_voltage:g} V, surface nodes "
+               f"{counts[-args.coils:]}" if args.casing_radius else "")
+        ),
+        "conductor_setup_s": conductor_setup_s,
+        "conductor_names": ([f"gun_barrel_{face}" if args.guns > 1 else "gun_barrel" for face in barrel_faces])
+        + (coil_names(args) if args.casing_radius else []),
+        "gun_barrel": {
+            "front_m": list(gun_barrel(args).start), "axis": list(gun_barrel(args).axis),
+            "length_m": gun_barrel(args).length, "radius_m": gun_barrel(args).radius,
+            "voltage_V": 0.0, "nodes": counts[0],
+        } if args.gun_radius else None,
+        "gun_barrels": [
+            {"face": face, "front_m": list(barrel.start), "axis": list(barrel.axis), "nodes": nodes}
+            for face, barrel, nodes in zip(barrel_faces, barrels, counts[:len(barrels)], strict=True)
+        ],
+        "coil_casings": [
+            {"center_z_m": casing.center_z, "axis": "xyz"[casing.axis],
+             "major_radius_m": casing.major_radius,
+             "minor_radius_m": casing.minor_radius, "voltage_V": casing.voltage, "nodes": nodes}
+            for casing, nodes in zip(coil_casings(args), counts[-args.coils:], strict=False)
+        ],
         "charge_deposition": "instantaneous CIC; no residence weighting",
         "energy_balance": "K + U + lost kinetic - injected kinetic; not a power budget",
-        "tracking": "first stable particle IDs; includes terminal wall positions",
-        "validation_scope": "numerical reference; physical source/mesh convergence pending",
+        "tracking": (
+            f"first {args.track} stable particle IDs injected at or after {args.track_after:g} s; "
+            "includes terminal wall positions"
+            + (f"; tracks.npz samples every {args.track_every} steps, at most {args.track_samples}"
+               if args.track_every else "")
+        ),
+        "validation_scope": "numerical model; physical source/mesh convergence pending",
     })
+    return simulation, configuration
+
+
+class TrackRecorder:
+    """Bounded on-device path samples of the tracked electrons, written as float32."""
+
+    def __init__(self, simulation: PIC, samples: int) -> None:
+        self.simulation = simulation
+        self.positions = simulation.tracked_position.new_full(
+            (samples, *simulation.tracked_position.shape), math.nan,
+        )
+        self.times: list[float] = []
+
+    def record(self) -> None:
+        if len(self.times) < len(self.positions):
+            self.positions[len(self.times)].copy_(self.simulation.tracked_position)
+            self.times.append(self.simulation.time)
+
+    def save(self, path: Path) -> None:
+        simulation = self.simulation
+        count = len(self.times)
+        temporary = path.with_suffix(".tmp")
+        with temporary.open("wb") as stream:
+            np.savez_compressed(
+                stream, allow_pickle=False,
+                time_s=np.array(self.times, dtype=np.float64),
+                position_m=self.positions[:count].float().cpu().numpy(),
+                birth_s=simulation.tracked_birth.cpu().numpy(),
+                exit_time_s=simulation.tracked_exit_time.cpu().numpy(),
+                exit_face=simulation.tracked_exit_face.cpu().numpy(),
+                first_id=-1 if simulation.tracked_first_id is None else simulation.tracked_first_id,
+                full=count == len(self.positions),
+            )
+        temporary.replace(path)
+
+
+class GunSource:
+    """External-gun packets sampled on CPU in seeded blocks and copied once per block."""
+
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.args = args
+        self.block = -1
+        self.speed_square: list[float] = []
+        self.cpu: tuple[torch.Tensor, torch.Tensor] | None = None
+        self.devices: dict[torch.device, tuple[torch.Tensor, torch.Tensor]] = {}
+
+    def _sample(self, block: int) -> None:
+        args = self.args
+        faces = GUN_FACES[args.guns]
+        count = args.inject_per_step // len(faces)
+        origin, direction = source_geometry(args)
+        positions, velocities = [], []
+        for index, face in enumerate(faces):
+            entropy = [args.seed, block] if index == 0 else [args.seed, block, index]
+            seed = int(np.random.SeedSequence(entropy).generate_state(1)[0])
+            position, velocity = thermal_source(
+                origin, direction, args.energy_ev, args.temperature_ev, args.source_sigma,
+                PACKETS_PER_BLOCK * count, torch.device("cpu"), seed, args.divergence_deg,
+            )
+            if (velocity[:, 2] <= 0).any():
+                raise ValueError("Sampled inlet velocity points backwards")
+            if face != "z-":
+                rotation = torch.tensor(GUN_ROTATIONS[face], dtype=torch.float64)
+                position, velocity = position @ rotation.T, velocity @ rotation.T
+            positions.append(position.reshape(PACKETS_PER_BLOCK, count, 3))
+            velocities.append(velocity.reshape(PACKETS_PER_BLOCK, count, 3))
+        position = torch.cat(positions, dim=1).reshape(-1, 3)
+        velocity = torch.cat(velocities, dim=1).reshape(-1, 3)
+        if not (torch.isfinite(position).all() and torch.isfinite(velocity).all()):
+            raise ValueError("Particle arrays must be finite")
+        self.speed_square = velocity.square().sum(dim=1).reshape(-1, args.inject_per_step).sum(dim=1).tolist()
+        self.block, self.cpu, self.devices = block, (position, velocity), {}
+
+    def inject(self, simulation: PIC, step: int) -> None:
+        args = self.args
+        if step % args.inject_every:
+            return
+        if len(simulation.particles.ids) + args.inject_per_step > args.max_live_particles:
+            raise ValueError("Injection exceeds max-live-particles")
+        block, row = divmod(step // args.inject_every, PACKETS_PER_BLOCK)
+        if block != self.block:
+            self._sample(block)
+        assert self.cpu is not None
+        device = simulation.mesh.lower.device
+        if device not in self.devices:
+            position, velocity = self.cpu
+            lower, upper = simulation.mesh.lower.cpu(), simulation.mesh.upper.cpu()
+            if ((position < lower) | (position > upper)).any():
+                raise ValueError("Deposit/gather requires positions inside the box")
+            self.devices[device] = (position.to(device), velocity.to(device))
+        position, velocity = self.devices[device]
+        count = args.inject_per_step
+        pulse_duration = min(args.dt * args.inject_every, args.duration - step * args.dt)
+        weight = args.current_a * pulse_duration / (E_CHARGE * count)
+        rows = slice(row * count, (row + 1) * count)
+        simulation.append_validated_packet(
+            position[rows], velocity[rows], weight, 0.5 * M_E * weight * self.speed_square[row],
+        )
+
+
+def run(args: argparse.Namespace) -> list[dict[str, float | int | list[int] | list[float] | str]]:
+    steps = validate(args)
+    simulation, configuration = create_simulation(args)
+    args.out.mkdir(parents=True, exist_ok=False)
+    snapshots = args.out / "snapshots"
+    snapshots.mkdir()
     (args.out / "configuration.json").write_text(
         json.dumps(configuration, indent=2, allow_nan=False) + "\n",
     )
-    history = []
+    history: list[dict[str, float | int | list[int] | list[float] | str]] = []
+
+    recorder = TrackRecorder(simulation, args.track_samples) if args.track_every and args.track else None
 
     def publish(step: int, h: float) -> None:
-        record = save_snapshot(simulation, snapshots, step, h)
+        record = save_snapshot(simulation, snapshots, step, h, origin)
+        if recorder is not None:
+            recorder.save(args.out / "tracks.npz")
+        record["wall_s"] = time.perf_counter() - start
         history.append(record)
         temporary = args.out / "history.tmp"
         temporary.write_text(json.dumps(history, indent=2, allow_nan=False) + "\n")
         temporary.replace(args.out / "history.json")
         print(json.dumps(record, allow_nan=False), flush=True)
 
+    def record_diagnostics(step: int, h: float) -> None:
+        charge, potential = simulation.fields()
+        record = {
+            **simulation.diagnostics(charge, potential),
+            "source_potential_V": source_potential(simulation, potential, origin),
+            "step": step, "dt_s": h, "wall_s": time.perf_counter() - start,
+        }
+        with (args.out / "diagnostics.jsonl").open("a") as stream:
+            stream.write(json.dumps(record, allow_nan=False) + "\n")
+
+    source = GunSource(args)
+    origin, _ = source_geometry(args)
+    start = time.perf_counter()
     publish(0, 0)
     for step in range(steps):
         h = args.duration - step * args.dt if step + 1 == steps else args.dt
-        if len(simulation.particles.ids) + args.inject_per_step > args.max_live_particles:
-            raise ValueError("Injection exceeds max-live-particles")
-        position, velocity = thermal_source(
-            origin, direction, args.energy_ev, args.temperature_ev,
-            args.source_sigma, args.inject_per_step, device,
-            args.seed + step, args.divergence_deg,
-        )
-        if (velocity[:, 2] <= 0).any():
-            raise ValueError("Sampled inlet velocity points backwards")
-        weight = position.new_full(
-            (args.inject_per_step,), args.current_a * h / (E_CHARGE * args.inject_per_step),
-        )
-        simulation.inject(position, velocity, weight)
+        source.inject(simulation, step)
         simulation.advance(h)
         simulation.time = args.duration if step + 1 == steps else (step + 1) * args.dt
+        if recorder is not None and simulation.tracked_first_id is not None and (step + 1) % args.track_every == 0:
+            recorder.record()
         if (step + 1) % args.save_every == 0 or step + 1 == steps:
             publish(step + 1, h)
+        if args.diagnostic_every and (step + 1) % args.diagnostic_every == 0:
+            record_diagnostics(step + 1, h)
     (args.out / "DONE").write_text("complete\n")
     return history
 

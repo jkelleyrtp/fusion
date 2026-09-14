@@ -367,3 +367,13 @@ body:not([data-page="sweeps"]):not([data-page="trajectories"]):not([data-page="r
   .run-report p, .run-report footer { color: #444; }
   .run-report section { break-inside: avoid; }
 }
+.figure-index { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin-bottom: 8px; }
+.figure-index a { color: var(--muted); text-decoration: none; }
+.figure-index a:hover { color: var(--mint); }
+.figure-study { padding: 24px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 90px; }
+.figure-study h2 { font-size: 17px; color: #dae5ed; }
+.figure-study p { color: #a8b9c7; font-size: 13px; line-height: 1.6; margin: 8px 0 14px; max-width: 95ch; }
+.figure-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
+.figure-grid figure { margin: 0; }
+.figure-grid img { width: 100%; background: #fff; border-radius: 4px; display: block; }
+.figure-grid figcaption { color: var(--muted); font-size: 11px; margin-top: 6px; }

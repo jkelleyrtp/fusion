@@ -1,4 +1,4 @@
-import type { CaseProgress, JobsResponse, SimulationJob } from "./job-types";
+import type { CaseProgress, JobsResponse, ProgressUnit, SimulationJob } from "./job-types";
 
 const escape = (value: string): string => value.replace(/[&<>"']/g, character =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
@@ -25,6 +25,10 @@ const casePurpose: Record<string, string> = {
   broad_1A: "30 kA-turn · broad 3 cm / 0° · 1 A electron beam",
   compact_vacuum: "30 kA-turn · compact 50 µm / 10° vacuum control",
   compact_1A: "30 kA-turn · compact 50 µm / 10° · 1 A electron beam",
+  pic_vacuum: "Transient magnetic-only control",
+  pic_1mA: "Transient 1 mA beam",
+  pic_1A: "Transient 1 A beam",
+  pic_1A_dt: "Half timestep · matched macroparticle weight",
 };
 const caseLabel: Record<CaseProgress["status"], string> = {
   pending: "Awaiting snapshot",
@@ -45,38 +49,55 @@ function resultLabel(job: SimulationJob): string {
 function completed(job: SimulationJob): number {
   return job.progress?.cases.filter(item => item.status === "completed").length ?? 0;
 }
-function caseRow(item: CaseProgress): string {
+const unitLabels = { iterations: "Iterations", steps: "Steps", cycles: "Cycles" } as const;
+const unitFootnotes = {
+  iterations: "Iterations are stationary field updates, not elapsed physical time. Completing them does not establish convergence.",
+  steps: "Steps advance physical time. A completed startup run does not establish physical convergence.",
+  cycles: "Cycles are coupled electron/ion windows that advance physical time. A completed run does not establish physical convergence.",
+} as const;
+function caseRow(item: CaseProgress, progressUnit: ProgressUnit): string {
   const fraction = item.target > 0 ? Math.min(1, item.iteration / item.target) : 0;
+  const unitLabel = unitLabels[progressUnit];
+  const physicalTime = progressUnit !== "iterations" && item.physicalTimeS !== undefined
+    ? progressUnit === "steps"
+      ? ` · ${(item.physicalTimeS * 1e9).toLocaleString("en-US", { maximumSignificantDigits: 6 })} ns`
+      : ` · ${(item.physicalTimeS * 1e6).toLocaleString("en-US", { maximumSignificantDigits: 6 })} µs`
+    : "";
   return `<tr><th scope="row">${escape(item.name)}</th>
     <td>${escape(casePurpose[item.name] ?? "Recorded variant")}</td>
-    <td><div class="iteration-progress"><progress max="1" value="${fraction}" aria-label="${escape(item.name)} iterations"></progress>
-      <span>${item.iteration}/${item.target}</span></div></td>
+    <td><div class="iteration-progress"><progress max="1" value="${fraction}" aria-label="${escape(item.name)} ${unitLabel}"></progress>
+      <span>${item.iteration}/${item.target}${physicalTime}</span></div></td>
     <td><span class="case-status case-${item.status}">${caseLabel[item.status]}</span></td>
     <td class="muted" title="${escape(item.updatedAt ?? "No published snapshot")}">${escape(age(item.updatedAt))}</td></tr>`;
 }
 function jobArticle(job: SimulationJob, open: boolean): string {
   const progress = job.progress;
+  const caseless = job.profile === "pic-cuda-validation";
+  const progressUnit: ProgressUnit = progress?.progressUnit ?? (job.profile === "transient-pic" ? "steps" : "iterations");
   const errors = [job.launchError, job.brokerError && `Scheduler: ${job.brokerError}`,
     job.progressError && `Results: ${job.progressError}`].filter((error): error is string => Boolean(error));
   const pending = progress?.cases.length ?? 0;
   const source = job.sourceRevision ?? progress?.sourceRevision;
   const values = (key: string, scale = 1): string => [...new Set(progress?.cases.map(item =>
     (Number(item.settings[key]) * scale).toLocaleString()))].join(" / ");
-  const setup = progress?.cases.length ? `${values("energy-ev")} eV · ${values("radius", 100)} cm coils · ${values("coil-current")} A-turn · ${values("aim-deg")}° aim` : "Settings will appear when the runner publishes its manifest.";
+  const setup = progress?.cases.length ? `${values("energy-ev")} eV · ${values("radius", 100)} cm coils · ${values("coil-current")} A-turn · ${values("aim-deg")}° aim` : caseless ? progress?.statusText || job.brokerMessage : "Settings will appear when the runner publishes its manifest.";
   const stale = !job.brokerCheckedAt || Date.now() - Date.parse(job.brokerCheckedAt) > 120_000;
   return `<article class="job-record" id="job-${escape(job.id)}">
     <div class="job-heading"><div><h2>${escape(job.title)}</h2><p>${escape(setup)}</p></div>
       <span class="job-result">${escape(resultLabel(job))}</span></div>
-    <p class="job-purpose">${escape(job.purpose)}</p>
-    <div class="job-facts"><span><b>${completed(job)}${pending ? `/${pending}` : ""}</b> cases completed</span>
+    <p class="job-purpose">${escape(progress?.purpose ?? job.purpose)}</p>
+    <div class="job-facts">${caseless ? "" : `<span><b>${completed(job)}${pending ? `/${pending}` : ""}</b> cases completed</span>`}
       <span>${job.nodes} node · ${job.gpus} GPUs · priority ${job.priority}</span>
       <span>Scheduler: <b>${escape(job.phase)}</b>${stale ? " · last known" : ""}</span>
       ${job.restartCount || job.preemptedCount ? `<span>${job.restartCount} restarts · ${job.preemptedCount} preemptions</span>` : ""}
       ${job.campaignId ? `<a href="#campaign/${encodeURIComponent(job.campaignId)}">Open saved report →</a>` : ""}</div>
     ${errors.length ? `<p class="job-warning" role="status">${errors.map(escape).join("<br>")}<br>Previously saved state is retained; no automatic resubmission.</p>` : ""}
-    ${progress ? `<div class="table-scroll"><table class="job-cases"><thead><tr><th>Variant</th><th>What it tests</th><th>Iterations</th><th>Result</th><th>Last snapshot</th></tr></thead>
-      <tbody>${progress.cases.map(caseRow).join("")}</tbody></table></div>
-      <p class="job-footnote">Iterations are stationary field updates, not elapsed physical time. Completing them does not establish convergence.</p>`
+    ${progress
+      ? caseless && !progress.cases.length
+        ? `<p class="job-empty">${escape(progress.statusText ?? job.brokerMessage)}</p>`
+        : `<div class="table-scroll"><table class="job-cases"><thead><tr><th>Variant</th><th>What it tests</th><th>${unitLabels[progressUnit]}</th><th>Result</th><th>Last snapshot</th></tr></thead>
+      <tbody>${progress.cases.map(item => caseRow(item, progressUnit)).join("")}</tbody></table></div>
+      <p class="job-footnote">${unitFootnotes[progressUnit]}</p>`
       : `<p class="job-empty">Waiting for a published progress snapshot. Scheduler status is tracked separately.</p>`}
     <div class="job-timestamps"><span>Scheduler checked ${escape(age(job.brokerCheckedAt))}</span>
       <span>Progress checked ${escape(age(job.progressCheckedAt))}</span></div>
@@ -181,7 +202,7 @@ export class JobMonitor {
   private renderBanners(): void {
     const latest = this.jobs[0];
     const banner = (job: SimulationJob): string => `<a class="job-banner" href="#jobs">
-      <span><b>${escape(resultLabel(job))}</b> · ${escape(job.title)} · ${completed(job)}/${job.progress?.cases.length ?? "?"} cases</span>
+      <span><b>${escape(resultLabel(job))}</b> · ${escape(job.title)} · ${job.profile === "pic-cuda-validation" ? escape(job.phase || "Registered") : `${completed(job)}/${job.progress?.cases.length ?? "?"} cases`}</span>
       <span>${this.paused ? "Updates paused" : this.error ? "Connection lost · cached state" : `Scheduler ${escape(age(job.brokerCheckedAt))}`} · Job details →</span></a>`;
     this.home.innerHTML = latest ? banner(latest) :
       `<a class="job-banner muted" href="#jobs">${this.error ? "Live job service unavailable" : "Live jobs"} · View status →</a>`;

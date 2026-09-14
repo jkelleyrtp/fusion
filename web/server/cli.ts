@@ -45,11 +45,12 @@ async function main(): Promise<void> {
       brokerJobId: option(args, "--job-id"),
       runDirectory: option(args, "--run-directory"),
       campaignId: campaign,
-      title: option(args, "--title")
+      title: option(args, "--title"),
+      ...(args.includes("--gpus") ? { gpus: Number(option(args, "--gpus")) } : {}),
     });
     return;
   }
-  throw new Error("Usage: npm run job -- launch poisson-reference [--request-id UUID] | list | register --job-id ID --run-directory RUN --title TITLE [--campaign-id ID] [--profile PROFILE]");
+  throw new Error("Usage: npm run job -- launch poisson-reference [--request-id UUID] | list | register --job-id ID --run-directory RUN --title TITLE [--campaign-id ID] [--profile PROFILE] [--gpus N]");
 }
 
 main().catch((error) => { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; });
