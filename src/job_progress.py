@@ -30,10 +30,10 @@ def read_progress(root: Path) -> dict[str, object] | None:
     if not isinstance(commands, list):
         raise TypeError("Manifest commands must be a list")
     progress_unit = manifest.get("progress_unit", "iterations")
-    if progress_unit not in {"iterations", "steps"}:
+    if progress_unit not in {"iterations", "steps", "cycles"}:
         raise ValueError("Unknown progress unit")
     step_targets: list[int] | None = None
-    if progress_unit == "steps":
+    if progress_unit in {"steps", "cycles"}:
         targets = manifest.get("step_targets")
         if (
             not isinstance(targets, list) or len(targets) != len(commands)
@@ -100,10 +100,13 @@ def read_progress(root: Path) -> dict[str, object] | None:
                 ):
                     raise ValueError("Malformed PIC history")
                 latest_history = cast(list[dict[str, object]], history_value)[-1]
-                step = latest_history.get("step")
+                step = latest_history.get("cycle" if progress_unit == "cycles" else "step")
                 time = latest_history.get("time_s")
                 try:
-                    duration = float(settings["duration"])
+                    if progress_unit == "cycles":
+                        duration = int(settings["cycles"]) * float(settings["cycle-duration"])
+                    else:
+                        duration = float(settings["duration"])
                 except (KeyError, TypeError, ValueError) as error:
                     raise ValueError("Invalid published PIC duration") from error
                 if not math.isfinite(duration):
@@ -115,7 +118,7 @@ def read_progress(root: Path) -> dict[str, object] | None:
                 published_time = float(time)
                 if (
                     not math.isfinite(published_time) or published_time < 0
-                    or published_time > duration + 1e-18
+                    or published_time > duration * (1 + 1e-9) + 1e-18
                 ):
                     raise ValueError("Invalid published PIC time")
                 iteration = step

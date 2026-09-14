@@ -140,6 +140,30 @@ class PicProgressTests(unittest.TestCase):
             self.assertEqual(result["cases"][0]["iteration"], 2)
             self.assertEqual(result["cases"][1]["status"], "completed")
 
+    def test_cycle_histories_report_coupled_cycles(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            command = ["python3", "run_ion_pic.py", "--out", "/remote/guns6", "--cycle-duration",
+                       "1e-05", "--cycles", "8", "--guns", "6", "--cycles", "16"]
+            (root / "manifest.json").write_text(json.dumps({
+                "source_revision": "abc", "purpose": "ions", "progress_unit": "cycles",
+                "step_targets": [16], "commands": [command],
+            }))
+            self.history(root, "guns6", [{"cycle": 16, "time_s": 0.00016000000000125254}])
+            (root / "guns6" / "DONE").write_text("complete")
+
+            result = progress.read_progress(root)
+
+            self.assertEqual(result["progressUnit"], "cycles")
+            case = result["cases"][0]
+            self.assertEqual(
+                (case["iteration"], case["target"], case["status"], case["physicalTimeS"]),
+                (16, 16, "completed", 0.00016000000000125254),
+            )
+            self.history(root, "guns6", [{"cycle": 17, "time_s": 1.6e-4}])
+            with self.assertRaisesRegex(ValueError, "PIC step"):
+                progress.read_progress(root)
+
 
 if __name__ == "__main__":
     unittest.main()
