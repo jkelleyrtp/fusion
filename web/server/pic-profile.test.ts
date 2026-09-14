@@ -124,6 +124,28 @@ test("PIC CUDA validation profile registers with no case rows", async () => {
   }
 });
 
+test("coupled ion PIC progress parses in cycles", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fusion-pic-progress-"));
+  const service = new JobService({
+    root: repoRoot,
+    stateDir: root,
+    command: runner({ ...progress, progressUnit: "cycles", cases: [{ ...progress.cases[0], physicalTimeS: 1.6e-4 }] }),
+    poll: false,
+  });
+  try {
+    await service.initialize();
+    await service.register("broker-pic-cycles", "pic-run-cycles", null, "Ion PIC", "transient-pic");
+    await service.pollAll();
+    const job = (await service.jobs()).jobs[0];
+    assert.equal(job.progressError, null);
+    assert.equal(job.progress?.progressUnit, "cycles");
+    assert.equal(job.progress?.cases[0].physicalTimeS, 1.6e-4);
+  } finally {
+    await service.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("array progress unit is rejected", async () => {
   const root = await mkdtemp(join(tmpdir(), "fusion-pic-progress-"));
   const service = new JobService({

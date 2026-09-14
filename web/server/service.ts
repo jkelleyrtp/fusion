@@ -131,7 +131,7 @@ function parseRunProgress(value: unknown): RunProgress | null {
   const run = value as Record<string, unknown>;
   if (typeof run.attempt !== "string" || typeof run.sourceRevision !== "string" || typeof run.purpose !== "string") fail("Malformed progress identity");
   if (typeof run.done !== "boolean" || (run.statusText !== null && typeof run.statusText !== "string")) fail("Malformed progress status");
-  if (run.progressUnit !== undefined && (typeof run.progressUnit !== "string" || !["iterations", "steps"].includes(run.progressUnit))) {
+  if (run.progressUnit !== undefined && (typeof run.progressUnit !== "string" || !["iterations", "steps", "cycles"].includes(run.progressUnit))) {
     fail("Malformed progress unit");
   }
   if (!Array.isArray(run.cases)) fail("Malformed progress cases");

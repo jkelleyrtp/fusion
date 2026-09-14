@@ -1,4 +1,4 @@
-import type { CaseProgress, JobsResponse, SimulationJob } from "./job-types";
+import type { CaseProgress, JobsResponse, ProgressUnit, SimulationJob } from "./job-types";
 
 const escape = (value: string): string => value.replace(/[&<>"']/g, character =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
@@ -49,11 +49,19 @@ function resultLabel(job: SimulationJob): string {
 function completed(job: SimulationJob): number {
   return job.progress?.cases.filter(item => item.status === "completed").length ?? 0;
 }
-function caseRow(item: CaseProgress, progressUnit: "iterations" | "steps"): string {
+const unitLabels = { iterations: "Iterations", steps: "Steps", cycles: "Cycles" } as const;
+const unitFootnotes = {
+  iterations: "Iterations are stationary field updates, not elapsed physical time. Completing them does not establish convergence.",
+  steps: "Steps advance physical time. A completed startup run does not establish physical convergence.",
+  cycles: "Cycles are coupled electron/ion windows that advance physical time. A completed run does not establish physical convergence.",
+} as const;
+function caseRow(item: CaseProgress, progressUnit: ProgressUnit): string {
   const fraction = item.target > 0 ? Math.min(1, item.iteration / item.target) : 0;
-  const unitLabel = progressUnit === "steps" ? "Steps" : "Iterations";
-  const physicalTime = progressUnit === "steps" && item.physicalTimeS !== undefined
-    ? ` · ${(item.physicalTimeS * 1e9).toLocaleString("en-US", { maximumSignificantDigits: 6 })} ns`
+  const unitLabel = unitLabels[progressUnit];
+  const physicalTime = progressUnit !== "iterations" && item.physicalTimeS !== undefined
+    ? progressUnit === "steps"
+      ? ` · ${(item.physicalTimeS * 1e9).toLocaleString("en-US", { maximumSignificantDigits: 6 })} ns`
+      : ` · ${(item.physicalTimeS * 1e6).toLocaleString("en-US", { maximumSignificantDigits: 6 })} µs`
     : "";
   return `<tr><th scope="row">${escape(item.name)}</th>
     <td>${escape(casePurpose[item.name] ?? "Recorded variant")}</td>
@@ -65,7 +73,7 @@ function caseRow(item: CaseProgress, progressUnit: "iterations" | "steps"): stri
 function jobArticle(job: SimulationJob, open: boolean): string {
   const progress = job.progress;
   const caseless = job.profile === "pic-cuda-validation";
-  const progressUnit = progress?.progressUnit ?? (job.profile === "transient-pic" ? "steps" : "iterations");
+  const progressUnit: ProgressUnit = progress?.progressUnit ?? (job.profile === "transient-pic" ? "steps" : "iterations");
   const errors = [job.launchError, job.brokerError && `Scheduler: ${job.brokerError}`,
     job.progressError && `Results: ${job.progressError}`].filter((error): error is string => Boolean(error));
   const pending = progress?.cases.length ?? 0;
@@ -87,9 +95,9 @@ function jobArticle(job: SimulationJob, open: boolean): string {
     ${progress
       ? caseless && !progress.cases.length
         ? `<p class="job-empty">${escape(progress.statusText ?? job.brokerMessage)}</p>`
-        : `<div class="table-scroll"><table class="job-cases"><thead><tr><th>Variant</th><th>What it tests</th><th>${progressUnit === "steps" ? "Steps" : "Iterations"}</th><th>Result</th><th>Last snapshot</th></tr></thead>
+        : `<div class="table-scroll"><table class="job-cases"><thead><tr><th>Variant</th><th>What it tests</th><th>${unitLabels[progressUnit]}</th><th>Result</th><th>Last snapshot</th></tr></thead>
       <tbody>${progress.cases.map(item => caseRow(item, progressUnit)).join("")}</tbody></table></div>
-      <p class="job-footnote">${progressUnit === "steps" ? "Steps advance physical time. A completed startup run does not establish physical convergence." : "Iterations are stationary field updates, not elapsed physical time. Completing them does not establish convergence."}</p>`
+      <p class="job-footnote">${unitFootnotes[progressUnit]}</p>`
       : `<p class="job-empty">Waiting for a published progress snapshot. Scheduler status is tracked separately.</p>`}
     <div class="job-timestamps"><span>Scheduler checked ${escape(age(job.brokerCheckedAt))}</span>
       <span>Progress checked ${escape(age(job.progressCheckedAt))}</span></div>

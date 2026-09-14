@@ -9,13 +9,15 @@ export interface CaseProgress {
   physicalTimeS?: number;
 }
 
+export type ProgressUnit = "iterations" | "steps" | "cycles";
+
 export interface RunProgress {
   attempt: string;
   sourceRevision: string;
   purpose: string;
   done: boolean;
   statusText: string | null;
-  progressUnit?: "iterations" | "steps";
+  progressUnit?: ProgressUnit;
   cases: CaseProgress[];
 }
 
