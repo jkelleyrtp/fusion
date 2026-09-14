@@ -104,7 +104,11 @@ def read_progress(root: Path) -> dict[str, object] | None:
                 time = latest_history.get("time_s")
                 try:
                     if progress_unit == "cycles":
-                        duration = int(settings["cycles"]) * float(settings["cycle-duration"])
+                        if "cycle-duration" in settings:
+                            duration = int(settings["cycles"]) * float(settings["cycle-duration"])
+                        else:
+                            configuration = json.loads((case_dir / "configuration.json").read_text())
+                            duration = int(configuration["cycles"]) * float(configuration["cycle_duration"])
                     else:
                         duration = float(settings["duration"])
                 except (KeyError, TypeError, ValueError) as error:
