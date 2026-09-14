@@ -9,7 +9,7 @@ from cusp_sim import E_CHARGE, M_E
 from electrostatic import ElectrostaticMesh
 from pic_cuda import CUDAKernels
 from pic_kernels import ReferenceKernels
-from run_transient_pic import GunSource, parser, validate
+from run_transient_pic import GUN_FACES, GUN_ROTATIONS, GunSource, parser, validate
 from transient_pic import PIC
 from validate_pic_gpu import compare_states, control
 
@@ -68,6 +68,28 @@ class PacketTests(unittest.TestCase):
             packets[seed] = p.position.reshape(300, 8, 3)
         self.assertFalse(torch.equal(packets[1234][1], packets[1235][0]))
         self.assertFalse(torch.equal(packets[1234][255], packets[1234][256]))
+
+    def test_extra_guns_are_rotated_copies_with_independent_streams(self):
+        common = ["--out", "unused", "--coils", "6", "--current-a", "1", "--divergence-deg", "20"]
+        single = GunSource(parser().parse_args([*common, "--inject-per-step", "2"]))
+        several = GunSource(parser().parse_args([*common, "--inject-per-step", "12", "--guns", "6"]))
+        single._sample(3)
+        several._sample(3)
+        assert single.cpu is not None and several.cpu is not None
+        position, velocity = (value.reshape(256, 12, 3) for value in several.cpu)
+        reference = single.cpu[0].reshape(256, 2, 3)
+        torch.testing.assert_close(position[:, :2], reference, rtol=0, atol=0)
+        torch.testing.assert_close(
+            several.speed_square, [6 * value for value in single.speed_square], rtol=0.2, atol=0,
+        )
+        for index, (axis, sign) in enumerate(((2, -1), (2, 1), (0, -1), (0, 1), (1, -1), (1, 1))):
+            gun = position[:, 2 * index:2 * index + 2].reshape(-1, 3)
+            torch.testing.assert_close(gun[:, axis], torch.full_like(gun[:, axis], sign * 0.65), rtol=0, atol=1e-3)
+            self.assertTrue(bool((sign * velocity[:, 2 * index:2 * index + 2, axis] < 0).all()))
+            rotation = torch.tensor(GUN_ROTATIONS[GUN_FACES[6][index]], dtype=torch.float64)
+            local = velocity[:, 2 * index:2 * index + 2].reshape(-1, 3) @ rotation
+            self.assertEqual(torch.equal(local, single.cpu[1]), index == 0)
+            torch.testing.assert_close(local.mean(dim=0), single.cpu[1].mean(dim=0), rtol=0.05, atol=2e6)
 
     def test_invalid_packet_interval(self):
         args = parser().parse_args(["--out", "unused", "--inject-every", "0"])

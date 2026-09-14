@@ -17,6 +17,15 @@ from steady_space_charge import thermal_source
 from transient_pic import PIC, MagneticField
 
 PACKETS_PER_BLOCK = 256
+GUN_FACES = {1: ("z-",), 2: ("z-", "z+"), 3: ("z-", "x-", "y-"), 6: ("z-", "z+", "x-", "x+", "y-", "y+")}
+GUN_ROTATIONS = {  # proper cube rotations taking the reference z- gun onto each face-axis cusp
+    "z-": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    "z+": ((1, 0, 0), (0, -1, 0), (0, 0, -1)),
+    "x-": ((0, 0, 1), (1, 0, 0), (0, 1, 0)),
+    "x+": ((0, 0, -1), (1, 0, 0), (0, -1, 0)),
+    "y-": ((0, 1, 0), (0, 0, 1), (1, 0, 0)),
+    "y+": ((0, -1, 0), (0, 0, -1), (1, 0, 0)),
+}
 
 
 def parser() -> argparse.ArgumentParser:
@@ -28,6 +37,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--inject-per-step", type=int, default=8)
     result.add_argument("--inject-every", type=int, default=1)
     result.add_argument("--current-a", type=float, default=1e-8)
+    result.add_argument("--guns", type=int, choices=tuple(GUN_FACES), default=1,
+                        help="identical guns on the face-axis cusps (z-, z+, x-, x+, y-, y+) sharing --current-a")
     result.add_argument("--coil-current", type=float, default=1000)
     result.add_argument("--coils", type=int, choices=(2, 6), default=2,
                         help="2: axisymmetric cusp pair on z; 6: cube of coils, one per face (Polywell-like)")
@@ -85,6 +96,8 @@ def validate(args: argparse.Namespace) -> int:
         raise ValueError("Aim must point into the box")
     if args.nodes < 3 or args.inject_per_step < 1 or args.inject_every < 1 or args.max_live_particles < 1:
         raise ValueError("Invalid mesh size or particle limits")
+    if args.guns > 1 and (args.coils != 6 or args.inject_per_step % args.guns):
+        raise ValueError("Several guns need six coils and inject-per-step divisible by the gun count")
     if args.save_every < 1 or args.max_snapshots < 2 or args.max_steps < 1 or args.diagnostic_every < 0:
         raise ValueError("Invalid output or step limits")
     if not 0 <= args.track <= 256 or args.seed < 0:
@@ -179,14 +192,19 @@ def mesh_shape(args: argparse.Namespace) -> tuple[int, int, int]:
     return transverse, transverse, axial
 
 
-def source_geometry(args: argparse.Namespace) -> tuple[list[float], list[float]]:
+def rotate(face: str, vector: list[float]) -> list[float]:
+    return [sum(r * v for r, v in zip(row, vector, strict=True)) for row in GUN_ROTATIONS[face]]
+
+
+def source_geometry(args: argparse.Namespace, face: str = "z-") -> tuple[list[float], list[float]]:
     angle = math.radians(args.aim_deg)
-    return [0.0, 0.008 * args.radius, -1.3 * args.radius], [0.0, -math.sin(angle), math.cos(angle)]
+    origin, direction = [0.0, 0.008 * args.radius, -1.3 * args.radius], [0.0, -math.sin(angle), math.cos(angle)]
+    return (origin, direction) if face == "z-" else (rotate(face, origin), rotate(face, direction))
 
 
-def gun_barrel(args: argparse.Namespace) -> Cylinder:
+def gun_barrel(args: argparse.Namespace, face: str = "z-") -> Cylinder:
     """Grounded barrel extending backwards from the emitter, which sits on its front face."""
-    origin, direction = source_geometry(args)
+    origin, direction = source_geometry(args, face)
     return Cylinder(
         (origin[0], origin[1], origin[2]), (-direction[0], -direction[1], -direction[2]),
         4 * args.radius, args.gun_radius * args.radius,
@@ -334,7 +352,10 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
     else:
         kernels = ReferenceKernels(mesh)
         magnetic_field = reference
-    shapes: tuple[Shape, ...] = ((gun_barrel(args),) if args.gun_radius else ()) + coil_casings(args)
+    faces = GUN_FACES[args.guns]
+    barrel_faces = faces if args.gun_radius else ()
+    barrels = tuple(gun_barrel(args, face) for face in barrel_faces)
+    shapes: tuple[Shape, ...] = barrels + coil_casings(args)
     setup_start = time.perf_counter()
     conductors = Conductors(mesh, shapes, kernels.potential) if shapes else None
     if device.type == "cuda":
@@ -364,6 +385,10 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         "source_interpretation": "post-extraction grounded-wall inlet, discrete charge packets",
         "source_pulse_interval_s": args.dt * args.inject_every,
         "source_origin_m": origin, "source_direction": direction,
+        "source_faces": list(faces),
+        "source_origins_m": [source_geometry(args, face)[0] for face in faces],
+        "source_directions": [source_geometry(args, face)[1] for face in faces],
+        "source_current_per_gun_A": args.current_a / args.guns,
         "source_nominal_pitch_deg": pitch,
         "source_B_T": source_field.cpu().tolist(),
         "magnetic_table_max_T": bmax,
@@ -380,19 +405,23 @@ def create_simulation(args: argparse.Namespace) -> tuple[PIC, dict[str, object]]
         "boundary": (
             "grounded rectangular box; absorbing particle walls"
             + ("; gun inside the box, not on its lower wall" if args.box_bottom > 1.3 else "")
-            + (f"; grounded absorbing gun barrel, {counts[0]} surface nodes, emitter on its front face"
+            + (f"; grounded absorbing gun barrels, surface nodes {counts[:len(barrels)]}, emitters on their front faces"
                if args.gun_radius else "")
             + (f"; absorbing toroidal coil casings at {args.casing_voltage:g} V, surface nodes "
                f"{counts[-args.coils:]}" if args.casing_radius else "")
         ),
         "conductor_setup_s": conductor_setup_s,
-        "conductor_names": (["gun_barrel"] if args.gun_radius else [])
+        "conductor_names": ([f"gun_barrel_{face}" if args.guns > 1 else "gun_barrel" for face in barrel_faces])
         + (coil_names(args) if args.casing_radius else []),
         "gun_barrel": {
             "front_m": list(gun_barrel(args).start), "axis": list(gun_barrel(args).axis),
             "length_m": gun_barrel(args).length, "radius_m": gun_barrel(args).radius,
             "voltage_V": 0.0, "nodes": counts[0],
         } if args.gun_radius else None,
+        "gun_barrels": [
+            {"face": face, "front_m": list(barrel.start), "axis": list(barrel.axis), "nodes": nodes}
+            for face, barrel, nodes in zip(barrel_faces, barrels, counts[:len(barrels)], strict=True)
+        ],
         "coil_casings": [
             {"center_z_m": casing.center_z, "axis": "xyz"[casing.axis],
              "major_radius_m": casing.major_radius,
@@ -457,18 +486,29 @@ class GunSource:
 
     def _sample(self, block: int) -> None:
         args = self.args
-        count = args.inject_per_step
-        seed = int(np.random.SeedSequence([args.seed, block]).generate_state(1)[0])
+        faces = GUN_FACES[args.guns]
+        count = args.inject_per_step // len(faces)
         origin, direction = source_geometry(args)
-        position, velocity = thermal_source(
-            origin, direction, args.energy_ev, args.temperature_ev, args.source_sigma,
-            PACKETS_PER_BLOCK * count, torch.device("cpu"), seed, args.divergence_deg,
-        )
-        if (velocity[:, 2] <= 0).any():
-            raise ValueError("Sampled inlet velocity points backwards")
+        positions, velocities = [], []
+        for index, face in enumerate(faces):
+            entropy = [args.seed, block] if index == 0 else [args.seed, block, index]
+            seed = int(np.random.SeedSequence(entropy).generate_state(1)[0])
+            position, velocity = thermal_source(
+                origin, direction, args.energy_ev, args.temperature_ev, args.source_sigma,
+                PACKETS_PER_BLOCK * count, torch.device("cpu"), seed, args.divergence_deg,
+            )
+            if (velocity[:, 2] <= 0).any():
+                raise ValueError("Sampled inlet velocity points backwards")
+            if face != "z-":
+                rotation = torch.tensor(GUN_ROTATIONS[face], dtype=torch.float64)
+                position, velocity = position @ rotation.T, velocity @ rotation.T
+            positions.append(position.reshape(PACKETS_PER_BLOCK, count, 3))
+            velocities.append(velocity.reshape(PACKETS_PER_BLOCK, count, 3))
+        position = torch.cat(positions, dim=1).reshape(-1, 3)
+        velocity = torch.cat(velocities, dim=1).reshape(-1, 3)
         if not (torch.isfinite(position).all() and torch.isfinite(velocity).all()):
             raise ValueError("Particle arrays must be finite")
-        self.speed_square = velocity.square().sum(dim=1).reshape(-1, count).sum(dim=1).tolist()
+        self.speed_square = velocity.square().sum(dim=1).reshape(-1, args.inject_per_step).sum(dim=1).tolist()
         self.block, self.cpu, self.devices = block, (position, velocity), {}
 
     def inject(self, simulation: PIC, step: int) -> None:

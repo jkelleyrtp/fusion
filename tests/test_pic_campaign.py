@@ -240,6 +240,19 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(configurations["limit_100A_10keV_bias5kV"].casing_voltage, 5000)
         self.assertEqual(configurations["limit_30A_20keV_s2345"].seed, 2345)
 
+    def test_six_coil_multi_gun_study_splits_current_over_face_guns(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-multi-gun")
+        configurations = {Path(command[3]).name: ion_parser().parse_args(command[2:]) for command in argv}
+        self.assertEqual(len(configurations), 8)
+        for item in configurations.values():
+            validate_coupled(item)
+            self.assertEqual((item.coils, item.coil_current, item.gas_pa, item.inject_per_step), (6, 30000, 1e-3, 12))
+        self.assertEqual(sorted({item.guns for item in configurations.values()}), [2, 3, 6])
+        self.assertEqual(sorted({item.current_a for item in configurations.values()}), [30, 100, 300, 1000])
+        self.assertEqual(configurations["guns6_1000A_20keV"].ion_dt, 2e-10)
+        self.assertEqual(configurations["guns6_100A_10keV"].ion_dt, 5e-10)
+        self.assertEqual(configurations["guns6_100A_10keV_s2345"].seed, 2345)
+
     def test_six_coil_gas_study_compares_uniform_fill_with_inlets(self) -> None:
         argv = commands(Path("/campaign"), "a" * 40, "six-coil-gas")
         configurations = [ion_parser().parse_args(command[2:]) for command in argv]

@@ -157,6 +157,16 @@ SIX_COIL_GUN_LIMIT = {  # current, energy, seed, extra arguments; 30 kA-turn, 1e
     "limit_100A_10keV_bias5kV": (100, 10000, 1234, ("--casing-voltage", "5000")),
     "limit_100A_20keV_bias5kV": (100, 20000, 1234, ("--casing-voltage", "5000")),
 }
+SIX_COIL_MULTI_GUN = {  # guns, total current, energy, seed, extra arguments; 30 kA-turn, 1e-3 Pa, 32 x 10 us
+    "guns6_30A_10keV": (6, 30, 10000, 1234, ()),
+    "guns6_100A_10keV": (6, 100, 10000, 1234, ()),
+    "guns6_100A_10keV_s2345": (6, 100, 10000, 2345, ()),
+    "guns3_100A_10keV": (3, 100, 10000, 1234, ()),
+    "guns2_100A_10keV": (2, 100, 10000, 1234, ()),
+    "guns6_300A_10keV": (6, 300, 10000, 1234, ("--ion-dt", "2e-10")),
+    "guns6_300A_20keV": (6, 300, 20000, 1234, ("--ion-dt", "2e-10")),
+    "guns6_1000A_20keV": (6, 1000, 20000, 1234, ("--ion-dt", "2e-10")),
+}
 FACE_INLET, CORNER_INLET, GUN_INLET = ("0.7", "0", "0"), ("0.68", "0.68", "0.68"), ("0.1", "0", "-0.95")
 SIX_COIL_GAS = {
     "d2_uniform_p1e-3": ("--gas-pa", "1e-3"),
@@ -237,7 +247,7 @@ SIX_COIL_CAPTURE = {  # electron-gun period and on cycles (1 us each), ion-gun p
 COUPLED = (
     "ions", "six-coil-ions", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas", "six-coil-ion-gun",
     "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture", "six-coil-sustain",
-    "six-coil-gun-limit",
+    "six-coil-gun-limit", "six-coil-multi-gun",
 )
 
 
@@ -304,6 +314,10 @@ def case_specs(
         "six-coil-gun-limit": tuple(
             (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
             for name, (current, _, seed, _) in SIX_COIL_GUN_LIMIT.items()
+        ),
+        "six-coil-multi-gun": tuple(
+            (name, current, 2e-12, 12, 2, 15000, 65, seed, "cuda")
+            for name, (_, current, _, seed, _) in SIX_COIL_MULTI_GUN.items()
         ),
         "six-coil-gas": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_GAS),
         "six-coil-ion-gun": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_ION_GUN),
@@ -419,6 +433,12 @@ def commands(
                 "--coil-current", "30000", "--energy-ev", str(energy), "--gas-pa", "1e-3", "--cycle-duration", "1e-5",
                 "--ion-dt", "5e-10", "--cycles", "32", "--save-every-cycles", "4", *extra,
             ]
+        if study == "six-coil-multi-gun":
+            guns, _, energy, _, extra = SIX_COIL_MULTI_GUN[name]
+            result[-1] += [
+                "--coil-current", "30000", "--energy-ev", str(energy), "--gas-pa", "1e-3", "--cycle-duration", "1e-5",
+                "--ion-dt", "5e-10", "--cycles", "32", "--save-every-cycles", "4", "--guns", str(guns), *extra,
+            ]
         if study == "six-coil-gas":
             result[-1] += ["--fuel", "D2", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_GAS[name]]
         if study == "six-coil-ion-gun":
@@ -467,7 +487,7 @@ def main() -> None:
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
             "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas",
             "six-coil-ion-gun", "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture",
-            "six-coil-sustain", "six-coil-gun-limit", "six-coil-tracks",
+            "six-coil-sustain", "six-coil-gun-limit", "six-coil-multi-gun", "six-coil-tracks",
         ),
         default="startup",
     )
@@ -584,6 +604,15 @@ def main() -> None:
             "lifts the gun-mouth space-charge limit. Non-relativistic pusher (20 keV: gamma 1.04, speed 3% high). "
             "No Coulomb collisions, gas depletion or plasma magnetic feedback."
         ) if args.study == "six-coil-gun-limit" else (
+            "Coupled electron and H2+ PIC in the six-coil cube (30 kA-turn, H2 at 1e-3 Pa, 32 x 10 us cycles) with the "
+            "total electron current split over identical guns on the face-axis cusps (docs/multi-gun-design.md), "
+            "following up six-coil-feed-fine, where one 100 A 10 keV gun made a -15 to -23 kV virtual cathode at its "
+            "mouth: 30, 100 and 300 A over six 10 keV guns (with a second 100 A seed), 100 A over two and three guns, "
+            "and 300 and 1000 A over six 20 keV guns (0.2 ns ion steps). Tests whether a lower per-gun perveance "
+            "deepens the central well. Non-relativistic pusher (20 keV: gamma 1.04). No Coulomb collisions, gas "
+            "depletion or plasma magnetic feedback; the electron Debye length can fall below the mesh spacing at "
+            "the highest feed."
+        ) if args.study == "six-coil-multi-gun" else (
             "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV gun, 30 kA-turn, 40 x 10 us cycles) "
             "comparing fuel delivery: uniform D2 at 1e-3 and 1e-4 Pa; a steady face inlet (0.7, 0, 0) m at 1e-3 "
             "and 1e-4 Pa m^3/s with a 1 m^3/s pump, where the pumped background Q/S dominates the plume; and "

@@ -49,6 +49,12 @@ STUDIES: dict[str, tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]] = {
         ("limit_30A_20keV_s2345",),
         ("limit_30A_20keV", "limit_100A_20keV", "limit_100A_20keV_div30"),
     ),
+    "six-coil-multi-gun": (
+        ("guns6_30A_10keV", "guns6_100A_10keV", "guns3_100A_10keV", "guns2_100A_10keV", "guns6_300A_10keV",
+         "guns6_300A_20keV", "guns6_1000A_20keV"),
+        ("guns6_100A_10keV_s2345",),
+        ("guns2_100A_10keV", "guns6_100A_10keV", "guns6_1000A_20keV"),
+    ),
     "six-coil-gas": (
         ("d2_uniform_p1e-3", "d2_uniform_p1e-4", "d2_inlet_face_Q1e-3_S1", "d2_inlet_face_Q1e-4_S1",
          "d2_puff_face_Q1e-2_S1e3", "d2_puff_face_Q1e-1_S1e3", "d2_puff_corner_Q1e-1_S1e3", "d2_puff_gun_Q1e-1_S1e3"),

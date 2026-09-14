@@ -275,6 +275,36 @@ class TransientCLITests(unittest.TestCase):
         np.testing.assert_allclose(field(points @ quarter.T), magnetic @ quarter.T, atol=1e-14)
         np.testing.assert_allclose(field(-points), -magnetic, atol=1e-14)
 
+    def test_six_guns_have_rotated_barrels_and_split_current(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "guns"
+            with contextlib.redirect_stdout(io.StringIO()):
+                history = run(arguments(
+                    root, "--nodes", "17", "--coils", "6", "--coil-offset", "1.2", "--casing-radius", "0.1",
+                    "--box-half-width", "1.425", "--box-bottom", "1.95", "--box-top", "1.4625",
+                    "--gun-radius", "0.12", "--aim-deg", "30", "--guns", "6", "--inject-per-step", "6",
+                    "--coil-current", "30000", "--dt", "2e-12", "--duration", "4e-12", "--current-a", "6e-3",
+                ))
+            configuration = json.loads((root / "configuration.json").read_text())
+            faces = ["z-", "z+", "x-", "x+", "y-", "y+"]
+            self.assertEqual(configuration["conductor_names"][:6], [f"gun_barrel_{face}" for face in faces])
+            self.assertEqual([barrel["face"] for barrel in configuration["gun_barrels"]], faces)
+            self.assertTrue(all(barrel["nodes"] > 0 for barrel in configuration["gun_barrels"]))
+            self.assertEqual(configuration["source_current_per_gun_A"], 1e-3)
+            origins = np.array(configuration["source_origins_m"])
+            directions = np.array(configuration["source_directions"])
+            np.testing.assert_allclose(np.abs(origins).max(axis=1), 0.65)
+            inward = (origins * directions).sum(axis=1)
+            np.testing.assert_allclose(inward, inward[0], atol=1e-12)
+            self.assertLess(inward[0], -0.5)
+            self.assertEqual(len(history[-1]["conductor_exit_counts"]), 12)
+            self.assertEqual(history[-1]["injected_count"], 12)
+
+    def test_several_guns_need_six_coils_and_divisible_packets(self):
+        for extra in (("--guns", "2"), ("--guns", "3", "--coils", "6", "--inject-per-step", "4")):
+            with self.assertRaisesRegex(ValueError, "Several guns"):
+                validate(arguments(Path("unused"), *extra))
+
     def test_six_coil_casings_are_held_and_recorded(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "six"
