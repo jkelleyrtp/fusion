@@ -275,6 +275,52 @@ For comparison, 1 A and 300 mA at 5 keV and 1e-3 Pa neutralize to 1.02–1.04 wi
   gas), no plasma magnetic field, one seed, and no cycle-duration control at 10–30 A yet. The
   plateau needs those controls and a longer run before it is a design number.
 
+## High-feed controls (job `jonathan-pic-b28074632b8b`, source `81f1d61`)
+
+`run_pic_campaign.py --study six-coil-sustain`: the 1e-3 Pa high-feed trap (10 keV gun, 30 kA-turn,
+H2, 40 ns electron windows, 0.5–1 ns ion step) with 1 A and 3 A at 10 keV, a second seed, D2, 1e-4
+Pa (32 × 100 µs), a 5 µs cycle, and 640 µs runs at 10 A and 30 A. All eight cases have `DONE`,
+every requested cycle, finite records and ion charge balance ≤ 4e-18 C.
+Raw output: `/public/jonathan/cusp/runs/pic-b28074632b8b/attempt-20260913-224534-753497086`.
+Summary: `docs/data/pic-six-coil-sustain-81f1d61.json`. Last-quarter means ± half-range; "status"
+is the final-quarter drift test (neutralization within 0.02 and centre within 5% or 100 V).
+
+| Case | Duration | Neutralization | Origin | Domain minimum | Electron charge | Core ion KE | Ions lost | Status |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| `sustain_1A_10keV` | 320 µs | 1.011 ± 0.005 | −0.00 kV | −0.1 kV | −104 nC | 6 eV | 35% | settled |
+| `sustain_3A_10keV` | 320 µs | 0.971 ± 0.016 | −0.10 ± 0.03 kV | −0.4 kV | −312 nC | 42 eV | 38% | still rising |
+| `sustain_10A_10keV_long` | 640 µs | 0.747 ± 0.005 | −2.88 ± 0.07 kV | −6.2 kV | −949 nC | 790 eV | 74% | settled |
+| `sustain_10A_10keV_s2345` | 320 µs | 0.762 ± 0.008 | −2.71 ± 0.06 kV | −5.8 kV | −967 nC | 739 eV | 42% | settled |
+| `sustain_30A_10keV_long` | 640 µs | 0.741 ± 0.014 | −5.48 ± 0.32 kV | −12.0 kV | −2030 nC | 1389 eV | 68% | oscillating |
+| `sustain_10A_10keV_D2` | 320 µs | 0.896 ± 0.027 | −1.29 ± 0.28 kV | −2.8 kV | −967 nC | 358 eV | 32% | still rising |
+| `sustain_10A_10keV_p1e-4` | 3.2 ms | 0.163 ± 0.000 | −5.52 ± 0.01 kV | −12.0 kV | −414 nC | 1343 eV | 90% | settled |
+| `sustain_10A_10keV_cycle5` | 320 µs | 0.879 ± 0.025 | −1.46 ± 0.25 kV | −3.3 kV | −951 nC | 414 eV | 35% | still rising |
+
+![Six-coil high-feed controls evolution](images/pic-six-coil-sustain-evolution.png)
+![Six-coil high-feed controls fields](images/pic-six-coil-sustain-fields.png)
+
+### High-feed controls interpretation
+
+- **The 10 A plateau holds for 640 µs and repeats with a second seed.** Neutralization stays at
+  0.745–0.75 from ~300 µs to 640 µs and the centre at −2.9 kV; the seed repeat is within 2% and
+  0.2 kV. `feed_10A_10keV_p1e-3` (0.76, −2.7 kV) matches.
+- **A current threshold lies between 3 A and 10 A at 1e-3 Pa.** 1 A and 3 A at 10 keV neutralize
+  the well completely (centre within 100 V of ground), as 1 A at 5 keV did.
+- **30 A does not settle; it relaxes.** Neutralization averages 0.74 but the electron charge swings
+  between −1.6 and −2.4 µC and the centre between −3.8 and −6.6 kV over ~300 µs. Only the range is
+  quoted.
+- **1e-4 Pa gives the deepest settled 10 A well:** −5.5 kV with neutralization 0.16 and 1.3 keV core
+  ions, steady from ~1 ms to 3.2 ms. This used 100 µs cycles, so it carries the splitting caveat
+  below.
+- **D2 is not settled at 320 µs** (0.90 and rising) and is already shallower than H2 (−1.3 kV);
+  slower D2+ loss is the likely cause but was not isolated.
+- **The 5 µs cycle disagrees with 10 µs.** At 320 µs it reaches 0.88 (0.91 at the end, still rising)
+  and −1.5 kV, against 0.75 and −2.9 kV. That difference is larger than any seed spread, so the
+  two-timescale splitting is not converged at 10 µs cycles and every 1e-3 Pa neutralization quoted
+  so far (high feed, single-gun limit, multi-gun) is provisional. `six-coil-splitting`
+  (job `jonathan-pic-38c0fd28b56d`, source `6ae4235`) separates ion cycle length (2.5–20 µs),
+  electron window (20–80 ns), ion macroparticles per cycle, seed and ion step.
+
 ## Single-gun limit results (job `jonathan-pic-94804d2b895b`, source `ec9a898`)
 
 `run_pic_campaign.py --study six-coil-gun-limit`: where does one external gun choke? Same trap and

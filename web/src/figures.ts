@@ -28,6 +28,11 @@ const studies: Study[] = [
     doc: "ion-pic-design.md", figures: pair("six-coil-feed-fine", "High feed"),
   },
   {
+    id: "six-coil-sustain", title: "High-feed controls: current threshold, seed, D2, 1e-4 Pa, cycle length (six-coil)",
+    summary: "10 keV gun, 30 kA-turn, H2 at 1e-3 Pa unless noted, all 8 cases complete. 10 A holds 0.75 neutralization and −2.9 kV for 640 µs; the seed repeat agrees within 2%. 1 A and 3 A lose the well. 30 A relaxes between −3.8 and −6.6 kV. 1e-4 Pa settles at −5.5 kV with 0.16 neutralization and 1.3 keV core ions over 3.2 ms. D2 is still rising. A 5 µs ion cycle gives 0.88 and −1.5 kV at 320 µs, so the 10 µs splitting is not converged and every 1e-3 Pa neutralization is provisional until the splitting study finishes.",
+    doc: "ion-pic-design.md", figures: pair("six-coil-sustain", "High-feed controls"),
+  },
+  {
     id: "six-coil-gun-limit", title: "Single-gun limit: 30–300 A at 10–20 keV (six-coil)",
     summary: "One external gun, H2 at 1e-3 Pa, 320 µs, all 8 cases complete. The choke follows gun perveance I/V^1.5: 100 A at 10 keV and 300 A at 20 keV (~1e-4 A/V^1.5) both choke, with the centre within 270 V of ground and 99.8% of lost ions returning into the gun. 100 A at 20 keV (3.5e-5) reaches the centre: −13.8 kV, neutralization 0.50, 2.5 keV core ions. 30° divergence and +5 kV casings do not unchoke the 10 keV gun. 30 A at 20 keV is still drifting (seed repeat within 3%).",
     doc: "ion-pic-design.md", figures: pair("six-coil-gun-limit", "Single-gun limit"),
