@@ -70,3 +70,25 @@ packet, 0.5 ns ion steps unless noted. Compared against the one-gun `feed_*_p1e-
 
 At the highest feeds the electron Debye length can fall below the mesh spacing; those cases need a
 refinement check before their well depth is trusted.
+
+## Campaign `six-coil-multi-gun-check`
+
+Job `jonathan-pic-3228957e6203`, source `b6ba5d6`, submitted while `six-coil-multi-gun` was at
+cycles 7–16. Mid-run histories showed the multi-gun wells reaching −7 to −28 kV at the origin, but
+with only 18k–240k live electron macroparticles (378 in the core at 1000 A), so particle noise and
+mesh resolution both need checking before the depths are used. Each case reuses its base case's
+guns, current, energy, seed and ion step.
+
+| case | base | change |
+|---|---|---|
+| guns6_100A_10keV_n97 | guns6_100A_10keV | 97-node mesh, 16 cycles |
+| guns6_1000A_20keV_n97 | guns6_1000A_20keV | 97-node mesh, 16 cycles |
+| guns6_100A_10keV_ppc4 | guns6_100A_10keV | 48 macroparticles per packet, 16 cycles |
+| guns6_1000A_20keV_ppc4 | guns6_1000A_20keV | 48 macroparticles per packet, 16 cycles |
+| guns6_100A_10keV_cycle5 | guns6_100A_10keV | 5 µs cycles, 64 cycles |
+| guns6_100A_10keV_p1e-4 | guns6_100A_10keV | 1e-4 Pa, 16 × 100 µs cycles |
+| guns6_1000A_20keV_p1e-4 | guns6_1000A_20keV | 1e-4 Pa, 8 × 100 µs cycles |
+| guns6_100A_10keV_60kAt | guns6_100A_10keV | 60 kA-turn coils |
+
+Comparisons use the base case's history at the same simulated time, since the 16-cycle checks stop
+halfway through the base run.
