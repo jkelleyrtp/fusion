@@ -24,7 +24,7 @@ const studies: Study[] = [
   },
   {
     id: "six-coil-feed-fine", title: "High electron feed: 10–100 A with H2 ions (six-coil)",
-    summary: "10 keV gun at 10–100 A, H2 at 1e-3 Pa (320 µs) and 1e-2 Pa (32 µs, transient), 7 of 8 cases complete (60 kA-turn still running, not interpreted). At 1e-3 Pa, 10 A levels off at 0.76 neutralization with the centre at −2.7 kV and ~0.8 keV core ions; 30 A holds −5.7 kV but is still settling. 1 A at the same pressure lost its well. 100 A chokes: a −15 to −23 kV virtual cathode forms at the gun mouth and 99.8% of lost ions fall into the gun barrel. One seed, no cycle-duration control yet.",
+    summary: "10 keV gun at 10–100 A, H2 at 1e-3 Pa (320 µs) and 1e-2 Pa (32 µs, transient), all 8 cases complete. At 1e-3 Pa, 10 A levels off at 0.76 neutralization with the centre at −2.7 kV and ~0.8 keV core ions; 30 A holds −5.7 kV but is still settling. 1 A at the same pressure lost its well. 100 A chokes: a −15 to −23 kV virtual cathode forms at the gun mouth and 99.8% of lost ions fall into the gun barrel. Coils are a weak knob: 60 kA-turn at 30 A (1e-2 Pa) is no deeper than 30 kA-turn. One seed, no cycle-duration control yet.",
     doc: "ion-pic-design.md", figures: pair("six-coil-feed-fine", "High feed"),
   },
   {

@@ -226,11 +226,11 @@ At the first 10 µs cycle the 1 A origin potential is −2.6 kV with −157 nC o
 `run_pic_campaign.py --study six-coil-feed-fine`: the six-coil trap with H2 and H2+, 10 keV gun at
 10–100 A, 10/30/60 kA-turn. Two groups: 1e-2 Pa for 32 × 1 µs cycles with a 0.2 ns ion step (the
 1 ns cases of `six-coil-feed` failed the `omega_pi * dt` check), and 1e-3 Pa for 32 × 10 µs cycles
-(320 µs, 0.5–1 ns ion step). Seven of eight cases have `DONE` and every cycle; ion charge balance
-stayed below 3e-19 C. `feed_30A_10keV_60kAt_idt2` had 18/32 cycles and is not interpreted.
+(320 µs, 0.5–1 ns ion step). All eight cases have `DONE` and every cycle; ion charge balance
+stayed below 3e-19 C.
 Raw output: `/public/jonathan/cusp/runs/pic-98784dc572d0/attempt-20260913-194000-421552263`.
 Summary: `docs/data/pic-six-coil-feed-fine-0efa509.json` (`analyze_ion_pic.py --study
-six-coil-feed-fine --partial`). Last-quarter means; "gun" is the share of lost ions absorbed by the
+six-coil-feed-fine`). Last-quarter means; "gun" is the share of lost ions absorbed by the
 gun barrel.
 
 | Case | Gas | Neutralization | Origin | Gun-mouth minimum | Electron charge | Core ion KE | Ions lost | Gun |
@@ -242,6 +242,7 @@ gun barrel.
 | `feed_30A_10keV_idt2` | 1e-2 Pa | 0.777 | −3903 V | −8.6 kV | −2240 nC | 742 eV | 2% | 30% |
 | `feed_100A_10keV_idt2` | 1e-2 Pa | 0.424 | −6283 V | −15.4 kV | −1090 nC | 1458 eV | 27% | 99.8% |
 | `feed_100A_10keV_10kAt_idt2` | 1e-2 Pa | 0.496 | −5434 V | −14.4 kV | −1650 nC | 1211 eV | 20% | 98% |
+| `feed_30A_10keV_60kAt_idt2` | 1e-2 Pa | 0.889 ± 0.059 | −2178 V | −9.3 kV | −2005 nC | 571 eV | 5% | 15% |
 
 For comparison, 1 A and 300 mA at 5 keV and 1e-3 Pa neutralize to 1.02–1.04 with the centre within
 10 V of ground (`six-coil-ions` above).
@@ -266,7 +267,10 @@ For comparison, 1 A and 300 mA at 5 keV and 1e-3 Pa neutralize to 1.02–1.04 wi
   needs a lower-perveance gun (larger emitter or several guns), not a single brighter one.
 - **The 1e-2 Pa runs are transient.** Neutralization is still rising at 32 µs in every case and
   10 A has already overshot to 1.06; treat them as the fast-pressure limit, not an equilibrium.
-- **Coil current is a weak knob here.** 100 A at 10 kA-turn is within ~15% of 30 kA-turn.
+- **Coil current is a weak knob here.** 100 A at 10 kA-turn is within ~15% of 30 kA-turn. At 30 A,
+  60 kA-turn neutralizes further (0.89 vs 0.78) and leaves the centre shallower (−2.2 vs −3.9 kV);
+  both differences are about one last-quarter spread (±0.06, ±0.8–0.9 kV) in a transient run, so
+  stronger coils do not preserve the well against 1e-2 Pa.
 - Limits: two-timescale splitting, no gas depletion (the 100 A ion inventory is below 1e-5 of the
   gas), no plasma magnetic field, one seed, and no cycle-duration control at 10–30 A yet. The
   plateau needs those controls and a longer run before it is a design number.
