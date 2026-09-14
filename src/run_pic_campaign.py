@@ -147,6 +147,16 @@ SIX_COIL_SUSTAIN = {  # electron-gun current, seed, extra arguments; 10 keV, 30 
     "sustain_10A_10keV_D2": (10, 1234, ("--fuel", "D2")),
     "sustain_10A_10keV_p1e-4": (10, 1234, ("--gas-pa", "1e-4", "--cycle-duration", "1e-4")),
 }
+SIX_COIL_SPLITTING = {  # ion cycle (us), electron window (ns), cycles, seed, extra; 10 A 10 keV sustain case
+    "split_c10_w80": (10, 80, 40, 1234, ()),
+    "split_c5_w20": (5, 20, 80, 1234, ()),
+    "split_c10_w40_ions2x": (10, 40, 40, 1234, ("--ions-per-cycle", "16384")),
+    "split_c5_w40_ions05x": (5, 40, 80, 1234, ("--ions-per-cycle", "4096")),
+    "split_c5_w40_s2345": (5, 40, 80, 2345, ()),
+    "split_c2p5_w40": (2.5, 40, 128, 1234, ()),
+    "split_c20_w40": (20, 40, 20, 1234, ()),
+    "split_c10_w40_idt05": (10, 40, 40, 1234, ("--ion-dt", "5e-10")),
+}
 SIX_COIL_GUN_LIMIT = {  # current, energy, seed, extra arguments; 30 kA-turn, 1e-3 Pa, 32 x 10 us, 0.5 ns ion steps
     "limit_30A_20keV": (30, 20000, 1234, ()),
     "limit_30A_20keV_s2345": (30, 20000, 2345, ()),
@@ -268,7 +278,7 @@ SIX_COIL_CAPTURE = {  # electron-gun period and on cycles (1 us each), ion-gun p
 COUPLED = (
     "ions", "six-coil-ions", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas", "six-coil-ion-gun",
     "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture", "six-coil-sustain",
-    "six-coil-gun-limit", "six-coil-multi-gun", "six-coil-multi-gun-check", "six-coil-multi-gun-scale",
+    "six-coil-splitting", "six-coil-gun-limit", "six-coil-multi-gun", "six-coil-multi-gun-check", "six-coil-multi-gun-scale",
 )
 
 
@@ -331,6 +341,10 @@ def case_specs(
         "six-coil-sustain": tuple(
             (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
             for name, (current, seed, _) in SIX_COIL_SUSTAIN.items()
+        ),
+        "six-coil-splitting": tuple(
+            (name, 10, 2e-12, 8, 2, 15000, 65, seed, "cuda")
+            for name, (_, _, _, seed, _) in SIX_COIL_SPLITTING.items()
         ),
         "six-coil-gun-limit": tuple(
             (name, current, 2e-12, 8, 2, 15000, 65, seed, "cuda")
@@ -456,6 +470,13 @@ def commands(
                 "--coil-current", "30000", "--energy-ev", "10000", "--gas-pa", "1e-3", "--cycle-duration", "1e-5",
                 "--cycles", "32", "--save-every-cycles", "4", *SIX_COIL_SUSTAIN[name][2],
             ]
+        if study == "six-coil-splitting":
+            cycle_us, window_ns, cycles, _, extra = SIX_COIL_SPLITTING[name]
+            result[-1] += [
+                "--coil-current", "30000", "--energy-ev", "10000", "--gas-pa", "1e-3",
+                "--cycle-duration", repr(cycle_us * 1e-6), "--electron-window", repr(window_ns * 1e-9),
+                "--cycles", str(cycles), "--save-every-cycles", str(cycles // 8), *extra,
+            ]
         if study == "six-coil-gun-limit":
             _, energy, _, extra = SIX_COIL_GUN_LIMIT[name]
             result[-1] += [
@@ -523,7 +544,8 @@ def main() -> None:
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
             "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas",
             "six-coil-ion-gun", "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture",
-            "six-coil-sustain", "six-coil-gun-limit", "six-coil-multi-gun", "six-coil-multi-gun-check",
+            "six-coil-sustain", "six-coil-splitting", "six-coil-gun-limit", "six-coil-multi-gun",
+            "six-coil-multi-gun-check",
             "six-coil-multi-gun-scale", "six-coil-tracks",
         ),
         default="startup",
@@ -634,6 +656,14 @@ def main() -> None:
             "over 640 us, test whether the partially neutralized plateau is physical and settled. No Coulomb "
             "collisions, gas depletion or plasma magnetic feedback."
         ) if args.study == "six-coil-sustain" else (
+            "Operator-splitting convergence on the six-coil-sustain 10 A case (10 keV gun, 30 kA-turn, H2 at 1e-3 Pa), "
+            "where 5 us ion cycles gave 0.91 neutralization and a -1.1 kV centre at 320 us and still rising, against a "
+            "settled 0.745 and -2.8 kV with 10 us cycles: 2.5, 5, 10 and 20 us cycles; 20 and 80 ns electron windows "
+            "matching the electron-to-ion time ratio of the other cycle length; half and double ion macroparticles per "
+            "unit time; a 5 us second seed and a 0.5 ns ion step. Tests whether the partially neutralized plateau is "
+            "set by the ion field coupling interval, electron lag, ion macroparticle noise or chance. No Coulomb "
+            "collisions, gas depletion or plasma magnetic feedback."
+        ) if args.study == "six-coil-splitting" else (
             "Coupled electron and H2+ PIC in the six-coil cube (30 kA-turn, H2 at 1e-3 Pa, 32 x 10 us cycles, 0.5 ns ion "
             "steps) following up six-coil-feed-fine, where a 100 A 10 keV gun made a -15 to -23 kV virtual cathode at "
             "its mouth: 30, 100 and 300 A at 20 keV (with a second 30 A seed), 30 degree beam divergence at 10 and "

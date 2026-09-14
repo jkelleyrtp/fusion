@@ -43,6 +43,11 @@ STUDIES: dict[str, tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]] = {
         ("sustain_10A_10keV_s2345", "sustain_10A_10keV_cycle5"),
         ("sustain_1A_10keV", "sustain_10A_10keV_long", "sustain_30A_10keV_long"),
     ),
+    "six-coil-splitting": (
+        ("split_c20_w40", "split_c10_w80", "split_c5_w20", "split_c2p5_w40"),
+        ("split_c10_w40_ions2x", "split_c5_w40_ions05x", "split_c5_w40_s2345", "split_c10_w40_idt05"),
+        ("split_c20_w40", "split_c10_w80", "split_c5_w20", "split_c2p5_w40"),
+    ),
     "six-coil-gun-limit": (
         ("limit_30A_20keV", "limit_100A_20keV", "limit_300A_20keV", "limit_100A_10keV_div30",
          "limit_100A_20keV_div30", "limit_100A_10keV_bias5kV", "limit_100A_20keV_bias5kV"),

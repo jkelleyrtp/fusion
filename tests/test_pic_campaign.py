@@ -227,6 +227,23 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual((low.gas_pa, low.cycle_duration), (1e-4, 1e-4))
         self.assertEqual(configurations["sustain_30A_10keV_long"].cycles, 64)
 
+    def test_six_coil_splitting_study_separates_cycle_window_and_macroparticles(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-splitting")
+        configurations = {Path(command[3]).name: ion_parser().parse_args(command[2:]) for command in argv}
+        self.assertEqual(len(configurations), 8)
+        for item in configurations.values():
+            validate_coupled(item)
+            self.assertEqual((item.current_a, item.energy_ev, item.gas_pa), (10, 10000, 1e-3))
+            self.assertGreaterEqual(item.cycle_duration * item.cycles, 3.2e-4 * (1 - 1e-12))
+            self.assertEqual(item.cycles % item.save_every_cycles, 0)
+        c10_w80, c5_w20 = configurations["split_c10_w80"], configurations["split_c5_w20"]
+        self.assertAlmostEqual(c10_w80.cycle_duration / c10_w80.electron_window, 125)
+        self.assertAlmostEqual(c5_w20.cycle_duration / c5_w20.electron_window, 250)
+        self.assertEqual(configurations["split_c10_w40_ions2x"].ions_per_cycle, 16384)
+        self.assertEqual(configurations["split_c5_w40_s2345"].seed, 2345)
+        self.assertEqual(configurations["split_c10_w40_idt05"].ion_dt, 5e-10)
+        self.assertAlmostEqual(configurations["split_c2p5_w40"].cycle_duration, 2.5e-6)
+
     def test_six_coil_gun_limit_study_varies_gun_energy_divergence_and_bias(self) -> None:
         argv = commands(Path("/campaign"), "a" * 40, "six-coil-gun-limit")
         configurations = {Path(command[3]).name: ion_parser().parse_args(command[2:]) for command in argv}
