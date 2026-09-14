@@ -92,3 +92,37 @@ guns, current, energy, seed and ion step.
 
 Comparisons use the base case's history at the same simulated time, since the 16-cycle checks stop
 halfway through the base run.
+
+Three cases failed at startup and produced no data:
+
+- **n97 (both):** CUDA out of memory building the conductor capacitance matrix. The 97-node mesh has
+  139k held conductor surface nodes, so one dense FP64 copy is 117 GiB and the Cholesky inverse needs
+  three. Probing the next valid finer mesh (81 nodes, 87k surface nodes, 56 GiB per copy) also rules it
+  out: cuSOLVER `potrf` fails with `CUSOLVER_STATUS_INTERNAL_ERROR` above ~65.5k rows (65,000 passes,
+  66,000 fails), which reads as a 2^32-element internal limit. Mesh sizes must keep whole reference cells
+  (nodes − 1 a multiple of 16: 49, 65, 81, 97), so 65 nodes is the finest mesh the dense conductor
+  path supports. Refining further needs a factorization that is blocked or matrix-free.
+- **60kAt:** `Timestep requires at least 80 steps per gyration`. The 2 ps electron step gives
+  \|q/m\| B_max dt = 0.114 at 60 kA-turn against a limit of 2π/80 = 0.0785.
+
+## Campaign `six-coil-multi-gun-scale`
+
+Replaces the failed check cases and extends the feed. Six guns, H2 at 1e-3 Pa, 10 µs cycles, 12
+macroparticles per packet.
+
+| case | current | energy | change |
+|---|---|---|---|
+| guns6_100A_10keV_n49 | 100 A | 10 keV | 49-node mesh (coarser), 16 cycles |
+| guns6_1000A_20keV_n49 | 1000 A | 20 keV | 49-node mesh, 16 cycles |
+| guns6_3000A_20keV_n49 | 3000 A | 20 keV | 49-node mesh, 0.1 ns ion step, 16 cycles |
+| guns6_100A_10keV_60kAt | 100 A | 10 keV | 60 kA-turn, 1 ps electron step, 16 cycles |
+| guns6_1000A_20keV_60kAt | 1000 A | 20 keV | 60 kA-turn, 1 ps electron step, 16 cycles |
+| guns6_1000A_20keV_s2345 | 1000 A | 20 keV | second seed, 32 cycles |
+| guns6_100A_20keV | 100 A | 20 keV | energy at matched current, 32 cycles |
+| guns6_3000A_20keV | 3000 A | 20 keV | 0.1 ns ion step, 16 cycles |
+
+The mesh check coarsens rather than refines: the 49 → 65 change bounds the 65-node discretization error
+only if the trend is monotone, and it is weaker evidence than a finer mesh. The 1 ps runs keep 4 ps
+packets, so injected current is unchanged. At 3000 A each gun carries 500 A at 20 keV, 1.8e-4 A/V^1.5,
+above the single-gun choke estimate of ~1e-4; that tests whether six guns hold off the choke at the
+same per-gun perveance.

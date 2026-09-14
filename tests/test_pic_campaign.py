@@ -253,22 +253,35 @@ class CampaignTests(unittest.TestCase):
         self.assertEqual(configurations["guns6_100A_10keV"].ion_dt, 5e-10)
         self.assertEqual(configurations["guns6_100A_10keV_s2345"].seed, 2345)
 
-    def test_six_coil_multi_gun_check_varies_mesh_particles_cycles_and_pressure(self) -> None:
+    def test_six_coil_multi_gun_check_varies_particles_cycles_and_pressure(self) -> None:
         argv = commands(Path("/campaign"), "a" * 40, "six-coil-multi-gun-check")
         configurations = {Path(command[3]).name: ion_parser().parse_args(command[2:]) for command in argv}
-        self.assertEqual(len(configurations), 8)
+        self.assertEqual(len(configurations), 5)
         for item in configurations.values():
             validate_coupled(item)
             self.assertEqual(item.guns, 6)
             self.assertEqual(item.inject_per_step % item.guns, 0)
-        self.assertEqual(configurations["guns6_1000A_20keV_n97"].nodes, 97)
-        self.assertEqual(configurations["guns6_1000A_20keV_n97"].ion_dt, 2e-10)
+        self.assertEqual(configurations["guns6_1000A_20keV_ppc4"].ion_dt, 2e-10)
         self.assertEqual(configurations["guns6_100A_10keV_ppc4"].inject_per_step, 48)
         cycle5 = configurations["guns6_100A_10keV_cycle5"]
         self.assertEqual((cycle5.cycle_duration, cycle5.cycles), (5e-6, 64))
         low = configurations["guns6_1000A_20keV_p1e-4"]
         self.assertEqual((low.gas_pa, low.cycle_duration, low.cycles, low.energy_ev), (1e-4, 1e-4, 8, 20000))
-        self.assertEqual(configurations["guns6_100A_10keV_60kAt"].coil_current, 60000)
+
+    def test_six_coil_multi_gun_scale_varies_mesh_coils_and_feed(self) -> None:
+        argv = commands(Path("/campaign"), "a" * 40, "six-coil-multi-gun-scale")
+        configurations = {Path(command[3]).name: ion_parser().parse_args(command[2:]) for command in argv}
+        self.assertEqual(len(configurations), 8)
+        for item in configurations.values():
+            validate_coupled(item)
+            self.assertEqual((item.guns, item.gas_pa, item.inject_per_step), (6, 1e-3, 12))
+            self.assertAlmostEqual(item.dt * item.inject_every, 4e-12)
+        strong = configurations["guns6_1000A_20keV_60kAt"]
+        self.assertEqual((strong.coil_current, strong.dt, strong.ion_dt, strong.cycles), (60000, 1e-12, 2e-10, 16))
+        self.assertEqual(configurations["guns6_3000A_20keV_n49"].nodes, 49)
+        self.assertEqual(configurations["guns6_3000A_20keV"].ion_dt, 1e-10)
+        self.assertEqual(configurations["guns6_1000A_20keV_s2345"].seed, 2345)
+        self.assertEqual(configurations["guns6_100A_20keV"].energy_ev, 20000)
 
     def test_six_coil_gas_study_compares_uniform_fill_with_inlets(self) -> None:
         argv = commands(Path("/campaign"), "a" * 40, "six-coil-gas")

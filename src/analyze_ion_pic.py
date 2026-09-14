@@ -56,10 +56,15 @@ STUDIES: dict[str, tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]] = {
         ("guns2_100A_10keV", "guns6_100A_10keV", "guns6_1000A_20keV"),
     ),
     "six-coil-multi-gun-check": (
-        ("guns6_100A_10keV_n97", "guns6_1000A_20keV_n97", "guns6_100A_10keV_ppc4", "guns6_1000A_20keV_ppc4",
-         "guns6_100A_10keV_p1e-4", "guns6_1000A_20keV_p1e-4", "guns6_100A_10keV_60kAt"),
+        ("guns6_100A_10keV_ppc4", "guns6_1000A_20keV_ppc4", "guns6_100A_10keV_p1e-4", "guns6_1000A_20keV_p1e-4"),
         ("guns6_100A_10keV_cycle5",),
-        ("guns6_100A_10keV_n97", "guns6_1000A_20keV_n97", "guns6_100A_10keV_p1e-4"),
+        ("guns6_100A_10keV_ppc4", "guns6_1000A_20keV_ppc4", "guns6_100A_10keV_p1e-4"),
+    ),
+    "six-coil-multi-gun-scale": (
+        ("guns6_100A_10keV_n49", "guns6_1000A_20keV_n49", "guns6_3000A_20keV_n49", "guns6_100A_10keV_60kAt",
+         "guns6_1000A_20keV_60kAt", "guns6_100A_20keV", "guns6_3000A_20keV"),
+        ("guns6_1000A_20keV_s2345",),
+        ("guns6_1000A_20keV_n49", "guns6_1000A_20keV_60kAt", "guns6_3000A_20keV"),
     ),
     "six-coil-gas": (
         ("d2_uniform_p1e-3", "d2_uniform_p1e-4", "d2_inlet_face_Q1e-3_S1", "d2_inlet_face_Q1e-4_S1",
