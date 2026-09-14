@@ -38,6 +38,11 @@ const studies: Study[] = [
     doc: "ion-pic-design.md", figures: pair("six-coil-gun-limit", "Single-gun limit"),
   },
   {
+    id: "six-coil-multi-gun", title: "Multiple external guns: 30–1000 A split over 2, 3 or 6 guns (six-coil)",
+    summary: "H2 at 1e-3 Pa, 320 µs, all 8 cases complete. Sharing the current removes the single-gun choke: at 100 A and 10 keV one gun leaves the centre at −0.1 kV, two guns give −8.2 kV, three −9.0 kV and six −10.1 kV (second seed within 0.4%). Two guns stay choked for ~60 µs and 60% of lost ions still return into the barrels. Six guns fill the coil interior with a broad well. Depth follows gun energy: six guns give −8.1 to −10.6 kV at 30–300 A and 10 keV, −18.4 kV at 300 A and −23.3 kV at 1000 A with 20 keV. Neutralization 0.60–0.79. Only the three-gun case has settled, and all use 10 µs ion cycles, so results are provisional until the splitting study finishes.",
+    doc: "multi-gun-design.md", figures: pair("six-coil-multi-gun", "Multi-gun"),
+  },
+  {
     id: "six-coil-gas", title: "D2 fuel delivery: uniform fill, inlets and puffs (six-coil)",
     summary: "1 A 5 keV gun, D2 and D2+ ions, 400 µs, all 8 cases complete. A steady inlet with a normal pump matches uniform gas within 0.1%. Pressure sets the neutralization clock linearly: 148 µs at 1e-3 Pa, 1.36 ms at 1e-4 Pa, ~7.9 ms at 1e-5 Pa, where the well holds −3.0 kV and core ions carry ~770 eV. A puff at the same background speeds ionization by 19–61% because the plume overlaps the electrons; ions are still born deep in the well.",
     doc: "ion-pic-design.md", figures: pair("six-coil-gas", "D2 fuel delivery"),

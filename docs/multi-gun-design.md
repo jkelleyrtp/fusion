@@ -71,6 +71,55 @@ packet, 0.5 ns ion steps unless noted. Compared against the one-gun `feed_*_p1e-
 At the highest feeds the electron Debye length can fall below the mesh spacing; those cases need a
 refinement check before their well depth is trusted.
 
+### Results (job `jonathan-pic-3bc45c365768`, source `65c6bd2`)
+
+All eight cases have `DONE`, 32/32 cycles, finite records and ion charge balance ≤ 2.3e-18 C.
+Raw output: `/public/jonathan/cusp/runs/pic-3bc45c365768/attempt-20260914-002200-700331109`.
+Summary: `docs/data/pic-six-coil-multi-gun-65c6bd2.json`. Last-quarter means ± half-range. "Source" is
+the potential at the z− gun mouth. Exits split lost ions between box walls, gun barrels and coil
+casings. "Status" is the final-quarter drift test (neutralization within 0.02 and centre within 5% or
+100 V).
+
+| Case | Per-gun perveance | Neutralization | Origin | Domain minimum | Source | Electron charge | Core ion KE | Exits wall/barrel/casing | Status |
+|---|---:|---:|---:|---:|---:|---:|---:|---|---|
+| `feed_30A_10keV_p1e-3` (1 gun) | 3.0e-5 | 0.707 ± 0.033 | −5.7 kV | −11.3 kV | | −2080 nC | 1137 eV | | drifting |
+| `feed_100A_10keV_p1e-3` (1 gun) | 1.0e-4 | 0.111 | −0.1 kV | −23.2 kV | | −151 nC | 100 eV | | choked |
+| `guns6_30A_10keV` | 5.0e-6 | 0.727 ± 0.024 | −8.07 ± 0.28 kV | −9.4 kV | −1.7 kV | −2795 nC | 1403 eV | 0.74/0.03/0.22 | drifting |
+| `guns2_100A_10keV` | 5.0e-5 | 0.630 ± 0.054 | −8.23 ± 0.47 kV | −14.4 kV | −7.6 kV | −2479 nC | 1376 eV | 0.30/0.60/0.10 | drifting |
+| `guns3_100A_10keV` | 3.3e-5 | 0.702 ± 0.010 | −9.00 ± 0.23 kV | −15.8 kV | −6.3 kV | −3325 nC | 1767 eV | 0.69/0.07/0.24 | settled |
+| `guns6_100A_10keV` | 1.7e-5 | 0.660 ± 0.026 | −10.13 ± 0.18 kV | −14.1 kV | −4.3 kV | −3170 nC | 1720 eV | 0.70/0.05/0.25 | drifting |
+| `guns6_100A_10keV_s2345` | 1.7e-5 | 0.663 ± 0.025 | −10.17 ± 0.22 kV | −14.1 kV | −4.3 kV | −3189 nC | 1731 eV | 0.70/0.05/0.25 | drifting |
+| `guns6_300A_10keV` | 5.0e-5 | 0.786 ± 0.019 | −10.64 ± 0.67 kV | −18.1 kV | −8.0 kV | −7461 nC | 2221 eV | 0.59/0.16/0.25 | drifting |
+| `guns6_300A_20keV` | 1.8e-5 | 0.716 ± 0.017 | −18.43 ± 0.44 kV | −26.9 kV | −9.1 kV | −9079 nC | 2996 eV | 0.60/0.08/0.32 | drifting |
+| `guns6_1000A_20keV` | 5.9e-5 | 0.595 ± 0.027 | −23.30 ± 0.36 kV | −42.9 kV | −17.7 kV | −9408 nC | 3607 eV | 0.45/0.28/0.27 | drifting |
+
+![Multi-gun evolution](images/pic-six-coil-multi-gun-evolution.png)
+![Multi-gun fields](images/pic-six-coil-multi-gun-fields.png)
+
+### Interpretation
+
+- **Sharing the current removes the single-gun choke.** At 100 A and 10 keV one gun leaves the centre
+  at −0.1 kV; two guns give −8.2 kV, three −9.0 kV and six −10.1 kV. The second seed agrees within
+  0.4% in potential and 0.003 in neutralization.
+- **Two guns sit at the edge of the choke.** `guns2_100A_10keV` stays choked for ~60 µs until ions
+  born at the mouths cancel the barrier, and 60% of lost ions still leave through the barrels. Three
+  and six guns send only 5–7% of lost ions into the barrels.
+- **The well becomes a volume, not a channel.** With six guns the potential in the x–y plane is a
+  broad −10 kV region filling the coil interior; with one gun it was a beam channel with a small
+  central blob.
+- **Well depth follows gun energy more than current.** Six guns at 10 keV give −8.1, −10.1 and
+  −10.6 kV at 30, 100 and 300 A. At 20 keV, 300 A gives −18.4 kV and 1000 A −23.3 kV with 3.6 keV
+  core ions. The centre stays at roughly 0.8–1.2 of the gun energy in kV.
+- **Neutralization is not driven down by current.** Every case sits at 0.60–0.79 at 1e-3 Pa; the ion
+  inventory grows with the electron inventory.
+- **Only `guns3_100A_10keV` passes the drift test.** Neutralization in the six-gun 100 A cases is
+  still falling (0.05 over the last quarter), and the 300 A and 1000 A electron inventories are still
+  growing. These are 320 µs transients, not plateaus.
+- **Limits.** The 1000 A mouth minimum (−43 kV) sits in a few cells near the barrels and needs the
+  49-node mesh comparison. All cases use 10 µs ion cycles, which the `sustain_10A_10keV_cycle5` control
+  showed is not converged, so neutralization and depth are provisional until `six-coil-splitting`
+  finishes. The field is the vacuum coil field.
+
 ## Campaign `six-coil-multi-gun-check`
 
 Job `jonathan-pic-3228957e6203`, source `b6ba5d6`, submitted while `six-coil-multi-gun` was at
