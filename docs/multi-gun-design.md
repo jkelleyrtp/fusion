@@ -74,7 +74,7 @@ refinement check before their well depth is trusted.
 ## Campaign `six-coil-multi-gun-check`
 
 Job `jonathan-pic-3228957e6203`, source `b6ba5d6`, submitted while `six-coil-multi-gun` was at
-cycles 7–16. Mid-run histories showed the multi-gun wells reaching −7 to −28 kV at the origin, but
+cycles 8–17. Mid-run histories showed the multi-gun wells reaching −7 to −28 kV at the origin, but
 with only 18k–240k live electron macroparticles (378 in the core at 1000 A), so particle noise and
 mesh resolution both need checking before the depths are used. Each case reuses its base case's
 guns, current, energy, seed and ion step.
