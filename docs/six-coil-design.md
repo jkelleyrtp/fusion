@@ -313,3 +313,99 @@ Observations:
 
 What this does not establish: whole-population statistics (64 electrons from one injection slice),
 ion behaviour, or plasma magnetic feedback.
+
+## Plasma regime: confinement, density ceiling, resolution and beta (study `six-coil-regime`)
+
+`src/analyze_confinement.py` reads the final snapshot of every complete six-coil coupled case
+(35 cases from the sustain, multi-gun, scale, check, mesh and splitting jobs; the last three were
+still running when fetched, so only their complete cases are included). It deposits electron and
+ion counts and kinetic energy onto the nodes, evaluates the vacuum coil field on the same nodes,
+and reports:
+
+- **transits**: time-mean electron inventory divided by the injection rate I/e, in units of one
+  gun-to-opposite-face beam transit;
+- **loss channels** from the conductor and face exit counters;
+- **h/λ_D**: largest cell spacing over the Debye length in the densest 0.1% of interior nodes,
+  taking T = (2/3) × mean kinetic energy per electron (this counts beam energy as temperature, so
+  it overstates λ_D and understates the resolution problem);
+- **throat beta**: core plasma pressure (2/3 of electron plus ion kinetic energy density) over
+  B²/2μ₀ at the strongest point on the face axis (0.017 T at 30 kA-turn, 0.034 T at 60 kA-turn);
+- the **Brillouin density** ε₀B²/2mₑ at that field and the density that would give beta = 1.
+
+![Regime](images/pic-six-coil-regime-confinement.png)
+
+| Case | Mesh | Centre (kV) | Transits | Into gun barrels | Core nₑ (m⁻³) | Peak nₑ (m⁻³) | h/λ_D | Throat beta |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 gun, 1 A, 10 keV | 65 | −0.00 | 4.8 | 5% | 3.4e12 | 1.3e14 | 0.29 | 3e-5 |
+| 1 gun, 10 A (640 µs) | 65 | −2.84 | 4.4 | 22% | 2.8e13 | 6.3e14 | 0.75 | 3e-4 |
+| 1 gun, 10 A, 1e-4 Pa | 65 | −5.53 | 1.9 | 59% | 1.2e13 | 4.2e14 | 0.61 | 9e-5 |
+| 1 gun, 30 A | 65 | −6.00 | 3.5 | 45% | 4.9e13 | 1.5e15 | 0.97 | 4e-4 |
+| 3 guns, 100 A | 65 | −9.01 | 1.4 | 72% | 9.1e13 | 1.4e15 | 1.12 | 9e-4 |
+| 6 guns, 100 A | 65 | −10.14 | 1.35 | 81% | 9.6e13 | 9.5e14 | 1.16 | 6e-4 |
+| 6 guns, 100 A | 49 | −9.00 | 1.7 | 85% | 1.0e14 | 1.6e15 | 2.72 | 4e-4 |
+| 6 guns, 100 A, 60 kA-turn | 65 | −9.53 | 1.37 | 91% | 1.1e14 | 2.5e15 | 2.48 | 1e-4 |
+| 6 guns, 100 A, 20 keV | 65 | −19.09 | 2.6 | 63% | 1.2e14 | 1.1e15 | 1.22 | 9e-4 |
+| 6 guns, 300 A, 20 keV | 65 | −18.86 | 2.0 | 69% | 2.4e14 | 2.4e15 | 1.35 | 3e-3 |
+| 6 guns, 1000 A, 20 keV | 65 | −22.97 | 0.64 | 69% | 2.2e14 | 3.7e15 | 1.21 | 4e-3 |
+| 6 guns, 1000 A, 20 keV, 60 kA-turn | 65 | −27.80 | 0.42 | 86% | 1.8e14 | 4.3e15 | 1.61 | 6e-4 |
+| 6 guns, 3000 A, 20 keV | 65 | −0.96 | 0.02 | 96% | 7.7e11 | 4.6e15 | 0.25 | 4e-5 |
+
+No electron hit a casing in any case. Full per-case values are in
+`docs/data/pic-six-coil-regime.json`.
+
+### Findings
+
+- **Electrons are not magnetically confined in any of these runs.** The average injected electron
+  stays for 0.4–4.8 beam transits, falling with current. Doubling the coil current does not raise
+  it (1.37 vs 1.35 transits at 100 A; 0.42 vs 0.64 at 1000 A). The well is the space charge of
+  electrons streaming through, not a trapped population making many bounces.
+- **The guns are the dominant sink.** 60–96% of lost electrons return into gun barrels at 30 A
+  and above. The three-gun case (z−, x−, y−, no opposed gun) sends 72% into barrels in nearly
+  equal thirds, so electrons mostly return to their own gun: they turn around in the space
+  charge and come back along the same cusp field line. At 1000 A only 4.8% of injected electrons
+  ever reach the core, 13% at 100 A from six guns, and 70% at 10 A from one gun.
+- **Well depth is capped by the gun energy.** From 100 A upward, centre potentials sit near −9 to
+  −11.5 kV at 10 keV and −19 to −28 kV at 20 keV, and tripling or tenfolding the current barely
+  deepens them. An electron from a grounded gun cannot reach a
+  region below −E/e, so more current only moves the reflection point outward toward the gun
+  mouth until the gun chokes (3000 A).
+- **Peak electron density is already at the Brillouin limit of the throat field.** Peak nodes
+  reach 1–4.6e15 m⁻³ from 30 A upward against 1.4e15 m⁻³ at 0.017 T; core density saturates at
+  ~2e14 m⁻³ between 300 and 1000 A. A non-neutral electron cloud cannot be pushed denser than
+  this by feed alone. The same limit bounds the beta a pure electron cloud can reach at
+  (2/3)E/mₑc² ≈ 1.3% at 10 keV and 2.6% at 20 keV, so **beta ≈ 1 requires a quasi-neutral plasma;
+  ion neutralization is a prerequisite for a Polywell regime, not only a loss mechanism**. In that
+  regime the well is a small electron excess: a 10 kV well over 15 cm at 1e17 m⁻³ needs ~0.15%.
+- **Throat beta is 3e-5 to 4e-3.** In unchoked cases beta exceeds 1 only within an equivalent
+  radius of 0.12–0.19 m around the field null, where the vacuum field is weak; cusp plugging requires beta ≈ 1 at the throats, i.e. ~1.1e17 m⁻³
+  at 10 keV and 30 kA-turn, 500–1000× the core densities here. Holding 1e17 m⁻³ in a 0.3 m sphere at the
+  observed ~1 transit lifetime would take ~6e4 A (~600 MW at 10 keV), so the operating point only exists if the
+  plasma's own field raises electron lifetime by orders of magnitude. The electrostatic,
+  vacuum-field model cannot test that.
+- **The mesh does not resolve λ_D at 30 A and above.** h/λ_D in the densest nodes is 0.3–1.0
+  for one gun at ≤30 A on 65 nodes, 0.8–2.5 for 65-node multi-gun cases and 1.6–2.7 for
+  unchoked 49-node multi-gun cases. The largest
+  spacing is always along z (0.020 m at 65 nodes against 0.0094 m transversely), because the box
+  keeps the reference cell along z; isotropic cells would halve the worst h without more
+  transverse nodes. Cells larger than λ_D invite finite-grid heating and explain why the 1000 A
+  mouth potential and the 3000 A choke change between 49 and 65 nodes.
+
+### 10 A at 1e-3 Pa is bistable
+
+![Repeats](images/pic-six-coil-regime-repeats.png)
+
+Fourteen 10 A single-gun cases differ in numerical settings (ion cycle 2.5–20 µs, electron
+window 20–80 ns, ion timestep, ion macroparticles, seed, mesh) or, in one case, D2 fuel. All track together to ~150 µs,
+then split into two branches: one neutralizes to 0.91–0.95 with the centre at −0.6 to −1.1 kV,
+the other levels off at 0.71–0.77 and −2.7 to −3.3 kV. Settings do not sort cases cleanly between
+branches: a 10 µs cycle with the same seed lands on the neutralized branch with a 0.5 ns ion
+timestep or 2× ion macroparticles and on the sustained branch at 1 ns. Only the 20 µs cycle is
+systematically different, holding −5.2 kV at 0.51 because its splitting is too coarse. The
+earlier "10 A sustains −2.7 kV" result is therefore one branch of a marginal state, not a
+converged outcome; four splitting cases were still running at this fetch.
+
+### What this does not establish
+
+Nothing here includes plasma magnetic feedback, so none of it tests cusp plugging. Pressures use
+isotropic 2/3 of kinetic energy, which is crude for beam-dominated electrons. Transits count all
+injected electrons, including those returned before reaching the core.

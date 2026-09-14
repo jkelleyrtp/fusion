@@ -10,6 +10,14 @@ const pair = (name: string, what: string): Figure[] => [
 
 const studies: Study[] = [
   {
+    id: "six-coil-regime", title: "Plasma regime: confinement, density ceiling, mesh resolution and beta (six-coil)",
+    summary: "Final snapshots of 35 complete six-coil coupled cases. Electrons are not magnetically confined: the average injected electron stays 0.4–4.8 beam transits, and 60 kA-turn does not raise it. 60–96% of losses above 30 A return into the guns' own barrels; no electron hits a casing. Centre depth saturates near the gun energy. Peak electron density (1–4.6e15 m⁻³) already sits at the Brillouin limit of the 0.017 T throat field, which caps a pure electron cloud at beta ≈ 1–3%, so beta ≈ 1 needs a quasi-neutral plasma. Throat beta is 3e-5 to 4e-3; plugging needs ~1e17 m⁻³, 500–1000× the core density. Cells are 0.8–2.7 Debye lengths in dense regions (worst along z). 10 A at 1e-3 Pa is bistable: numerically equivalent cases split into −0.6 to −1.1 kV and −2.7 to −3.3 kV branches after ~150 µs.",
+    doc: "six-coil-design.md", figures: [
+      { image: "pic-six-coil-regime-confinement.png", title: "Transits, core density, cell/Debye length and throat beta vs current" },
+      { image: "pic-six-coil-regime-repeats.png", title: "10 A single-gun repeats: two branches after ~150 µs" },
+    ],
+  },
+  {
     id: "six-coil-tracks", title: "Settled-electron paths (six-coil)",
     summary: "64 electrons injected after 500 ns in eight 300 ns runs (0 V, second seed, −1 kV, +5 kV, +10 kV, 3 A, +5 kV with a 2 keV gun, 60 kA-turn), sampled every 2 ps. 61–87% of wall exits leave along a face-axis point cusp; each electron passes through the core about once (42% re-enter at +5 kV). At 3 A, 58% return into the gun barrel. Phase-space slices, not whole-population lifetimes.",
     doc: "six-coil-design.md", figures: [
