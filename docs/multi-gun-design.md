@@ -227,4 +227,6 @@ cycles 13–16, not with the base case's final quarter.
   knob in the vacuum field.
 - **Limits.** All 16-cycle cases are still drifting (neutralization rising 0.02–0.07 across the final
   quarter), so the differences above are 160 µs transients, not plateau values. All use 10 µs ion
-  cycles pending `six-coil-splitting`. The field is the vacuum coil field.
+  cycles pending `six-coil-splitting`. The field is the vacuum coil field. The electron pusher is
+  nonrelativistic, which overestimates a 20 keV electron's speed by ~3%; raising gun energy further
+  to stay below the per-gun choke needs a relativistic pusher first.
