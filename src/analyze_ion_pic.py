@@ -55,6 +55,12 @@ STUDIES: dict[str, tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]] = {
         ("guns6_100A_10keV_s2345",),
         ("guns2_100A_10keV", "guns6_100A_10keV", "guns6_1000A_20keV"),
     ),
+    "six-coil-multi-gun-check": (
+        ("guns6_100A_10keV_n97", "guns6_1000A_20keV_n97", "guns6_100A_10keV_ppc4", "guns6_1000A_20keV_ppc4",
+         "guns6_100A_10keV_p1e-4", "guns6_1000A_20keV_p1e-4", "guns6_100A_10keV_60kAt"),
+        ("guns6_100A_10keV_cycle5",),
+        ("guns6_100A_10keV_n97", "guns6_1000A_20keV_n97", "guns6_100A_10keV_p1e-4"),
+    ),
     "six-coil-gas": (
         ("d2_uniform_p1e-3", "d2_uniform_p1e-4", "d2_inlet_face_Q1e-3_S1", "d2_inlet_face_Q1e-4_S1",
          "d2_puff_face_Q1e-2_S1e3", "d2_puff_face_Q1e-1_S1e3", "d2_puff_corner_Q1e-1_S1e3", "d2_puff_gun_Q1e-1_S1e3"),

@@ -167,6 +167,19 @@ SIX_COIL_MULTI_GUN = {  # guns, total current, energy, seed, extra arguments; 30
     "guns6_300A_20keV": (6, 300, 20000, 1234, ("--ion-dt", "2e-10")),
     "guns6_1000A_20keV": (6, 1000, 20000, 1234, ("--ion-dt", "2e-10")),
 }
+SIX_COIL_MULTI_GUN_CHECK = {  # base multi-gun case, nodes, particles per step, extra arguments
+    "guns6_100A_10keV_n97": ("guns6_100A_10keV", 97, 12, ("--cycles", "16")),
+    "guns6_1000A_20keV_n97": ("guns6_1000A_20keV", 97, 12, ("--cycles", "16")),
+    "guns6_100A_10keV_ppc4": ("guns6_100A_10keV", 65, 48, ("--cycles", "16")),
+    "guns6_1000A_20keV_ppc4": ("guns6_1000A_20keV", 65, 48, ("--cycles", "16")),
+    "guns6_100A_10keV_cycle5": ("guns6_100A_10keV", 65, 12, ("--cycle-duration", "5e-6", "--cycles", "64",
+                                                            "--save-every-cycles", "8")),
+    "guns6_100A_10keV_p1e-4": ("guns6_100A_10keV", 65, 12, ("--gas-pa", "1e-4", "--cycle-duration", "1e-4",
+                                                           "--cycles", "16", "--save-every-cycles", "2")),
+    "guns6_1000A_20keV_p1e-4": ("guns6_1000A_20keV", 65, 12, ("--gas-pa", "1e-4", "--cycle-duration", "1e-4",
+                                                             "--cycles", "8", "--save-every-cycles", "2")),
+    "guns6_100A_10keV_60kAt": ("guns6_100A_10keV", 65, 12, ("--coil-current", "60000")),
+}
 FACE_INLET, CORNER_INLET, GUN_INLET = ("0.7", "0", "0"), ("0.68", "0.68", "0.68"), ("0.1", "0", "-0.95")
 SIX_COIL_GAS = {
     "d2_uniform_p1e-3": ("--gas-pa", "1e-3"),
@@ -247,7 +260,7 @@ SIX_COIL_CAPTURE = {  # electron-gun period and on cycles (1 us each), ion-gun p
 COUPLED = (
     "ions", "six-coil-ions", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas", "six-coil-ion-gun",
     "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture", "six-coil-sustain",
-    "six-coil-gun-limit", "six-coil-multi-gun",
+    "six-coil-gun-limit", "six-coil-multi-gun", "six-coil-multi-gun-check",
 )
 
 
@@ -318,6 +331,10 @@ def case_specs(
         "six-coil-multi-gun": tuple(
             (name, current, 2e-12, 12, 2, 15000, 65, seed, "cuda")
             for name, (_, current, _, seed, _) in SIX_COIL_MULTI_GUN.items()
+        ),
+        "six-coil-multi-gun-check": tuple(
+            (name, SIX_COIL_MULTI_GUN[base][1], 2e-12, packet, 2, 15000, nodes, SIX_COIL_MULTI_GUN[base][3], "cuda")
+            for name, (base, nodes, packet, _) in SIX_COIL_MULTI_GUN_CHECK.items()
         ),
         "six-coil-gas": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_GAS),
         "six-coil-ion-gun": tuple((name, 1, 2e-12, 8, 2, 15000, 65, 1234, "cuda") for name in SIX_COIL_ION_GUN),
@@ -433,11 +450,15 @@ def commands(
                 "--coil-current", "30000", "--energy-ev", str(energy), "--gas-pa", "1e-3", "--cycle-duration", "1e-5",
                 "--ion-dt", "5e-10", "--cycles", "32", "--save-every-cycles", "4", *extra,
             ]
-        if study == "six-coil-multi-gun":
-            guns, _, energy, _, extra = SIX_COIL_MULTI_GUN[name]
+        if study in ("six-coil-multi-gun", "six-coil-multi-gun-check"):
+            base, check = (
+                (SIX_COIL_MULTI_GUN_CHECK[name][0], SIX_COIL_MULTI_GUN_CHECK[name][3])
+                if study == "six-coil-multi-gun-check" else (name, ())
+            )
+            guns, _, energy, _, extra = SIX_COIL_MULTI_GUN[base]
             result[-1] += [
                 "--coil-current", "30000", "--energy-ev", str(energy), "--gas-pa", "1e-3", "--cycle-duration", "1e-5",
-                "--ion-dt", "5e-10", "--cycles", "32", "--save-every-cycles", "4", "--guns", str(guns), *extra,
+                "--ion-dt", "5e-10", "--cycles", "32", "--save-every-cycles", "4", "--guns", str(guns), *extra, *check,
             ]
         if study == "six-coil-gas":
             result[-1] += ["--fuel", "D2", "--cycles", "40", "--save-every-cycles", "4", *SIX_COIL_GAS[name]]
@@ -487,7 +508,8 @@ def main() -> None:
             "startup", "refinement", "acceptance", "window", "domain", "gun", "casing", "ions", "six-coil",
             "six-coil-long", "six-coil-ions", "six-coil-bias", "six-coil-feed", "six-coil-feed-fine", "six-coil-gas",
             "six-coil-ion-gun", "six-coil-deuteron", "six-coil-deuteron-fine", "six-coil-pulse", "six-coil-capture",
-            "six-coil-sustain", "six-coil-gun-limit", "six-coil-multi-gun", "six-coil-tracks",
+            "six-coil-sustain", "six-coil-gun-limit", "six-coil-multi-gun", "six-coil-multi-gun-check",
+            "six-coil-tracks",
         ),
         default="startup",
     )
@@ -613,6 +635,13 @@ def main() -> None:
             "depletion or plasma magnetic feedback; the electron Debye length can fall below the mesh spacing at "
             "the highest feed."
         ) if args.study == "six-coil-multi-gun" else (
+            "Numerical and physics checks on six-coil-multi-gun (six face-cusp guns, 30 kA-turn, H2): 100 A at 10 keV "
+            "and 1000 A at 20 keV on a 97-node mesh and with 4x electron macroparticles (16 x 10 us), 100 A with 5 us "
+            "cycles (64 cycles), 100 A and 1000 A at 1e-4 Pa with 100 us cycles (1.6 and 0.8 ms), and 100 A with "
+            "60 kA-turn coils. Tests whether the multi-gun well depth is mesh- and particle-converged, independent "
+            "of the ion cycle splitting, and survives lower pressure. No Coulomb collisions, gas depletion or plasma "
+            "magnetic feedback."
+        ) if args.study == "six-coil-multi-gun-check" else (
             "Coupled electron and D2+ PIC in the six-coil cube (1 A, 5 keV gun, 30 kA-turn, 40 x 10 us cycles) "
             "comparing fuel delivery: uniform D2 at 1e-3 and 1e-4 Pa; a steady face inlet (0.7, 0, 0) m at 1e-3 "
             "and 1e-4 Pa m^3/s with a 1 m^3/s pump, where the pumped background Q/S dominates the plume; and "
