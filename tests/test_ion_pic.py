@@ -57,11 +57,27 @@ class IonPICTests(unittest.TestCase):
             self.assertGreater(final["neutralization_fraction"], 0)
             self.assertLess(final["secondary_injected_charge_C"], 0)
             self.assertEqual(sum(final["ion_exit_counts"]), final["ion_created_count"] - final["ion_count"])
+            self.assertEqual(final["source_potentials_V"], [final["source_potential_V"]])
             with np.load(root / final["snapshot"]) as state:
                 self.assertEqual(len(state["ion_count"]), final["ion_count"])
                 np.testing.assert_allclose(state["ion_charge_C"].sum(), final["ion_alive_charge_C"], rtol=1e-9)
                 self.assertEqual(state["electron_position_m"].shape, state["electron_velocity_m_s"].shape)
                 self.assertEqual(len(state["electron_count"]), final["electrons"]["alive_count"])
+
+    def test_six_guns_record_one_source_per_face(self):
+        args = arguments(
+            Path("unused"), "--nodes", "17", "--coils", "6", "--coil-offset", "1.2", "--casing-radius", "0.1",
+            "--box-half-width", "1.425", "--box-bottom", "1.95", "--box-top", "1.4625", "--gun-radius", "0.12",
+            "--aim-deg", "30", "--guns", "6", "--inject-per-step", "6", "--coil-current", "30000",
+            "--dt", "2e-12", "--current-a", "6e-3",
+        )
+        simulation = CoupledPIC(args, validate_coupled(args))
+        standoff = 1.3 * args.radius
+        faces = [(2, -1), (2, 1), (0, -1), (0, 1), (1, -1), (1, 1)]
+        self.assertEqual(len(simulation.origins), len(faces))
+        for origin, (axis, sign) in zip(simulation.origins, faces, strict=True):
+            self.assertAlmostEqual(origin[axis], sign * standoff)
+            self.assertLess(max(abs(value) for i, value in enumerate(origin) if i != axis), 0.1 * standoff)
 
     def test_inlet_plume_carries_the_throughput(self):
         args = arguments(Path("unused"), "--gas-pa", "0", "--gas-inlet", "0.1", "0", "0",
