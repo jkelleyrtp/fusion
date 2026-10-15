@@ -5,6 +5,11 @@ my_constants.a = 0.01                 # sphere radius (m)
 my_constants.e0 = 1.0e4               # electron injection energy (eV)
 my_constants.current = 20.            # injected electron current over the whole wall (A)
 my_constants.spread = 0.02            # tangential momentum spread at the wall, in units of the normal momentum
+my_constants.core_current = 0.        # peak current of a second, low-spread electron beam aimed at the centre (A)
+my_constants.core_spread = 0.02
+my_constants.core_t0 = 0.             # time of its first pulse (s)
+my_constants.core_period = 1.         # pulse spacing (s)
+my_constants.core_sigma = 0.          # Gaussian pulse width (s); 0 keeps the beam steady
 my_constants.mass_amu = 2.014
 my_constants.fill = 0.                # ions per electron of a uniform cloud with a well of depth e0
 my_constants.s0 = 0.3*a
@@ -45,7 +50,7 @@ algo.field_gathering = momentum-conserving
 algo.particle_shape = 1
 warpx.serialize_initial_conditions = 1
 
-particles.species_names = electrons ions
+particles.species_names = electrons ions core
 
 electrons.charge = -q_e
 electrons.mass = m_e
@@ -59,6 +64,20 @@ electrons.ux_th = spread*un
 electrons.uy_th = spread*un
 electrons.uz_th = 0.002*un
 electrons.uz_m = un
+
+core.charge = -q_e
+core.mass = m_e
+core.injection_style = NFluxPerCell
+core.inject_from_embedded_boundary = 1
+core.num_particles_per_cell = ppc_e
+core.flux_profile = parse_flux_function
+# pulses centred on core_t0 + k*core_period, switched off below 1% of the peak so no particles are made between them
+core.flux_function(x,y,z,t) = "core_current/(q_e*4*pi*a**2)*if(core_sigma>0, if(abs(fmod(t-core_t0+100.5*core_period, core_period)-0.5*core_period)<3*core_sigma, exp(-(fmod(t-core_t0+100.5*core_period, core_period)-0.5*core_period)**2/(2*core_sigma**2+1e-300)), 0), 1)"
+core.momentum_distribution_type = gaussianflux
+core.ux_th = core_spread*un
+core.uy_th = core_spread*un
+core.uz_th = 0.002*un
+core.uz_m = un
 
 ions.charge = q_e
 ions.mass = mi
