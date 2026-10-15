@@ -386,9 +386,9 @@ the well depth. This is an external source, unlike the released electrons above.
 - At 12.7× the cloud's rms radius per axis is about one 64³ cell. The next section has the mesh
   check and the other ion fills.
 
-## The wall beam at other ion fills, on a finer mesh, and with a spread (campaigns b20–b24)
+## The wall beam at other ion fills, on a finer mesh, and with a spread (campaigns b20–b25)
 
-Same well and 64³ mesh unless stated. Campaigns b20–b24 were still running when these were read:
+Same well and 64³ mesh unless stated. Campaigns b20–b25 were still running when these were read:
 most rows have one to three collapses.
 
 | fill | beam | compression per collapse | fill × first compression |
@@ -420,10 +420,21 @@ most rows have one to three collapses.
 | 1e-1 | 3 A, 6.4 keV | 6.17, 4.83 | 0.62 |
 | 1e-1 | 3 A, 6.8 keV | 7.53 | 0.75 |
 | 1e-1 | 3 A, 7.2 keV | 5.40 | 0.54 |
-| 1e-1 | 3 A, 7.6 keV | 2.33 | 0.23 |
-| 1e-1 | 3 A, 8.2 keV | 2.17 | 0.22 |
+| 1e-1 | 3 A, 7.6 keV | 2.33, 2.90 | 0.23 |
+| 1e-1 | 3 A, 8.2 keV | 2.17, 1.86 | 0.22 |
 | 1e-1 | 6 A, 5.6 keV | 2.03, 1.60 | 0.20 |
-| 1e-1 | 6 A, 7.2 keV | 4.00 | 0.40 |
+| 1e-1 | 6 A, 7.2 keV | 4.00, 3.40 | 0.40 |
+| 3e-1 | none | no collapse | – |
+| 3e-1 | 3 A, 6.4 keV | no collapse | – |
+| 3e-1 | 6 A, 4.0 keV | 1.52 | 0.46 |
+| 3e-1 | 6 A, 5.0 keV | 2.99 | 0.90 |
+| 3e-1 | 6 A, 7.2 keV | no collapse | – |
+| 3e-1 | 10 A, 4.0 keV | 1.30 | 0.39 |
+| 3e-1 | 10 A, 5.0 keV | 1.57 | 0.47 |
+| 3e-1 | 10 A, 6.0 keV | 2.44 | 0.73 |
+| 3e-1 | 20 A, 5.0 keV | no collapse | – |
+| 3e-1 | 20 A, 6.0 keV | 1.40 | 0.42 |
+| 3e-1 | 20 A, 7.0 keV | 1.66 | 0.50 |
 
 "Spread" here is the beam's sideways momentum spread over its inward momentum; the other beam rows
 use 0.5%.
@@ -443,13 +454,16 @@ use 0.5%.
   electrons as the 68 A of 10 keV electrons, and the centre sits at the beam energy (−6.45 kV at
   6.4 keV). So here the beam acts as a steady store of slow electrons at the centre, not as a
   supply that responds to the ions as at fill 3e-2.
-- The largest fill × compression is 0.75 (fill 1e-1, 3 A, 6.8 keV), against 0.10–0.17 with no
-  beam. That run has only its first collapse and no finer-mesh check.
-- Fill 3e-1 (campaign b24): no collapse with no beam, 3 A at 6.4 keV or 6 A at 7.2 keV. The
-  centre is only −1.5 to −2.1 kV, so those beams are far above the well. Campaign b25 scans
-  6–20 A at 4–7 keV.
+- Fill 3e-1: without the beam the cloud does not collapse and the centre is only −1.4 to
+  −2.1 kV. 6 A at 5.0 keV gives 3.0 and 10 A at 6.0 keV gives 2.4. More current needs more
+  energy, as at the lower fills, and 20 A does worse than 6 or 10 A at every energy tried.
+- The largest fill × compression is 0.90 (fill 3e-1, 6 A, 5.0 keV) and the next is 0.75 (fill
+  1e-1, 3 A, 6.8 keV), against 0.10–0.17 with no beam. Both are first collapses on the 64³ mesh
+  with no finer-mesh check, from scans in steps of 0.4–1 keV.
+- Best fill × first compression found at each fill, with the beam: 0.19, 0.39, 0.75, 0.90 at
+  fills 1e-2, 3e-2, 1e-1, 3e-1. It rises with fill but more slowly than the fill does.
 - A beam with more sideways spread does worse: 9.7 at 2% and 7.2 at 5%, against 12.7 at 0.5%.
-- The settings come from coarse scans. None of the three fills has a located optimum in both
+- The settings come from coarse scans. None of the four fills has a located optimum in both
   current and energy.
 
 ### Released electrons at four birth temperatures (campaign b21, fill 1e-2, numerical control)

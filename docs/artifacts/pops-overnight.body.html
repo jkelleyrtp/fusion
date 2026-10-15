@@ -12,7 +12,8 @@ const fills = [
   { ions: "3 per 1,000", f: 3e-3, none: 24.29 },
   { ions: "1 per 100", f: 1e-2, none: 10.43, beam: 18.74, beamSetting: "0.5 A at 6.8 keV", centre: 20.69 },
   { ions: "3 per 100", f: 3e-2, none: 4.07, beam: 12.88, beamSetting: "1 A at 6.7 keV", centre: 10.8 },
-  { ions: "10 per 100", f: 1e-1, none: 1.69, beam: 3.04, beamSetting: "3 A at 5.6 keV", centre: 2.94 },
+  { ions: "10 per 100", f: 1e-1, none: 1.69, beam: 7.53, beamSetting: "3 A at 6.8 keV", centre: 2.94 },
+  { ions: "30 per 100", f: 3e-1, none: null, beam: 2.99, beamSetting: "6 A at 5.0 keV" },
 ];
 const energyScan = [
   [6.1, 7.7], [6.2, 8.61], [6.3, 9.65], [6.4, 10.79], [6.6, 12.74], [6.7, 12.88], [6.8, 11.99],
@@ -34,15 +35,17 @@ const checks = [
   { what: "Shaped well, 1 ion per 1,000 electrons, first two collapses", coarse: "30.7, 24.9", fine: "28.8, 21.6 (128³)" },
   { what: "Released at the centre, 1 ion per 100, first collapse", coarse: "20.7", fine: "19.6 (96³), 19.2 (128³)" },
   { what: "Released at the centre, 3 ions per 100, first collapse", coarse: "10.8", fine: "10.2 (96³), 10.0 (128³)" },
-  { what: "Wall beam 1 A at 6.6 keV, 3 ions per 100, first collapse", coarse: "12.7", fine: "11.6 (96³); 128³ still running" },
+  { what: "Wall beam 1 A at 6.6 keV, 3 ions per 100, first collapse", coarse: "12.7", fine: "11.6 (96³), 11.1 (128³)" },
+  { what: "Wall beam 0.5 A at 6.8 keV, 1 ion per 100, first collapse", coarse: "18.7", fine: "18.2 (96³)" },
 ];
 
 const pivot = (list, field, xName) =>
   list[0][field].map((_, i) => Object.fromEntries([[xName, i + 1], ...list.map((s) => [s.key, s[field][i]])]));
 const config = (list) => Object.fromEntries(list.map((s, i) => [s.key, { label: s.label, color: chartColors[i] }]));
 const best = Math.max(...fills.filter((r) => r.beam).map((r) => r.f * r.beam));
-const bestNone = Math.max(...fills.map((r) => r.f * r.none));
-const product = (f, c) => (c ? (f * c).toFixed(2) : "");
+const bestNone = Math.max(...fills.map((r) => r.f * (r.none || 0)));
+const bestRow = fills.find((r) => r.beam && r.f * r.beam === best);
+const product = (f, c) => (c ? (f * c).toFixed(2) : "–");
 
 function Lines({ list, field, xName, height }) {
   return (
@@ -83,7 +86,7 @@ function Report() {
     >
       <P>
         Shaping the electron well took compression from about 2× to 30×. The ions' own charge is now the limit, and a
-        low-energy electron beam from the wall, tuned to the well depth, lifts that limit two to three times. Ion fill ×
+        low-energy electron beam from the wall, tuned to the well depth, lifts that limit two to five times. Ion fill ×
         compression is still about {Math.round(1000 / best / 100) * 100}× short of the roughly 1000 that useful power needs.
       </P>
       <StatsRow>
@@ -97,7 +100,7 @@ function Report() {
         </StatCard>
         <StatCard label="Fill × compression, with wall beam">
           <StatCardValue>{best.toFixed(2)}</StatCardValue>
-          <StatCardCaption>3 ions per 100 electrons</StatCardCaption>
+          <StatCardCaption>{bestRow.ions} electrons, first collapse</StatCardCaption>
         </StatCard>
         <StatCard label="Needed for useful power">
           <StatCardValue>~1000</StatCardValue>
@@ -146,11 +149,11 @@ function Report() {
             {fills.map((r) => (
               <TableRow key={r.ions}>
                 <TableCell>{r.ions}</TableCell>
-                <TableCell>{r.none}×</TableCell>
+                <TableCell>{r.none ? `${r.none}×` : "no collapse"}</TableCell>
                 <TableCell>{r.beam ? `${r.beam}× (${r.beamSetting})` : "not run"}</TableCell>
                 <TableCell>{r.centre ? `${r.centre}×` : "not run"}</TableCell>
                 <TableCell>
-                  {[product(r.f, r.none), product(r.f, r.beam), product(r.f, r.centre)].filter(Boolean).join(" / ")}
+                  {[product(r.f, r.none), product(r.f, r.beam), product(r.f, r.centre)].join(" / ")}
                 </TableCell>
               </TableRow>
             ))}
@@ -176,8 +179,8 @@ function Report() {
           </LineChart>
         </ChartContainer>
         <P>
-          The best energy moves with current and ion fill: 2 A needs about 7.0–7.4 keV at this fill, and 1 ion per 100
-          electrons does best at 0.5 A. A beam with a 2% or 5% spread in speed does worse (9.7× and 7.2× against 12.7×).
+          The best energy and current move with ion fill: 2 A needs about 7.0–7.4 keV at this fill, 1 ion per 100
+          electrons does best at 0.5 A, and 10 per 100 peaks at 3 A and 6.8 keV. A beam with a 2% or 5% spread in speed does worse (9.7× and 7.2× against 12.7×).
         </P>
       </Section>
 
@@ -219,8 +222,9 @@ function Report() {
 
       <Section title="What is not established">
         <P>
-          The wall-beam settings come from coarse scans at three ion fills, so better ones probably exist. Only the 3
-          ions per 100 case has a finer-mesh check, and no wall-beam run goes past four collapses yet. Runs covering both
+          The wall-beam settings come from coarse scans at four ion fills, so better ones probably exist. The 1 and 3
+          ions per 100 cases have finer-mesh checks (table above); the 10 and 30 per 100 cases are 64³ only, and the
+          highest numbers there are first collapses. No wall-beam run goes past four collapses yet. Runs covering both
           are in progress. Nothing here
           shows sustained compression, net power, or anything about cusp plugging.
         </P>
