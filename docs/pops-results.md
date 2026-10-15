@@ -346,22 +346,20 @@ the well depth. This is an external source, unlike the released electrons above.
 |---|---|---|
 | 0.3 A, 6.0 keV | 5.08, 4.94, 4.75 | 1.00 |
 | 0.3 A, 6.2 keV | 4.95, 4.68, 4.37 | 1.00 |
-| 0.5 A, 6.6 keV | 5.16 | 1.00 |
+| 0.5 A, 6.6 keV | 5.16, 4.26, 3.94 | 1.00 |
 | 1 A, 6.1 keV | 7.70, 6.65, 4.80 | 0.98 |
 | 1 A, 6.2 keV | 8.61, 7.27, 5.82 | 0.99 |
 | 1 A, 6.3 keV | 9.65, 7.68, 6.58 | 1.00 |
 | 1 A, 6.4 keV | 10.79, 7.87, 6.82 | 1.00 |
 | 1 A, 6.6 keV | 12.74, 7.73, 6.50 | 1.00 |
-| 1 A, 6.8 keV | 11.99 | 1.00 |
-| 1 A, 7.0 keV | 5.84 | 1.00 |
-| 1 A, 7.3 keV | 4.84 | 1.00 |
-| 1 A, 7.7 keV | 4.43 | 1.00 |
-| 1 A, 8.2 keV | 4.69 | 1.00 |
+| 1 A, 6.8 keV | 11.99, 6.59, 4.93 | 1.00 |
+| 1 A, 7.0 keV | 5.84, 6.33, 3.84 | 1.00 |
+| 1 A, 7.3 keV | 4.84, 3.81, 3.22, 3.17 | 1.00 |
+| 1 A, 7.7 keV | 4.43, 3.25, 2.80 | 1.00 |
+| 1 A, 8.2 keV | 4.69, 3.61, 3.13 | 1.00 |
 | 2 A, 6.4 keV | 5.90, 5.44, 4.38 | 1.00 |
-| 2 A, 7.0 keV | 9.26 | 1.00 |
-| 2 A, 7.4 keV | 10.54 | 1.00 |
-
-The b19 rows (0.5 A; 1 A at 6.8 keV and above; 2 A at 7.0 and 7.4 keV) have one collapse so far.
+| 2 A, 7.0 keV | 9.26, 7.95, 7.81, 7.68 | 1.00 |
+| 2 A, 7.4 keV | 10.54, 5.61, 4.54, 4.79 | 1.00 |
 
 - At 1 A the first collapse rises from 7.7 at 6.1 keV to 12.7 at 6.6 keV, holds at 6.8 keV, and
   falls to 5.8 at 7.0 keV. The useful window is about 0.5 keV wide and its upper edge is sharp.
@@ -381,6 +379,73 @@ The b19 rows (0.5 A; 1 A at 6.8 keV and above; 2 A at 7.0 and 7.4 keV) have one 
 - The best energy for 2 A has not been found.
 - The gain lasts beyond the first collapse, unlike the released electrons: 7.7 and 6.5 on the
   second and third collapses against 4.2 without the beam.
-- Not yet checked: finer meshes, other ion fills, more than three collapses. At 12.7× the cloud's
-  rms radius per axis is about one 64³ cell. Campaign b20 runs these checks.
+- 2 A at 7.0 keV has the lower first collapse but holds it: 9.3, 8.0, 7.8, 7.7 over four
+  collapses. 2 A at 7.4 keV fades to 4.8 by the fourth.
+- A beam above the window is worse than no beam after the first collapse (1 A at 7.3–8.2 keV:
+  about 3.2 on the third against 4.2).
+- At 12.7× the cloud's rms radius per axis is about one 64³ cell. The next section has the mesh
+  check and the other ion fills.
 
+## The wall beam at other ion fills, on a finer mesh, and with a spread (campaigns b20, b21, b22)
+
+Same well and 64³ mesh unless stated. Campaigns b20–b22 were still running when these were read:
+most rows have one or two collapses.
+
+| fill | beam | compression per collapse | fill × first compression |
+|---|---|---|---|
+| 1e-2 | none | 10.43, 8.85, 6.56 | 0.10 |
+| 1e-2 | 0.3 A, 6.7 keV | 15.20 | 0.15 |
+| 1e-2 | 0.5 A, 6.8 keV | 18.74 | 0.19 |
+| 1e-2 | 1 A, 6.6 keV | 12.58 | 0.13 |
+| 1e-2 | 1 A, 6.8 keV | 14.98 | 0.15 |
+| 1e-2 | 1 A, 7.0 keV | 16.06, 8.34 | 0.16 |
+| 1e-2 | 1 A, 7.2 keV | 14.25, 5.94 | 0.14 |
+| 1e-2 | 1 A, 7.4 keV | 11.08, 4.35 | 0.11 |
+| 3e-2 | none | 4.07, 4.18, 4.16 | 0.12 |
+| 3e-2 | 1 A, 6.6 keV, 96³ | 11.55 | 0.35 |
+| 3e-2 | 1 A, 6.7 keV | 12.88, 7.26 | 0.39 |
+| 3e-2 | 1.5 A, 6.9 keV | 11.32 | 0.34 |
+| 3e-2 | 2 A, 7.8 keV | 7.86 | 0.24 |
+| 3e-2 | 1 A, 6.6 keV, 2% spread | 9.65 | 0.29 |
+| 3e-2 | 1 A, 6.6 keV, 5% spread | 7.22 | 0.22 |
+| 1e-1 | none | 1.69, 1.71, 1.71 | 0.17 |
+| 1e-1 | 1 A, 4.6 keV | 2.27, 2.26 | 0.23 |
+| 1e-1 | 1 A, 4.9 keV | 2.27, 2.23 | 0.23 |
+| 1e-1 | 3 A, 4.8 keV | 2.08 | 0.21 |
+| 1e-1 | 3 A, 5.2 keV | 2.43 | 0.24 |
+| 1e-1 | 3 A, 5.6 keV | 3.04 | 0.30 |
+| 1e-1 | 6 A, 5.6 keV | 2.03 | 0.20 |
+
+"Spread" here is the beam's sideways momentum spread over its inward momentum; the other beam rows
+use 0.5%.
+
+- Mesh: the fill 3e-2, 1 A, 6.6 keV first collapse is 12.74 at 64³ and 11.55 at 96³, 9% lower.
+  The 128³ run had not reached its collapse.
+- Fill 1e-2: the best first collapse is 18.7 at 0.5 A and 6.8 keV, against 10.4 without the beam
+  and 20.7 with electrons released at the centre. 1 A is past the best current at this fill.
+- Fill 1e-2, later collapses: with 1 A the second collapse is no better than without the beam
+  (8.3, 5.9, 4.4 against 8.9). The gain on later collapses seen at fill 3e-2 is not seen here.
+  The 0.5 A runs have not reached their second collapse.
+- Fill 1e-1: 3 A at 5.6 keV gives 3.0 against 1.7, and it is still rising with energy. 6 A at
+  the same energy gives 2.0.
+- The largest fill × compression is 0.39 (fill 3e-2, 1 A, 6.7 keV), against 0.10–0.17 with no
+  beam.
+- A beam with more sideways spread does worse: 9.7 at 2% and 7.2 at 5%, against 12.7 at 0.5%.
+- The settings come from coarse scans. None of the three fills has a located optimum in both
+  current and energy.
+
+### Released electrons at four birth temperatures (campaign b21, fill 1e-2, numerical control)
+
+| birth temperature | first collapse |
+|---|---|
+| 0.5 eV | 20.29 |
+| 5 eV | 20.69 |
+| 50 eV | 19.80 |
+| 500 eV | 13.27 |
+
+At the collapse the released electrons number about 1.2 per ion, have a temperature of 110–140 eV
+and an rms radius of 1.4–1.7 mm, for every birth temperature up to 50 eV. The ions' rms radius is
+0.25 mm. So the electrons that cancel the ion charge are far hotter and more spread out than they
+were born, and the birth temperature below 50 eV does not matter. These runs do not show what
+heats them. The electrons' Debye length at birth is below one 64³ cell, so heating by the mesh is
+a candidate. Campaign b23 repeats the 5 eV run at 96³, 128³ and half the time step to test that.
