@@ -386,50 +386,68 @@ the well depth. This is an external source, unlike the released electrons above.
 - At 12.7× the cloud's rms radius per axis is about one 64³ cell. The next section has the mesh
   check and the other ion fills.
 
-## The wall beam at other ion fills, on a finer mesh, and with a spread (campaigns b20, b21, b22)
+## The wall beam at other ion fills, on a finer mesh, and with a spread (campaigns b20–b24)
 
-Same well and 64³ mesh unless stated. Campaigns b20–b22 were still running when these were read:
-most rows have one or two collapses.
+Same well and 64³ mesh unless stated. Campaigns b20–b24 were still running when these were read:
+most rows have one to three collapses.
 
 | fill | beam | compression per collapse | fill × first compression |
 |---|---|---|---|
 | 1e-2 | none | 10.43, 8.85, 6.56 | 0.10 |
-| 1e-2 | 0.3 A, 6.7 keV | 15.20 | 0.15 |
-| 1e-2 | 0.5 A, 6.8 keV | 18.74 | 0.19 |
-| 1e-2 | 1 A, 6.6 keV | 12.58 | 0.13 |
-| 1e-2 | 1 A, 6.8 keV | 14.98 | 0.15 |
-| 1e-2 | 1 A, 7.0 keV | 16.06, 8.34 | 0.16 |
-| 1e-2 | 1 A, 7.2 keV | 14.25, 5.94 | 0.14 |
-| 1e-2 | 1 A, 7.4 keV | 11.08, 4.35 | 0.11 |
+| 1e-2 | 0.3 A, 6.7 keV | 15.20, 10.30 | 0.15 |
+| 1e-2 | 0.5 A, 6.8 keV | 18.74, 8.02 | 0.19 |
+| 1e-2 | 0.5 A, 6.8 keV, 96³ | 18.21 | 0.18 |
+| 1e-2 | 1 A, 6.6 keV | 12.58, 10.33 | 0.13 |
+| 1e-2 | 1 A, 6.8 keV | 14.98, 10.75 | 0.15 |
+| 1e-2 | 1 A, 7.0 keV | 16.06, 8.34, 6.45 | 0.16 |
+| 1e-2 | 1 A, 7.2 keV | 14.25, 5.94, 4.34 | 0.14 |
+| 1e-2 | 1 A, 7.4 keV | 11.08, 4.35, 3.13 | 0.11 |
 | 3e-2 | none | 4.07, 4.18, 4.16 | 0.12 |
 | 3e-2 | 1 A, 6.6 keV, 96³ | 11.55 | 0.35 |
-| 3e-2 | 1 A, 6.7 keV | 12.88, 7.26 | 0.39 |
-| 3e-2 | 1.5 A, 6.9 keV | 11.32 | 0.34 |
-| 3e-2 | 2 A, 7.8 keV | 7.86 | 0.24 |
-| 3e-2 | 1 A, 6.6 keV, 2% spread | 9.65 | 0.29 |
-| 3e-2 | 1 A, 6.6 keV, 5% spread | 7.22 | 0.22 |
+| 3e-2 | 1 A, 6.6 keV, 128³ | 11.12 | 0.33 |
+| 3e-2 | 1 A, 6.7 keV | 12.88, 7.26, 5.69 | 0.39 |
+| 3e-2 | 1.5 A, 6.9 keV | 11.32, 6.78 | 0.34 |
+| 3e-2 | 2 A, 7.8 keV | 7.86, 3.81 | 0.24 |
+| 3e-2 | 1 A, 6.6 keV, 2% spread | 9.65, 7.54 | 0.29 |
+| 3e-2 | 1 A, 6.6 keV, 5% spread | 7.22, 5.77 | 0.22 |
 | 1e-1 | none | 1.69, 1.71, 1.71 | 0.17 |
-| 1e-1 | 1 A, 4.6 keV | 2.27, 2.26 | 0.23 |
+| 1e-1 | 1 A, 4.6 keV | 2.27, 2.26, 2.32 | 0.23 |
 | 1e-1 | 1 A, 4.9 keV | 2.27, 2.23 | 0.23 |
-| 1e-1 | 3 A, 4.8 keV | 2.08 | 0.21 |
-| 1e-1 | 3 A, 5.2 keV | 2.43 | 0.24 |
-| 1e-1 | 3 A, 5.6 keV | 3.04 | 0.30 |
-| 1e-1 | 6 A, 5.6 keV | 2.03 | 0.20 |
+| 1e-1 | 3 A, 4.8 keV | 2.08, 1.66 | 0.21 |
+| 1e-1 | 3 A, 5.2 keV | 2.43, 1.75 | 0.24 |
+| 1e-1 | 3 A, 5.6 keV | 3.04, 2.14 | 0.30 |
+| 1e-1 | 3 A, 6.0 keV | 4.16, 3.64 | 0.42 |
+| 1e-1 | 3 A, 6.4 keV | 6.17, 4.83 | 0.62 |
+| 1e-1 | 3 A, 6.8 keV | 7.53 | 0.75 |
+| 1e-1 | 3 A, 7.2 keV | 5.40 | 0.54 |
+| 1e-1 | 3 A, 7.6 keV | 2.33 | 0.23 |
+| 1e-1 | 3 A, 8.2 keV | 2.17 | 0.22 |
+| 1e-1 | 6 A, 5.6 keV | 2.03, 1.60 | 0.20 |
+| 1e-1 | 6 A, 7.2 keV | 4.00 | 0.40 |
 
 "Spread" here is the beam's sideways momentum spread over its inward momentum; the other beam rows
 use 0.5%.
 
-- Mesh: the fill 3e-2, 1 A, 6.6 keV first collapse is 12.74 at 64³ and 11.55 at 96³, 9% lower.
-  The 128³ run had not reached its collapse.
+- Mesh: the fill 3e-2, 1 A, 6.6 keV first collapse is 12.74 at 64³, 11.55 at 96³ and 11.12 at
+  128³. The fill 1e-2, 0.5 A, 6.8 keV first collapse is 18.74 at 64³ and 18.21 at 96³.
 - Fill 1e-2: the best first collapse is 18.7 at 0.5 A and 6.8 keV, against 10.4 without the beam
   and 20.7 with electrons released at the centre. 1 A is past the best current at this fill.
-- Fill 1e-2, later collapses: with 1 A the second collapse is no better than without the beam
-  (8.3, 5.9, 4.4 against 8.9). The gain on later collapses seen at fill 3e-2 is not seen here.
-  The 0.5 A runs have not reached their second collapse.
-- Fill 1e-1: 3 A at 5.6 keV gives 3.0 against 1.7, and it is still rising with energy. 6 A at
-  the same energy gives 2.0.
-- The largest fill × compression is 0.39 (fill 3e-2, 1 A, 6.7 keV), against 0.10–0.17 with no
-  beam.
+- Fill 1e-2, later collapses: 1 A at 6.6 and 6.8 keV and 0.3 A at 6.7 keV give 10.3–10.8 on the
+  second collapse, against 8.9 without the beam. The settings with the highest first collapse
+  do not: 0.5 A at 6.8 keV gives 8.0, and 1 A at 7.0–7.4 keV gives 8.3, 5.9 and 4.4.
+- Fill 1e-1: with 3 A the first collapse rises from 2.1 at 4.8 keV to 7.5 at 6.8 keV, then
+  falls to 5.4 at 7.2 keV and 2.3 at 7.6 keV. Without the beam it is 1.7. 6 A does worse than
+  3 A at both energies tried.
+- At fill 1e-1 the beam's electron count in the sphere is steady from 15 ns on, at 1.7 per ion
+  in the 6.4 keV run, and does not rise during the collapse. The 3 A beam holds 28% as many
+  electrons as the 68 A of 10 keV electrons, and the centre sits at the beam energy (−6.45 kV at
+  6.4 keV). So here the beam acts as a steady store of slow electrons at the centre, not as a
+  supply that responds to the ions as at fill 3e-2.
+- The largest fill × compression is 0.75 (fill 1e-1, 3 A, 6.8 keV), against 0.10–0.17 with no
+  beam. That run has only its first collapse and no finer-mesh check.
+- Fill 3e-1 (campaign b24): no collapse with no beam, 3 A at 6.4 keV or 6 A at 7.2 keV. The
+  centre is only −1.5 to −2.1 kV, so those beams are far above the well. Campaign b25 scans
+  6–20 A at 4–7 keV.
 - A beam with more sideways spread does worse: 9.7 at 2% and 7.2 at 5%, against 12.7 at 0.5%.
 - The settings come from coarse scans. None of the three fills has a located optimum in both
   current and energy.
@@ -446,6 +464,18 @@ use 0.5%.
 At the collapse the released electrons number about 1.2 per ion, have a temperature of 110–140 eV
 and an rms radius of 1.4–1.7 mm, for every birth temperature up to 50 eV. The ions' rms radius is
 0.25 mm. So the electrons that cancel the ion charge are far hotter and more spread out than they
-were born, and the birth temperature below 50 eV does not matter. These runs do not show what
-heats them. The electrons' Debye length at birth is below one 64³ cell, so heating by the mesh is
-a candidate. Campaign b23 repeats the 5 eV run at 96³, 128³ and half the time step to test that.
+were born, and the birth temperature below 50 eV does not matter. It is not heating by
+the mesh or the time step (campaign b23, 5 eV birth):
+
+| run | first collapse | electron temperature at the collapse | electron rms radius |
+|---|---|---|---|
+| 64³ | 20.69 | 110 eV | 1.49 mm |
+| 64³, half time step | 20.66 | 112 eV | 1.51 mm |
+| 96³ | 19.62 | 152 eV | 1.70 mm |
+| 128³ | (19.24 in b18) | 138 eV | 1.63 mm |
+
+The released electrons already have about 700 eV and an rms radius of 3.9 mm at 1–10 ns, long
+before the collapse. The centre of the well is the top of a potential hill for electrons, so
+most roll out and leave; about 0.2 per ion stay in the sphere. Only when the ions arrive is
+there a trough at the centre to hold them, and the electrons it holds have the energy of that
+trough, not their birth energy.
