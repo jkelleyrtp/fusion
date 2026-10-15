@@ -13,6 +13,13 @@ my_constants.core_sigma = 0.          # Gaussian pulse width (s); 0 keeps the be
 my_constants.cold_current = 0.        # steady current of a third beam whose electrons are slow at the centre (A)
 my_constants.cold_e0 = 7.0e3          # its injection energy (eV): just above the well depth, so it only reaches a lifted centre
 my_constants.cold_spread = 0.005
+my_constants.seed_charge = 0.        # slow electrons released at the centre in each window, per ion; a numerical experiment, not a gun
+my_constants.seed_r = 1.0e-3          # radius of the disc at z=0 they leave from (m)
+my_constants.seed_kt = 5.             # their temperature (eV)
+my_constants.seed_t0 = 0.             # start of the first window (s)
+my_constants.seed_len = 1.            # window length (s)
+my_constants.seed_period = 1.         # window spacing (s)
+my_constants.ppc_seed = 1
 my_constants.rf_amp = 0.            # fractional modulation of all three electron currents (the radio-frequency drive)
 my_constants.rf_period = 1.         # its period (s)
 my_constants.mass_amu = 2.014
@@ -33,6 +40,7 @@ my_constants.mi = mass_amu*m_u
 my_constants.nions = fill*8*pi*epsilon0*e0*a/q_e
 my_constants.n0 = nions/((2*pi)**1.5*s0**3)
 my_constants.uti = sqrt(ti*q_e/mi)/clight
+my_constants.u_seed = sqrt(seed_kt*q_e/m_e)/clight
 
 max_step = tmax/dt
 warpx.const_dt = dt
@@ -56,7 +64,7 @@ algo.field_gathering = momentum-conserving
 algo.particle_shape = 1
 warpx.serialize_initial_conditions = 1
 
-particles.species_names = electrons ions core cold
+particles.species_names = electrons ions core cold seed
 
 electrons.charge = -q_e
 electrons.mass = m_e
@@ -97,6 +105,21 @@ cold.ux_th = cold_spread*un_cold
 cold.uy_th = cold_spread*un_cold
 cold.uz_th = 0.002*un_cold
 cold.uz_m = un_cold
+
+seed.charge = -q_e
+seed.mass = m_e
+seed.injection_style = NFluxPerCell
+seed.surface_flux_pos = 0.
+seed.flux_normal_axis = z
+seed.flux_direction = +1
+seed.num_particles_per_cell = ppc_seed
+seed.flux_profile = parse_flux_function
+seed.flux_function(x,y,z,t) = "seed_charge*nions/(pi*seed_r**2*seed_len)*(x**2+y**2<seed_r**2)*(t>=seed_t0)*(fmod(t-seed_t0+seed_period, seed_period)<seed_len)"
+seed.momentum_distribution_type = gaussianflux
+seed.ux_th = u_seed
+seed.uy_th = u_seed
+seed.uz_th = u_seed
+seed.uz_m = 0.
 
 ions.charge = q_e
 ions.mass = mi
