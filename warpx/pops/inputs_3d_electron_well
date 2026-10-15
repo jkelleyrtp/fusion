@@ -14,6 +14,11 @@ my_constants.cold_current = 0.        # steady current of a third beam whose ele
 my_constants.cold_e0 = 7.0e3          # its injection energy (eV): just above the well depth, so it only reaches a lifted centre
 my_constants.cold_spread = 0.005
 my_constants.cold_espread = 0.002     # its spread in speed along the beam
+my_constants.late_current = 0.        # current of a second slow wall beam that is on only in a time window (A)
+my_constants.late_e0 = 7.0e3          # its injection energy (eV)
+my_constants.late_t0 = 0.             # start of its first window (s)
+my_constants.late_len = 1.            # window length (s)
+my_constants.late_period = 1.         # window spacing (s)
 my_constants.seed_charge = 0.        # slow electrons released at the centre in each window, per ion; a numerical experiment, not a gun
 my_constants.seed_r = 1.0e-3          # radius of the disc at z=0 they leave from (m)
 my_constants.seed_kt = 5.             # their temperature (eV)
@@ -38,6 +43,7 @@ my_constants.hist_every = 500
 my_constants.gam = 1 + e0*q_e/(m_e*clight**2)
 my_constants.un = sqrt(gam**2 - 1)
 my_constants.un_cold = sqrt((1 + cold_e0*q_e/(m_e*clight**2))**2 - 1)
+my_constants.un_late = sqrt((1 + late_e0*q_e/(m_e*clight**2))**2 - 1)
 my_constants.mi = mass_amu*m_u
 my_constants.nions = fill*8*pi*epsilon0*e0*a/q_e
 my_constants.n0 = nions/((2*pi)**1.5*s0**3)
@@ -66,7 +72,7 @@ algo.field_gathering = momentum-conserving
 algo.particle_shape = 1
 warpx.serialize_initial_conditions = 1
 
-particles.species_names = electrons ions core cold seed
+particles.species_names = electrons ions core cold seed late
 
 electrons.charge = -q_e
 electrons.mass = m_e
@@ -108,6 +114,19 @@ cold.uy_th = cold_spread*un_cold
 cold.uz_th = cold_espread*un_cold
 cold.uz_m = un_cold
 
+late.charge = -q_e
+late.mass = m_e
+late.injection_style = NFluxPerCell
+late.inject_from_embedded_boundary = 1
+late.num_particles_per_cell = ppc_e
+late.flux_profile = parse_flux_function
+late.flux_function(x,y,z,t) = "late_current/(q_e*4*pi*a**2)*(t>=late_t0)*(fmod(t-late_t0+late_period, late_period)<late_len)"
+late.momentum_distribution_type = gaussianflux
+late.ux_th = cold_spread*un_late
+late.uy_th = cold_spread*un_late
+late.uz_th = cold_espread*un_late
+late.uz_m = un_late
+
 seed.charge = -q_e
 seed.mass = m_e
 seed.injection_style = NFluxPerCell
@@ -134,7 +153,7 @@ ions.ux_th = uti
 ions.uy_th = uti
 ions.uz_th = uti
 
-warpx.reduced_diags_names = ebeam ibeam cbeam sbeam number wall probe irad erad krad crad srad cke
+warpx.reduced_diags_names = ebeam ibeam cbeam sbeam number wall probe irad erad krad crad srad cke lrad lke
 ebeam.type = BeamRelevant
 ebeam.species = electrons
 ebeam.intervals = 20
@@ -192,6 +211,23 @@ cke.filter_function(t,x,y,z,ux,uy,uz) = "x*x+y*y+z*z<1.0e-6"
 cke.bin_number = 80
 cke.bin_min = 0.
 cke.bin_max = 8000.
+
+lrad.type = ParticleHistogram
+lrad.species = late
+lrad.intervals = hist_every
+lrad.histogram_function(t,x,y,z,ux,uy,uz) = "sqrt(x*x+y*y+z*z)"
+lrad.bin_number = 40
+lrad.bin_min = 0.
+lrad.bin_max = a
+
+lke.type = ParticleHistogram
+lke.species = late
+lke.intervals = hist_every
+lke.histogram_function(t,x,y,z,ux,uy,uz) = "0.5*m_e*clight**2/q_e*(ux*ux+uy*uy+uz*uz)"
+lke.filter_function(t,x,y,z,ux,uy,uz) = "x*x+y*y+z*z<1.0e-6"
+lke.bin_number = 80
+lke.bin_min = 0.
+lke.bin_max = 8000.
 number.type = ParticleNumber
 number.intervals = 20
 wall.type = ChargeOnEB
