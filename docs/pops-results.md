@@ -617,3 +617,33 @@ charge over ion charge inside the half-ion radius at the collapse.
 - The second beam's electrons inside 1 mm have 900–1350 eV mean energy at the collapse, against
   540–680 eV for the first beam's.
 - So supply of electrons during the collapse is not what limits the cancelled charge.
+
+## A larger or smaller starting cloud (campaign b31)
+
+The ion cloud starts as a Gaussian of width s0, 0.3a in every run above. 64³, first collapse.
+The rms starting radius is 3.46, 5.05, 6.02 and 6.52 mm for 0.2a, 0.3a, 0.4a and 0.5a; the last
+two are cut off at 0.95a.
+
+| fill | beam | s0 | first collapse | smallest rms radius (mm) | electrons / ions inside the half-ion radius | slow electrons' mean energy inside 1 mm (eV) |
+|---|---|---|---|---|---|---|
+| 1e-1 | 3 A, 6.8 keV | 0.2a | 2.94 | 1.18 | 0.90 | 430 |
+| 1e-1 | 3 A, 6.8 keV | 0.3a | 7.53 | 0.67 | 0.83 | 680–730 |
+| 1e-1 | 3 A, 6.8 keV | 0.4a | 9.73 | 0.62 | 0.77 | 730 |
+| 1e-1 | 3 A, 6.8 keV | 0.5a | 11.77 | 0.55 | 0.64 | 770 |
+| 1e-1 | none | 0.2a | no collapse | – | – | – |
+| 1e-1 | none | 0.3a | 1.69 | 2.99 | – | – |
+| 1e-1 | none | 0.5a | 4.12 | 1.59 | – | – |
+| 3e-2 | 1 A, 6.6 keV | 0.2a | 5.70 | 0.61 | 0.69 | 440 |
+| 3e-2 | 1 A, 6.6 keV | 0.3a | 12.74 | 0.40 | 0.41 | 650 |
+| 3e-2 | 1 A, 6.6 keV | 0.5a | 21.69 | 0.30 | 0.19 | 640 |
+
+- A larger starting cloud falls further and compresses more: 11.8 at fill 1e-1 and 21.7 at fill
+  3e-2. The smallest radius shrinks slowly, from 1.18 to 0.55 mm at fill 1e-1 while the starting
+  radius nearly doubles.
+- This was run to test the reading that heating of the trapped electrons sets the limit. If the
+  electrons were squeezed with the ions and nothing else mattered, the smallest radius would not
+  change with starting size; if only uncancelled ion charge mattered, it would fall as one over
+  the starting radius squared, to 0.33 mm at 0.5a. The measured 0.55 mm is between the two, so
+  neither picture is enough alone.
+- With more infall energy the cancelled fraction falls (0.90 to 0.64) and the trapped electrons
+  are hotter (430 to 770 eV).
