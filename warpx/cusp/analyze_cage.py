@@ -5,6 +5,8 @@ Usage: analyze_cage.py RUN_DIR [RUN_DIR ...]   (each holds diags/reducedfiles an
 The dwell time is the electron inventory divided by the emission rate. It equals the mean time an
 electron spends in the device only once the inventory has stopped changing, so `filling` reports the
 net growth of the inventory over the last fifth of the run as a fraction of the emission rate.
+`kept_early` is the same fraction between 0.3 and 1 ns, before any electron has crossed the device:
+below 1 the emitters are choked by their own charge and both of the above overstate the current.
 The empty-device centre voltage is read at step 1, before any emitted charge matters.
 """
 import json
@@ -49,12 +51,16 @@ def reduce(run: Path) -> dict:
     c = constants(run)
     number = np.loadtxt(run / "diags/reducedfiles/number.txt", skiprows=1, ndmin=2)
     time, electrons = number[:, 1], number[:, 6]
-    if time[-1] < 5.0e-10:
-        raise ValueError(f"{run.name} has only run {time[-1]:.2e} s; the emission rate needs 0.3 ns")
+    if time[-1] < 1.0e-9:
+        raise ValueError(f"{run.name} has only run {time[-1]:.2e} s; the early rates need 1 ns")
     # The wall source delivers a few percent less than the nominal current because the emitter patches
-    # are cut cells. Nothing can be lost in the first 0.3 ns, so the early inventory gives the true rate.
-    early = np.searchsorted(time, 3.0e-10)
+    # are cut cells. Nothing is lost in the first 0.1 ns even at 10 A, so that inventory gives the true rate.
+    early = np.searchsorted(time, 1.0e-10)
     rate = electrons[early] / time[early]
+    # Low-current runs lose nothing before 1 ns, the time to cross the device. A net fill rate below the
+    # emission rate before then means electrons are going straight back into the wall at the emitters.
+    start, cross = np.interp([3.0e-10, 1.0e-9], time, electrons)
+    kept_early = (cross - start) / 7.0e-10 / rate
     last = time >= 0.8 * time[-1]
     growth = np.polyfit(time[last], electrons[last], 1)[0] / rate
     axis = line_potential(run, "axis", 0.0 if c["gun_off"] == 0 else c["wall_v"])
@@ -81,6 +87,7 @@ def reduce(run: Path) -> dict:
         "coil_at": c["coil_at"], "current_A": c["current"], "vgrid_V": c["vgrid"], "ncell": c["ncell"],
         "end_ns": round(time[-1] * 1e9, 2),
         "emitted_A": round(rate * Q_E, 4),
+        "kept_early": round(float(kept_early), 3),
         "electrons": float(electrons[-1]),
         "dwell_ns": round(electrons[-1] / rate * 1e9, 3),
         "filling": round(float(growth), 3),
