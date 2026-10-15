@@ -14,7 +14,7 @@ A longer companion to `pops-blog.md`. Full tables are in `pops-results.md`.
   (sideways speed over inward speed).
 - **Ions.** A cloud of deuterons released at rest (1 eV) with a set size and count. "Fill" is the
   ion count against the 1.39×10¹¹ electrons of an ideal 10 kV cloud.
-- **Cost.** A 60 ns run (two collapses) takes about 20–30 minutes on one B200 GPU at 64³; a node
+- **Cost.** A 60 ns run (two collapses) takes about 15 minutes on one B200 GPU at 64³; a node
   runs 8 at once. About 400 runs in 33 campaigns.
 
 Three idealisations matter for reading the results:
