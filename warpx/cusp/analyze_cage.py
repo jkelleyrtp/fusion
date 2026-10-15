@@ -71,9 +71,10 @@ def reduce(run: Path) -> dict:
     _, core_energy = histogram(run, "eke")
     energy_bins = (np.arange(core_energy.shape[1]) + 0.5) * 1.2 * c["vgrid"] / core_energy.shape[1]
     core = core_energy[-1]
-    _, outside = histogram(run, "eout")
+    out_steps, outside = histogram(run, "eout")
     cosine = 0.55 + (np.arange(outside.shape[1]) + 0.5) * 0.45 / outside.shape[1]
-    out = outside[hist_steps >= 0.8 * hist_steps[-1]].mean(axis=0)
+    # Runs are read while still writing, so each histogram is indexed by its own steps.
+    out = outside[out_steps >= 0.8 * out_steps[-1]].mean(axis=0)
     at = lambda line, radius: float(np.interp(radius, line[0], line[1]))
     return {
         "run": run.name,

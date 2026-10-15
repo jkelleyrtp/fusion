@@ -49,7 +49,7 @@ def draw(name, constants_, time_ns, phi, density, out: Path):
     outside = np.hypot(*np.meshgrid(np.linspace(-2.5, 2.5, phi.shape[0]), np.linspace(-2.5, 2.5, phi.shape[0]))) > 2.4
     density = np.ma.masked_where(outside | (density <= 0), density)
     image = axes[0].imshow(density.T, origin="lower", extent=extent, cmap="magma",
-                           norm=LogNorm(vmin=1e13, vmax=3e16))
+                           norm=LogNorm(vmin=1e13, vmax=1e17))
     fig.colorbar(image, ax=axes[0], label="electron density (per m³)", shrink=0.85)
     field_lines(axes[0], constants_["coil_at"], "#9ecae1")
     hardware(axes[0], "#bbbbbb")
