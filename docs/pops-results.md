@@ -155,3 +155,56 @@ in an imposed 8.277 kV parabola and no electrons.
 - Wells deeper than about 70% of the electron energy are not harmonic in any run: at 80 A with a
   single beam the centre saturates at the full 10 kV and flattens.
 
+## Ions in the searched wells (campaigns b6, b9: electrons and ions together, fill 1e-3, 64³)
+
+![Full runs against the test-ion prediction](images/pops-prediction-check.png)
+
+| electrons (current, spread) | centre (kV) | compression per collapse | test-ion prediction |
+|---|---|---|---|
+| 40 A, 0.3 (b4) | −8.7 | 15.2, 5.7, 3.6, 2.8 | 14.9, 5.4, 3.4, 2.6 |
+| 20 A, 0.5 | −3.0 | 18.2, 11.6, 8.6, 7.0 | 25.4, 12.8, 8.1, 5.9 |
+| 20 A, 0.6 | −2.4 | 16.3, 10.9, 7.2, 5.3 | 20.4, 16.3, 12.4, 9.7 |
+| 40 A, 0.45 | −6.2 | 23.0, 10.7, 6.7, 4.9 | |
+| 20 A, 0.4 + 20 A, 0.5 | −6.3 | 23.2, 10.9, 6.9, 5.1 | 27.6, 15.2, 9.9, 7.3 |
+| 40 A, 0.5 + 10 A, 0.2 | −8.3 | 21.2, 8.7, 5.5, 4.2 | |
+| 40 A, 0.6 + 10 A, 0.3 | −6.6 | 26.2, 13.5, 8.5, 6.2 | 28.9, 15.4, 9.9, 7.3 |
+| same, 128³ (70 ns) | −6.7 | 24.7, 12.4 | |
+| 50 A, 0.5 + 5 A, 0.15 | −8.3 | 27.4, 13.1, 8.6, 6.5, 5.3 | 27.6, 12.2, 7.6, 5.6, 4.5 |
+| 40 A, 0.6 + 5 A, 0.25 | −5.9 | 27.6, 18.1, 12.9, 10.0, 8.2 | 28.8, 16.7, 11.0, 8.2, 6.5 |
+| 50 A, 0.7 + 5 A, 0.25 | −5.9 | 27.9, 19.9, 13.7, 10.0, 7.7 | 32.0, 27.2, 21.8, 17.6, 14.6 |
+| 50 A, 0.7 + 8 A, 0.25 | −6.6 | 30.5, 22.2, 15.9, 12.0, 9.5 | 32.5, 22.3, 15.6, 11.8, 9.4 |
+
+- Shaping the well with two electron populations doubles the first collapse (15 → 30) and raises
+  the fifth from about 2.5 to 9.5.
+- The test-ion prediction ranks the wells correctly and is within about 10% for most. It is too
+  optimistic for the shallow wells and for the single most harmonic one, where the ions' own
+  charge is no longer negligible at fill 1e-3.
+- Mesh: 128³ gives 24.7, 12.4 where 64³ gives 26.2, 13.5.
+- With more ions in the 50 A, 0.7 + 5 A, 0.25 well: fill 3e-3 gives 21.3, 11.1, 6.6, 5.0, 4.3;
+  fill 1e-2 gives 9.1, 7.9, 6.0, then the oscillation turns irregular and 10% of the ions reach
+  the wall by 220 ns.
+
+## A low-energy electron beam as a neutraliser (campaign b11): no effect
+
+Well: 60 A, 0.8 + 8 A, 0.25 (−6.6 kV). A third, steady beam of 4–6 keV electrons is turned back
+short of the centre by the well, and should reach the centre only when the ion charge lifts it.
+
+| fill | extra beam | compression per collapse | ions kept |
+|---|---|---|---|
+| 3e-2 | none | 4.07, 4.18, 4.16 | 1.00 |
+| 3e-2 | 1 A, 5 keV | 3.99, 4.07, 4.06 | 1.00 |
+| 3e-2 | 1 A, 6 keV | 6.94, 5.97, 4.07 | 0.97 |
+| 3e-2 | 3 A, 4 keV | 3.91, 3.89, 3.74 | 0.96 |
+| 3e-2 | 3 A, 5 keV | 3.80, 3.72, 3.42 | 0.95 |
+| 3e-2 | 3 A, 6 keV | 3.81, 3.61, 3.77 | 0.99 |
+| 1e-1 | none | 1.69, 1.71, 1.71 | 1.00 |
+| 1e-1 | 3 A, 4 keV | 1.69, 1.67, 1.67 | 0.99 |
+
+- The number of low-energy electrons in the sphere does not rise during a collapse (6.85e9 before,
+  6.78e9 at the collapse, for 1 A at 6 keV), so they do not collect on the ion core.
+- Fill × compression stays at 0.12–0.17 in this well, against 0.18–0.25 in the deeper 40 A,
+  spread 0.3 well. A more harmonic well does not help once the ion charge is the limit.
+- Electrons passing through speed up where the ions raise the potential, so their density there
+  falls. None of the three injection schemes tried (10 keV pulses, a steady 10 keV beam, a steady
+  low-energy beam) cancels the ion charge at the focus.
+
