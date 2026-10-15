@@ -358,7 +358,7 @@ the well depth. This is an external source, unlike the released electrons above.
 | 1 A, 7.7 keV | 4.43, 3.25, 2.80 | 1.00 |
 | 1 A, 8.2 keV | 4.69, 3.61, 3.13 | 1.00 |
 | 2 A, 6.4 keV | 5.90, 5.44, 4.38 | 1.00 |
-| 2 A, 7.0 keV | 9.26, 7.95, 7.81, 7.68 | 1.00 |
+| 2 A, 7.0 keV | 9.26, 7.95, 7.81, 7.68, 6.62, 6.44, 5.96, 5.32 | 1.00 |
 | 2 A, 7.4 keV | 10.54, 5.61, 4.54, 4.79 | 1.00 |
 
 - At 1 A the first collapse rises from 7.7 at 6.1 keV to 12.7 at 6.6 keV, holds at 6.8 keV, and
@@ -398,7 +398,7 @@ and 0.49 at fills 1e-2, 3e-2, 1e-1 and 3e-1.
 |---|---|---|---|
 | 1e-2 | none | 10.43, 8.85, 6.56 | 0.10 |
 | 1e-2 | 0.3 A, 6.7 keV | 15.20, 10.30 | 0.15 |
-| 1e-2 | 0.5 A, 6.8 keV | 18.74, 8.02, 5.78 | 0.19 |
+| 1e-2 | 0.5 A, 6.8 keV | 18.74, 8.02, 5.78, 5.12, 4.73, 4.38, 4.02, 3.66 | 0.19 |
 | 1e-2 | 0.5 A, 6.8 keV, 96³ | 18.21 | 0.18 |
 | 1e-2 | 1 A, 6.6 keV | 12.58, 10.33 | 0.13 |
 | 1e-2 | 1 A, 6.8 keV | 14.98, 10.75 | 0.15 |
@@ -590,7 +590,13 @@ A scan around the threshold (campaign b29, 64³, first collapse):
 | 3e-1 | 8 A, 6.25 keV | 4.86 | 1.46 |
 | 3e-1 | 9 A, 6.25 keV | 3.87 | 1.16 |
 
-- 8 A at 6.25 keV gives fill × compression of 1.46, the largest so far, 64³ only.
+- 8 A at 6.25 keV gives fill × compression of 1.46 at 64³. At 96³ (campaign b31) its first
+  collapse is 5.42, so 1.63. That is the largest so far.
+- Second collapses (60 ns runs): at fill 1e-1, 4 A at 6.8 and 7.0 keV give 4.40 and 4.49, and
+  the two 2.5 A runs 3.22 and 3.14. At fill 3e-1, 9 A at 6.25 keV gives 1.45, with the centre
+  swinging to +8.6 kV as it does for 8 A at 6.0 keV. The other three fill 3e-1 runs end before
+  their second collapse; at 60 ns the 8 A, 6.25 keV cloud is at 1.64 mm (3.07) and still
+  shrinking.
 - At fill 1e-1 the threshold is between 2.5 and 3 A, and 3 A at 6.8 keV (7.53) stays the best.
 
 ## A second slow beam switched on during the collapse (campaign b30): no gain
@@ -647,3 +653,26 @@ two are cut off at 0.95a.
   neither picture is enough alone.
 - With more infall energy the cancelled fraction falls (0.90 to 0.64) and the trapped electrons
   are hotter (430 to 770 eV).
+
+## Check: the 64³ mesh does not resolve the core of the collapsed cloud
+
+The potential was rebuilt from the radial histograms of all four species (shells of 0.25 mm) and
+compared with the potential on the mesh along a radius. Before the collapse the two agree to
+0.1 kV. At the collapse they agree outside 0.5 mm and differ inside it:
+
+| run | mesh | cell (mm) | cloud rms radius (mm) | centre from particles (kV) | centre on the mesh (kV) |
+|---|---|---|---|---|---|
+| fill 1e-1, 3 A, 6.8 keV, s0 0.4a, 19 ns | 64³ | 0.31 | 0.62 | +5.6 | −2.3 |
+| fill 3e-2, 1 A, 6.6 keV, s0 0.5a, 19 ns | 64³ | 0.31 | 0.36 | +4.2 | −3.6 |
+| fill 3e-1, 8 A, 6.25 keV, 22 ns | 96³ | 0.21 | 0.93 | +0.3 | −0.6 |
+
+- In the 64³ runs at fill 1e-1 and below, 8–10 kV of the ions' own repulsion inside 0.5 mm is
+  missing from the mesh, so ions pile into a core narrower than a cell that they could not
+  reach against the real field.
+- The rms compression survived the earlier mesh checks (7.53 at 64³ against 7.6 at 96³; 12.74,
+  11.55, 11.12 at 64³, 96³, 128³), so the tables of compression stand as checked. The density of
+  the core does not, and neither do the electron-to-ion ratios inside the half-ion radius at
+  fill 1e-1 and below, where that radius is one or two cells.
+- The fill 3e-1 runs have a cloud three or more cells wide and agree within 1 kV.
+- Campaign b32 repeats fill 1e-1 (3 A, 6.8 keV) at 64³ to 256³ and fill 3e-2 (1 A, 6.6 keV) at
+  64³ to 192³ with 0.05 mm histograms.
