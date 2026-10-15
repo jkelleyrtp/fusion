@@ -16,7 +16,7 @@ RUNNER = r"""
 set -uo pipefail
 out=__OUT__/attempt-$(date +%Y%m%d-%H%M%S); mkdir -p "$out"; cd "$out"
 echo "__PAYLOAD__" | base64 -d | tar -xzf -
-exec > >(tee -a "$out/job.log") 2>&1
+exec >> "$out/job.log" 2>&1
 nvidia-smi -L
 if [ ! -x __BUILD__/build/bin/warpx.3d ]; then
   mkdir -p __BUILD__ && cd __BUILD__
