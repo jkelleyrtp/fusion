@@ -208,3 +208,31 @@ short of the centre by the well, and should reach the centre only when the ion c
   falls. None of the three injection schemes tried (10 keV pulses, a steady 10 keV beam, a steady
   low-energy beam) cancels the ion charge at the focus.
 
+## The best wells over eight collapses (campaign b12, 64³, 300 ns)
+
+Well: 60 A, spread 0.8 + 8 A, spread 0.25 (−6.6 kV) unless noted. Cloud released at rest with rms
+radius 0.3a and 1 eV.
+
+| case | compression per collapse | ions kept |
+|---|---|---|
+| fill 1e-4 | 33.0, 29.8, 25.5, 21.5, 18.3, 15.8, 13.8, 12.2 | 1.00 |
+| test-ion prediction | 34.0, 30.6, 26.0, 21.9, 18.6 | |
+| fill 1e-3 | 30.7, 24.9, 18.7, 14.1, 11.0, 9.2, 8.1, 7.3 | 1.00 |
+| fill 3e-3 | 24.3, 14.0, 8.4, 6.4, 5.5, 5.1, 4.8, 4.5 | 1.00 |
+| fill 1e-3, ions at 10 eV | 10.2, 10.1, 9.8, 9.4, 8.9, 8.4, 7.9, 7.4 | 1.00 |
+| fill 1e-3, 8× the ion particles (150 ns) | 30.7, 24.9, 18.8, 14.2 | 1.00 |
+| fill 1e-3, 128³ (70 ns) | 28.8, 21.6 | 1.00 |
+| fill 1e-3, 70 A, 0.9 + 8 A, 0.25 (−6.5 kV) | 30.0, 23.5, 17.3, 13.0, 10.1, 8.4, 7.3 | 1.00 |
+| fill 1e-3, 60 A, 0.9 + 5 A, 0.25 (−5.2 kV) | 26.7, 21.3, 15.9, 12.0, 9.4, 7.7, 6.4 | 1.00 |
+
+- With the ion charge negligible (fill 1e-4) the full run follows the test-ion prediction to 3%.
+  At fill 1e-3 the later collapses are already weaker, so the ion charge adds to the dephasing
+  well before it stops the first collapse.
+- The ion temperature caps the first collapse: 33 at 1 eV, 10.2 at 10 eV, a ratio of √10. At
+  10 eV the compression barely fades, 10.2 to 7.4 over eight collapses.
+- Eight times the ion particles changes nothing. 128³ lowers the first two collapses by 6% and
+  13%. 128³ for 50 A, 0.7 + 5 A, 0.25 (b9) gives 26.1, 17.6 against 27.9, 19.9.
+- 60 A, 0.9 + 5 A, 0.25 has the smallest bounce-period spread of the search (0.3%) and still
+  compresses less than the deeper wells: a well under about 6 kV loses more to the ion charge
+  than it gains in shape.
+
