@@ -236,3 +236,34 @@ radius 0.3a and 1 eV.
   compresses less than the deeper wells: a well under about 6 kV loses more to the ion charge
   than it gains in shape.
 
+## Radio-frequency drive (campaign b13, 64³, 400 ns)
+
+Well: 60 A, 0.8 + 8 A, 0.25. The ion cloud starts warm and in balance with the well (rms radius
+0.12a per axis, 191.5 eV), so without a drive it does not oscillate. All three electron currents
+are then modulated by a fraction h at the cloud's breathing period, 39.31 ns. The table gives the
+largest over the smallest rms radius within each drive period (`analyze_rf_drive.py`).
+
+| h | fill | swing in drive periods 1 to 10 | smallest radius / initial | ions kept |
+|---|---|---|---|---|
+| 0 | 1e-3 | 1.04 throughout | 1.00 | 1.00 |
+| 0.1 | 1e-4 | 1.05, 1.11, 1.18, 1.26, 1.34, 1.42, 1.52, 1.61, 1.72, 1.83 | 0.75 | 1.00 |
+| 0.1 | 1e-3 | 1.03, 1.08, 1.15, 1.23, 1.31, 1.39, 1.48, 1.58, 1.68, 1.79 | 0.77 | 1.00 |
+| 0.1 | 3e-3 | 1.09, 1.04, 1.10, 1.18, 1.26, 1.34, 1.43, 1.52, 1.61, 1.71 | 0.81 | 1.00 |
+| 0.1 | 1e-2 | 1.32, 1.20, 1.13, 1.17, 1.26, 1.36, 1.45, 1.53, 1.63, 1.73 | 0.88 | 1.00 |
+| 0.1 | 1e-2, drive 5% slower | 1.32, 1.20, 1.09, 1.03, 1.11, 1.22, 1.33, 1.45, 1.58, 1.71 | 0.88 | 1.00 |
+| 0.2 | 1e-3 | 1.07, 1.20, 1.37, 1.56, 1.77, 2.02, 2.30, 2.61, 2.95, 3.31 | 0.58 | 0.985 |
+| 0.1 | 1e-3, 96³ (4 periods) | 1.03, 1.07, 1.14, 1.21 | | 1.00 |
+
+- The drive pumps the oscillation: the swing grows by about 6% per period at h = 0.1 and 13% at
+  h = 0.2, with no sign of levelling off in ten periods, and the same on 96³.
+- The well follows the current: the centre potential is modulated by 0.78h and the difference
+  between the centre and half radius by 0.53h, in phase with the current.
+- Test ions in a well whose depth is modulated by 10.6% grow 18% per period, so the full run
+  pumps at about three quarters of that rate. In that calculation the growth only ends when the
+  ions reach the wall (8% left after 30 periods). The drive is a pump, not a steady state.
+- The drive does not lower the temperature limit: a breathing cloud keeps the product of its
+  largest and smallest radius, so starting from 0.12a and stopping short of the wall the smallest
+  radius is about 0.03a, the same as a cold cloud released from 0.3a reaches.
+- At fill 1e-2 the starting cloud is not in balance (its own charge pushes it out), which is the
+  early transient; after it the growth rate is the same as at low fill.
+
