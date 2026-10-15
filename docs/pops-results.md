@@ -184,7 +184,7 @@ in an imposed 8.277 kV parabola and no electrons.
   fill 1e-2 gives 9.1, 7.9, 6.0, then the oscillation turns irregular and 10% of the ions reach
   the wall by 220 ns.
 
-## A low-energy electron beam as a neutraliser (campaign b11): no effect
+## A low-energy electron beam as a neutraliser (campaign b11): no effect below the well depth
 
 Well: 60 A, 0.8 + 8 A, 0.25 (−6.6 kV). A third, steady beam of 4–6 keV electrons is turned back
 short of the centre by the well, and should reach the centre only when the ion charge lifts it.
@@ -200,13 +200,16 @@ short of the centre by the well, and should reach the centre only when the ion c
 | 1e-1 | none | 1.69, 1.71, 1.71 | 1.00 |
 | 1e-1 | 3 A, 4 keV | 1.69, 1.67, 1.67 | 0.99 |
 
-- The number of low-energy electrons in the sphere does not rise during a collapse (6.85e9 before,
-  6.78e9 at the collapse, for 1 A at 6 keV), so they do not collect on the ion core.
-- Fill × compression stays at 0.12–0.17 in this well, against 0.18–0.25 in the deeper 40 A,
-  spread 0.3 well. A more harmonic well does not help once the ion charge is the limit.
-- Electrons passing through speed up where the ions raise the potential, so their density there
-  falls. None of the three injection schemes tried (10 keV pulses, a steady 10 keV beam, a steady
-  low-energy beam) cancels the ion charge at the focus.
+- Beams at 4 and 5 keV, and 3 A at 6 keV, change nothing. They are turned back before the centre.
+- 1 A at 6 keV is the exception: 6.94 on the first collapse. Its electron count in the sphere rises
+  from 1.15 to 1.67 per ion during the collapse. An earlier version of this section said the count
+  did not rise; that was wrong. The surrounding potential minimum there is −6.06 to −6.14 kV, so a
+  6 keV beam just reaches the core. At 3 A the well deepens to −6.75 kV and the beam is shut out.
+- Campaigns b17 and b19 below scan this energy window.
+- Fill × compression stays at 0.12–0.17 in this well without the beam, against 0.18–0.25 in the
+  deeper 40 A, spread 0.3 well. A more harmonic well does not help once the ion charge is the limit.
+- The 10 keV pulses and the steady 10 keV beam of campaign b4 pass through the core at speed and do
+  not cancel the ion charge.
 
 ## The best wells over eight collapses (campaign b12, 64³, 300 ns)
 
@@ -290,4 +293,89 @@ Same well and starting cloud, h = 0.4 unless noted. Columns are drive periods 2,
   cloud with a lower fill, not a better collapse.
 - The drive pumps the oscillation until ions are lost. None of these runs reaches a steady
   oscillation.
+
+## Slow electrons released at the centre (campaigns b15, b16, b18): a numerical control
+
+These runs release 5 eV electrons from a 1 mm disc at the centre of the sphere. No gun does this.
+The runs show how much compression the ion charge is costing, and nothing about how a device
+would supply the electrons. Well: 60 A, 0.8 + 8 A, 0.25. Mesh 64³ unless noted.
+
+| fill | electrons released | compression per collapse | ions kept |
+|---|---|---|---|
+| 1e-2 | none | 10.43, 8.85, 6.56 | 0.94 |
+| 1e-2 | steady, 1 per ion per collapse time | 20.69, 10.96, 7.85 | 1.00 |
+| 1e-2 | steady, 3 per ion | 12.71, 6.57 | 1.00 |
+| 3e-2 | none | 4.07, 4.18, 4.16 | 1.00 |
+| 3e-2 | one pulse, 0.3 per ion | 5.01, 2.96, 2.47 | 1.00 |
+| 3e-2 | one pulse, 1 per ion | 7.30, 2.19, 2.08 | 1.00 |
+| 3e-2 | one pulse, 3 per ion | 8.08, 2.39, 2.12 | 1.00 |
+| 3e-2 | steady, 0.3 per ion | 6.09, 2.26, 2.42 | 1.00 |
+| 3e-2 | steady, 1 per ion | 10.80, 3.36, 1.73 | 1.00 |
+| 3e-2 | steady, 1 per ion, 2 mm disc | 10.46, 2.94, 1.87 | 1.00 |
+| 3e-2 | steady, 3 per ion | 10.67, 4.92 | 1.00 |
+| 3e-2 | steady, 1 per ion, 50 eV | 9.04, 2.49 | 1.00 |
+| 1e-1 | none | 1.69, 1.71, 1.71 | 1.00 |
+| 1e-1 | one pulse, 1 per ion | 1.90, 1.43, 1.53 | 1.00 |
+| 1e-1 | steady, 1 per ion | 2.94, 1.86, 1.75 | 1.00 |
+
+Mesh and particle-count checks of the steady, 1 per ion runs (first collapse):
+
+| fill | 64³ | 96³ | 128³ | 64³, 8× the released particles |
+|---|---|---|---|---|
+| 1e-2 | 20.69 | 19.62 | 19.24 | |
+| 3e-2 | 10.80 | 10.19 | 9.98 | 10.80 |
+
+- Slow electrons at the centre roughly double the first collapse at fill 1e-2 and 3e-2. The
+  potential bump the ions raise at the centre falls from about 2.0 kV to about 50 V at fill 1e-2,
+  and from about 2.4 kV to about 260 V at fill 3e-2.
+- The gain holds on finer meshes to within 8%, and does not depend on the number of released
+  particles. The released electrons' Debye length is below one cell, so their own structure is
+  not resolved; the first-collapse number is nonetheless stable.
+- It works once. From the second collapse on, the runs with released electrons do worse than the
+  runs without. The electrons leave as the cloud re-expands, and the ion cloud comes back out of
+  step.
+- Releasing three times as many does not help, and at fill 1e-2 it hurts (12.71 against 20.69).
+
+## A wall beam just above the well depth (campaigns b17, b19, 64³, fill 3e-2)
+
+A third electron population is injected from the wall, like the other two, at an energy close to
+the well depth. This is an external source, unlike the released electrons above. Well: 60 A,
+0.8 + 8 A, 0.25, which is −6.6 kV deep without the beam. Baseline: 4.07, 4.18, 4.16.
+
+| beam | compression per collapse | ions kept |
+|---|---|---|
+| 0.3 A, 6.0 keV | 5.08, 4.94, 4.75 | 1.00 |
+| 0.3 A, 6.2 keV | 4.95, 4.68, 4.37 | 1.00 |
+| 0.5 A, 6.6 keV | 5.16 | 1.00 |
+| 1 A, 6.1 keV | 7.70, 6.65, 4.80 | 0.98 |
+| 1 A, 6.2 keV | 8.61, 7.27, 5.82 | 0.99 |
+| 1 A, 6.3 keV | 9.65, 7.68, 6.58 | 1.00 |
+| 1 A, 6.4 keV | 10.79, 7.87, 6.82 | 1.00 |
+| 1 A, 6.6 keV | 12.74, 7.73, 6.50 | 1.00 |
+| 1 A, 6.8 keV | 11.99 | 1.00 |
+| 1 A, 7.0 keV | 5.84 | 1.00 |
+| 1 A, 7.3 keV | 4.84 | 1.00 |
+| 1 A, 7.7 keV | 4.43 | 1.00 |
+| 1 A, 8.2 keV | 4.69 | 1.00 |
+| 2 A, 6.4 keV | 5.90, 5.44, 4.38 | 1.00 |
+| 2 A, 7.0 keV | 9.26 | 1.00 |
+| 2 A, 7.4 keV | 10.54 | 1.00 |
+
+The b19 rows (0.5 A; 1 A at 6.8 keV and above; 2 A at 7.0 and 7.4 keV) have one collapse so far.
+
+- At 1 A the first collapse rises from 7.7 at 6.1 keV to 12.7 at 6.6 keV, holds at 6.8 keV, and
+  falls to 5.8 at 7.0 keV. The useful window is about 0.5 keV wide and its upper edge is sharp.
+- The beam deepens the well it is injected into (−6.9 kV with 1 A at 6.6 keV, −7.1 kV at 7.0 keV).
+  The best energies sit just below the depth of the well with the beam in it. This reading comes
+  from the centre potentials in the table runs; the b19 probe data has not been examined yet.
+- In the 6.6 keV run the beam's electron count in the sphere rises from 1.23 to 1.97 per ion as
+  the ions fall in. At about 16 ns a potential minimum of −6.68 kV forms 2.2 mm from the centre,
+  deeper than the beam energy, and the beam is shut out. Inside that radius the ion bump still
+  grows.
+- More current needs more energy: 2 A gives 5.9 at 6.4 keV and 10.5 at 7.4 keV, and its best
+  energy has not been found.
+- The gain lasts beyond the first collapse, unlike the released electrons: 7.7 and 6.5 on the
+  second and third collapses against 4.2 without the beam.
+- Not yet checked: finer meshes, other ion fills, more than three collapses. At 12.7× the cloud's
+  rms radius per axis is about one 64³ cell. Campaign b20 runs these checks.
 
