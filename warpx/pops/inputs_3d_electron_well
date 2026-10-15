@@ -10,6 +10,9 @@ my_constants.core_spread = 0.02
 my_constants.core_t0 = 0.             # time of its first pulse (s)
 my_constants.core_period = 1.         # pulse spacing (s)
 my_constants.core_sigma = 0.          # Gaussian pulse width (s); 0 keeps the beam steady
+my_constants.cold_current = 0.        # steady current of a third beam whose electrons are slow at the centre (A)
+my_constants.cold_e0 = 7.0e3          # its injection energy (eV): just above the well depth, so it only reaches a lifted centre
+my_constants.cold_spread = 0.005
 my_constants.mass_amu = 2.014
 my_constants.fill = 0.                # ions per electron of a uniform cloud with a well of depth e0
 my_constants.s0 = 0.3*a
@@ -23,6 +26,7 @@ my_constants.probe_every = 1000
 
 my_constants.gam = 1 + e0*q_e/(m_e*clight**2)
 my_constants.un = sqrt(gam**2 - 1)
+my_constants.un_cold = sqrt((1 + cold_e0*q_e/(m_e*clight**2))**2 - 1)
 my_constants.mi = mass_amu*m_u
 my_constants.nions = fill*8*pi*epsilon0*e0*a/q_e
 my_constants.n0 = nions/((2*pi)**1.5*s0**3)
@@ -50,7 +54,7 @@ algo.field_gathering = momentum-conserving
 algo.particle_shape = 1
 warpx.serialize_initial_conditions = 1
 
-particles.species_names = electrons ions core
+particles.species_names = electrons ions core cold
 
 electrons.charge = -q_e
 electrons.mass = m_e
@@ -78,6 +82,19 @@ core.ux_th = core_spread*un
 core.uy_th = core_spread*un
 core.uz_th = 0.002*un
 core.uz_m = un
+
+cold.charge = -q_e
+cold.mass = m_e
+cold.injection_style = NFluxPerCell
+cold.inject_from_embedded_boundary = 1
+cold.num_particles_per_cell = ppc_e
+cold.flux_profile = constant
+cold.flux = cold_current/(q_e*4*pi*a**2)
+cold.momentum_distribution_type = gaussianflux
+cold.ux_th = cold_spread*un_cold
+cold.uy_th = cold_spread*un_cold
+cold.uz_th = 0.002*un_cold
+cold.uz_m = un_cold
 
 ions.charge = q_e
 ions.mass = mi
