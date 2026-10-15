@@ -56,7 +56,9 @@ def reduce(run: Path) -> dict:
     last = time >= 0.8 * time[-1]
     growth = np.polyfit(time[last], electrons[last], 1)[0] / rate
     axis = line_potential(run, "axis", 0.0 if c["gun_off"] == 0 else c["wall_v"])
-    steps = sorted(axis)
+    # Step 0 is written before the first field solve and holds no field, so the first solved step
+    # (a few electrons, so effectively the empty device) is the reference.
+    steps = sorted(step for step in axis if step > 0)
     centre = {step: float(axis[step][1][0]) for step in steps}
     r, final = axis[steps[-1]]
     edge = line_potential(run, "edge", c["wall_v"])[steps[-1]]
@@ -79,10 +81,10 @@ def reduce(run: Path) -> dict:
         "electrons": float(electrons[-1]),
         "dwell_ns": round(electrons[-1] / rate * 1e9, 3),
         "filling": round(float(growth), 3),
-        "centre_V_empty": round(centre[1], 1),
+        "centre_V_empty": round(centre[steps[0]], 1),
         "centre_V": round(centre[steps[-1]], 1),
         "centre_V_min": round(min(centre.values()), 1),
-        "well_V": round(centre[1] - centre[steps[-1]], 1),
+        "well_V": round(centre[steps[0]] - centre[steps[-1]], 1),
         "axis_V_at_5mm_10mm": [round(at((r, final), x), 1) for x in (0.005, 0.01)],
         "edge_V_at_5mm_10mm": [round(at(edge, x), 1) for x in (0.005, 0.01)],
         "corner_V_at_5mm_10mm": [round(at(corner, x), 1) for x in (0.005, 0.01)],
