@@ -172,3 +172,20 @@ same order as this bar. The present runs sit at a 9 cm aperture for a 1.9 cm gyr
 
 Citations are from memory except the three confirmed by search on 2026-10-15 (Park 2019,
 Evstatiev 2007, Ochs 2022); check the others before quoting them externally.
+
+### Literature check on what has already been simulated (2026-10-15)
+
+- **WarpX and fusion.** The WarpX documentation lists 55 papers that used the code; 8 are under
+  fusion and confinement. Four are TAE's field-reversed-configuration studies with the hybrid
+  solver TAE contributed, two are magnetic mirrors, one is the Orbitron crossed-field trap, one is
+  a Penning discharge, and one is an ion-cyclotron instability study. None covers cusps, Polywell,
+  POPS, electrostatic wells or Z-pinches. The list is self-reported, so it is a floor.
+- **High-beta cusp.** EMC2's published first-principles work is the 2D picket fence (Park et al.
+  2019) and a 3D six-coil start-up in ECsim described in "Polywell Revisited" (arXiv:2508.06761):
+  100³ cells, 20 cm coils, about 60 eV, and numerical electrons as heavy as the ions. A 3D run at a
+  realistic mass ratio that resolves the electron gyroradius has not been published, so the 3D leak
+  law is open. EMC2 now targets a thermal D-T plasma at high beta, not converging beams.
+- **POPS.** The simulations found are 1D gridless and 2D runs from 2005–2007. No 3D result and no
+  work after 2007 turned up, apart from a 2015 abstract on a related small Penning trap. A 2005
+  abstract adds that if injected electrons cancel the ion charge, the ion fill need not stay far
+  below the electron density, which lowers the compression needed for a given power.
