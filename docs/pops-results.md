@@ -96,3 +96,62 @@ Fill 1e-2, 120 ns. Same columns as b2, plus the fraction of ions still in the sp
   energies at the centre barely respond to the ion charge.
 - Mesh caveat: at 12× the ion cloud's rms radius is 0.42 mm and a cell is 0.35 mm, so the deepest
   collapses are not resolved on 64³.
+
+## Campaign b4: ion fill in the harmonic well, mesh, and a centre-aimed beam (one B200 node)
+
+40 A, spread 0.3 (the harmonic well of b2), 120 ns. "Ideal well" is a CPU control with the same ions
+in an imposed 8.277 kV parabola and no electrons.
+
+| case | compression per collapse | ideal well, first → last collapse |
+|---|---|---|
+| fill 1e-3 | 15.16, 5.66, 3.58, 2.75 | 35.2 → 9.8 (8 collapses) |
+| fill 1e-2 (b2) | 12.34, 7.19, 4.75, 3.93, 4.00 | 12.2 → 2.1 (12 collapses) |
+| fill 1e-2 on 128³ (60 ns) | 10.69, 10.02 | |
+| fill 3e-2 | 5.89, 5.75, 5.06 | 4.43 → 3.78 (7 collapses) |
+| fill 1e-1 | 2.53, 2.57, 2.52 | 1.72 → 1.73 (7 collapses) |
+| fill 1e-2, steady 3 A beam at the centre | 10.57, 4.24, 3.01, 2.54 | |
+| fill 1e-2, 5 A pulses at each collapse | 13.52, 5.75, 3.34 | |
+| fill 1e-2, 15 A pulses | 13.96, 5.68, 3.54, 3.19 | |
+| fill 1e-2, 40 A pulses | 14.15, 5.66, 3.66 | |
+
+- The ion charge sets the first collapse: fill × compression is 0.12, 0.18 and 0.25 at fills 1e-2,
+  3e-2 and 1e-1. Real electrons give 1.3–1.5 times the ideal-well compression at the two highest
+  fills, so they cancel little of the ion charge.
+- The fade over successive collapses is strongest at the lowest fill, so it is not the ion charge.
+  It is the well shape (next section).
+- A 10 keV beam pulsed onto the centre at each collapse adds 10–15% to the first collapse whatever
+  its current, and does nothing for the fade. A steady one deepens the centre to −10 kV and makes
+  the well less harmonic.
+- Mesh: at fill 1e-2 the first collapse is 10.7 on 128³ against 12.3 on 64³, and the second is 10.0
+  against 7.2. Numbers at this fill carry that uncertainty.
+
+## Well-shape search (campaigns b5, b7, b8, b10: 168 electron-only runs, 70–180 s each)
+
+`warpx/pops/analyze_well_scan.py` fits the time-averaged well of an electron-only run and follows
+6000 chargeless test ions in it. That predicts the compression at each collapse in seconds.
+
+- **The prediction matches the full simulation at low fill.** For the 40 A, spread 0.3 well it
+  gives 14.9, 5.4, 3.4, 2.6; the fill 1e-3 run gave 15.16, 5.66, 3.58, 2.75. So the fade is ions of
+  different amplitude drifting out of step in a slightly non-harmonic well: there the bounce period
+  varies by 4.3% (rms) across the cloud.
+- **The well shape does not depend on the numerics.** For the best b7 well the predicted five
+  collapses are 32.0, 27.2, 21.8, 17.6, 14.6 on 64³; 31.8, 26.0, 20.1, 15.9, 13.0 on 96³ and 128³;
+  32.0, 27.5, 22.2, 18.0, 15.0 with four times the particles; 31.9, 27.8, 22.9, 18.9, 15.8 at half
+  the time step.
+- **Two electron populations make a much more harmonic well than one.** A broad main beam leaves
+  the centre slightly too flat; a few amps with a narrower spread fill it in.
+
+| electrons (current, spread) | centre (kV) | period variation (rms) | predicted compression, collapses 1–5 |
+|---|---|---|---|
+| 40 A, 0.3 (b2/b4 well) | −8.7 | 4.3% | 15.5, 5.6, 3.6, 2.7, 2.3 |
+| 40 A, 0.45 | −6.2 | 2.0% | best single beam at 40 A |
+| 20 A, 0.6 | −2.4 | 0.9% | 20.4, 16.3, 12.4, 9.7, 7.9 |
+| 40 A, 0.6 + 10 A, 0.3 | −6.7 | 1.6% | 28.9, 15.4, 9.9, 7.3, 5.7 |
+| 50 A, 0.7 + 5 A, 0.25 | −5.9 | 0.65% | 32.0, 27.2, 21.8, 17.6, 14.6 |
+| 60 A, 0.9 + 5 A, 0.25 | −5.3 | 0.31% | 30.1, 26.5, 22.0, 18.2, 15.2 |
+| 60 A, 0.8 + 8 A, 0.25 | −6.6 | 0.66% | 34.0, 30.6, 26.0, 21.9, 18.6 |
+| 70 A, 0.9 + 8 A, 0.25 | −6.5 | 0.60% | 33.6, 30.5, 26.3, 22.3, 19.0 |
+
+- Wells deeper than about 70% of the electron energy are not harmonic in any run: at 80 A with a
+  single beam the centre saturates at the full 10 kV and flattens.
+
