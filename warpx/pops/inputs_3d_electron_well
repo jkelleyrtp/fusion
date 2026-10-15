@@ -14,6 +14,7 @@ my_constants.dt = 1.0e-12
 my_constants.ncell = 64
 my_constants.ppc_e = 4
 my_constants.ppc_i = 8
+my_constants.probe_every = 1000
 
 my_constants.gam = 1 + e0*q_e/(m_e*clight**2)
 my_constants.un = sqrt(gam**2 - 1)
@@ -70,7 +71,7 @@ ions.ux_th = uti
 ions.uy_th = uti
 ions.uz_th = uti
 
-warpx.reduced_diags_names = ebeam ibeam number wall
+warpx.reduced_diags_names = ebeam ibeam number wall probe
 ebeam.type = BeamRelevant
 ebeam.species = electrons
 ebeam.intervals = 20
@@ -81,6 +82,17 @@ number.type = ParticleNumber
 number.intervals = 20
 wall.type = ChargeOnEB
 wall.intervals = 20
+# radial electric field along +x; integrate it inward from the wall to get the potential
+probe.type = FieldProbe
+probe.probe_geometry = Line
+probe.x_probe = 0.
+probe.y_probe = 0.
+probe.z_probe = 0.
+probe.x1_probe = a
+probe.y1_probe = 0.
+probe.z1_probe = 0.
+probe.resolution = 65
+probe.intervals = probe_every
 
 diagnostics.diags_names = diag1
 diag1.intervals = 0
