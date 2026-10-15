@@ -261,9 +261,10 @@ largest over the smallest rms radius within each drive period (`analyze_rf_drive
 - Test ions in a well whose depth is modulated by 10.6% grow 18% per period, so the full run
   pumps at about three quarters of that rate. In that calculation the growth only ends when the
   ions reach the wall (8% left after 30 periods). The drive is a pump, not a steady state.
-- The drive does not lower the temperature limit: a breathing cloud keeps the product of its
-  largest and smallest radius, so starting from 0.12a and stopping short of the wall the smallest
-  radius is about 0.03a, the same as a cold cloud released from 0.3a reaches.
+- Estimate, not measured: the drive should not beat the temperature limit. In a harmonic well a
+  breathing cloud keeps the product of its largest and smallest radius, so a cloud that starts at
+  0.12a and stops short of the wall (0.45a) gets no smaller than about 0.03a. The 1 eV cloud
+  released from 0.3a reaches 0.01a.
 - At fill 1e-2 the starting cloud is not in balance (its own charge pushes it out), which is the
   early transient; after it the growth rate is the same as at low fill.
 
