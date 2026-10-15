@@ -144,7 +144,7 @@ in an imposed 8.277 kV parabola and no electrons.
 | electrons (current, spread) | centre (kV) | period variation (rms) | predicted compression, collapses 1–5 |
 |---|---|---|---|
 | 40 A, 0.3 (b2/b4 well) | −8.7 | 4.3% | 15.5, 5.6, 3.6, 2.7, 2.3 |
-| 40 A, 0.45 | −6.2 | 2.0% | best single beam at 40 A |
+| 40 A, 0.45 | −6.2 | 2.0% | 25.1, 11.7, 7.3, 5.4, 4.3 |
 | 20 A, 0.6 | −2.4 | 0.9% | 20.4, 16.3, 12.4, 9.7, 7.9 |
 | 40 A, 0.6 + 10 A, 0.3 | −6.7 | 1.6% | 28.9, 15.4, 9.9, 7.3, 5.7 |
 | 50 A, 0.7 + 5 A, 0.25 | −5.9 | 0.65% | 32.0, 27.2, 21.8, 17.6, 14.6 |
@@ -162,12 +162,12 @@ in an imposed 8.277 kV parabola and no electrons.
 | electrons (current, spread) | centre (kV) | compression per collapse | test-ion prediction |
 |---|---|---|---|
 | 40 A, 0.3 (b4) | −8.7 | 15.2, 5.7, 3.6, 2.8 | 14.9, 5.4, 3.4, 2.6 |
-| 20 A, 0.5 | −3.0 | 18.2, 11.6, 8.6, 7.0 | 25.4, 12.8, 8.1, 5.9 |
-| 20 A, 0.6 | −2.4 | 16.3, 10.9, 7.2, 5.3 | 20.4, 16.3, 12.4, 9.7 |
-| 40 A, 0.45 | −6.2 | 23.0, 10.7, 6.7, 4.9 | |
-| 20 A, 0.4 + 20 A, 0.5 | −6.3 | 23.2, 10.9, 6.9, 5.1 | 27.6, 15.2, 9.9, 7.3 |
-| 40 A, 0.5 + 10 A, 0.2 | −8.3 | 21.2, 8.7, 5.5, 4.2 | |
-| 40 A, 0.6 + 10 A, 0.3 | −6.6 | 26.2, 13.5, 8.5, 6.2 | 28.9, 15.4, 9.9, 7.3 |
+| 20 A, 0.5 | −3.0 | 18.2, 11.6, 8.6, 7.0 | 18.8, 9.2, 5.9, 4.4 |
+| 20 A, 0.6 | −2.4 | 16.3, 10.9, 7.2, 5.3 | 20.4, 16.3, 12.5, 9.8 |
+| 40 A, 0.45 | −6.2 | 23.0, 10.7, 6.7, 4.9 | 25.1, 11.7, 7.3, 5.4 |
+| 20 A, 0.4 + 20 A, 0.5 | −6.3 | 23.2, 10.9, 6.9, 5.1 | 25.0, 11.5, 7.2, 5.3 |
+| 40 A, 0.5 + 10 A, 0.2 | −8.3 | 21.2, 8.7, 5.5, 4.2 | 21.4, 8.3, 5.2, 3.9 |
+| 40 A, 0.6 + 10 A, 0.3 | −6.6 | 26.2, 13.5, 8.5, 6.2 | 29.0, 15.5, 10.0, 7.3 |
 | same, 128³ (70 ns) | −6.7 | 24.7, 12.4 | |
 | 50 A, 0.5 + 5 A, 0.15 | −8.3 | 27.4, 13.1, 8.6, 6.5, 5.3 | 27.6, 12.2, 7.6, 5.6, 4.5 |
 | 40 A, 0.6 + 5 A, 0.25 | −5.9 | 27.6, 18.1, 12.9, 10.0, 8.2 | 28.8, 16.7, 11.0, 8.2, 6.5 |
@@ -177,8 +177,8 @@ in an imposed 8.277 kV parabola and no electrons.
 - Shaping the well with two electron populations doubles the first collapse (15 → 30) and raises
   the fifth from about 2.5 to 9.5.
 - The test-ion prediction ranks the wells correctly and is within about 10% for most. It is too
-  optimistic for the shallow wells and for the single most harmonic one, where the ions' own
-  charge is no longer negligible at fill 1e-3.
+  optimistic for the 20 A, 0.6 well (−2.4 kV) and for the most harmonic one (50 A, 0.7 + 5 A,
+  0.25); the cause is not established.
 - Mesh: 128³ gives 24.7, 12.4 where 64³ gives 26.2, 13.5.
 - With more ions in the 50 A, 0.7 + 5 A, 0.25 well: fill 3e-3 gives 21.3, 11.1, 6.6, 5.0, 4.3;
   fill 1e-2 gives 9.1, 7.9, 6.0, then the oscillation turns irregular and 10% of the ions reach
