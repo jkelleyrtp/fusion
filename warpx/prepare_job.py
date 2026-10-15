@@ -53,7 +53,7 @@ def main() -> None:
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
         archive.add(args.cases, "cases.txt")
-        for deck in sorted((ROOT / "pops").glob("inputs_*")):
+        for deck in sorted([*(ROOT / "pops").glob("inputs_*"), *(ROOT / "cusp").glob("inputs_*")]):
             archive.add(deck, deck.name)
     runner = (RUNNER.replace("__OUT__", f"{SHARED}/runs/warpx-{token}").replace("__BUILD__", BUILD)
               .replace("__TIMEOUT__", str(args.timeout))
