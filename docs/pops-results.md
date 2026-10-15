@@ -439,7 +439,10 @@ and 0.49 at fills 1e-2, 3e-2, 1e-1 and 3e-1.
 | 3e-1 | 6 A, 4.0 keV | 1.52 | 0.46 |
 | 3e-1 | 6 A, 5.0 keV | 2.99 | 0.90 |
 | 3e-1 | 6 A, 5.0 keV, 96³ | 2.75 | 0.83 |
+| 3e-1 | 5 A, 5.5 keV | 1.60 | 0.48 |
 | 3e-1 | 6 A, 5.5 keV | 3.86, 3.23 | 1.16 |
+| 3e-1 | 6 A, 6.0 keV | 2.43 | 0.73 |
+| 3e-1 | 8 A, 6.0 keV | 4.22 | 1.27 |
 | 3e-1 | 6 A, 7.2 keV | no collapse | – |
 | 3e-1 | 10 A, 4.0 keV | 1.30 | 0.39 |
 | 3e-1 | 10 A, 5.0 keV | 1.57 | 0.47 |
@@ -482,10 +485,10 @@ use 0.5%.
 - Later collapses fade with the beam on in every run that has them. The longest, fill 3e-2 with
   1 A at 6.7 keV, gives 12.9, 7.3, 5.7, 5.3, 4.6, 3.6. The exception so far is 2 A at 7.0 keV
   (9.3, 8.0, 7.8, 7.7).
-- The largest fill × compression is 1.16 (fill 3e-1, 6 A, 5.5 keV, 64³ only), against 0.10–0.17
+- The largest fill × compression is 1.27 (fill 3e-1, 8 A, 6.0 keV, 64³ only), against 0.10–0.17
   with no beam. The 96³ checks at the two high fills give 7.59 against 7.53 (fill 1e-1, 3 A,
   6.8 keV) and 2.75 against 2.99 (fill 3e-1, 6 A, 5.0 keV).
-- Best fill × first compression found at each fill, with the beam: 0.19, 0.39, 0.75, 1.16 at
+- Best fill × first compression found at each fill, with the beam: 0.19, 0.39, 0.75, 1.27 at
   fills 1e-2, 3e-2, 1e-1, 3e-1. It rises with fill but more slowly than the fill does.
 - A beam speed spread of 0.05% in place of 0.2% changes nothing (7.50 against 7.53 at fill 1e-1,
   12.79 against 12.74 at fill 3e-2), nor does a sideways spread of 0.2% in place of 0.5% (7.46).
@@ -521,7 +524,7 @@ most roll out and leave; about 0.2 per ion stay in the sphere. Only when the ion
 there a trough at the centre to hold them, and the electrons it holds have the energy of that
 trough, not their birth energy.
 
-## Charge inside the ion cloud (campaign b27)
+## Charge inside the ion cloud (campaigns b27, b28)
 
 Radial histograms of each species every 250 steps give the charge inside the radius that holds
 half the ions. Electron charge over ion charge inside that radius, at the first collapse, 64³:
@@ -533,13 +536,40 @@ half the ions. Electron charge over ion charge inside that radius, at the first 
 | 3e-2 | 2 A, 7.0 keV | 9.26 | 0.32 | 0.35 | 680 |
 | 1e-1 | 3 A, 6.8 keV | 7.53 | 0.56 | 0.83 | 730 |
 | 3e-1 | 6 A, 5.0 keV | 2.99 | 1.48 | 1.0 | 350 |
+| 3e-1 | 6 A, 5.5 keV | 3.86 | 1.16 | 0.88 | 740 |
+| 3e-1 | 8 A, 6.0 keV | 4.22 | 1.08 | 1.03 | 740 |
+| 1e-1 | 2 A, 6.8 keV (below the current threshold) | 2.21 | 2.35 | 0.46 | none inside 1 mm |
 
 - Nearly all the electron charge inside the ions is from the slow beam. The 10 keV electrons
   there are under 1% of the ions at the collapse with the beam on.
-- At fills 1e-1 and 3e-1 the cloud is 83–100% neutralised at the collapse and still stops at 7.5
-  and 3.0. So at high fill, uncancelled ion charge is no longer what stops it.
-- The slow electrons inside 1 mm have under 100 eV while the cloud is expanded and 350–730 eV at
-  the collapse. The energy histogram has 100 eV bins; campaign b28 repeats it with 10 eV bins.
-- Reading, not yet tested: the electrons trapped with the ions are heated as they are squeezed,
-  and their pressure holds the cloud open. The centre rises by about 3.5 kV at the collapse,
-  five times the electrons' mean energy there.
+- At fills 1e-1 and 3e-1 the cloud is 83–100% neutralised at the collapse and still stops at
+  3.0–7.5. The histogram bins are 0.25 mm wide, so these fractions are good to about ±0.1. The
+  remaining 10–20% of the ion charge is still enough to stop it: 17% of the 6.8e9 ions inside
+  0.56 mm makes a 3.0 kV hump, and the centre rises by 3.5 kV at that collapse.
+- The slow electrons inside 1 mm have 30–110 eV mean energy while the cloud is expanded and
+  650–740 eV at the collapse (10 eV bins in b28, 100 eV bins in b27).
+- At fill 1e-1 the slow electrons' density at the collapse follows exp(eφ/T) with T = 500–530 eV
+  between 0.4 and 1.1 mm, against 443 eV from two-thirds of their mean energy. At fill 3e-1 a
+  single temperature does not fit (700–1040 eV fitted against 478 eV).
+- Reading, consistent with the fill 1e-1 numbers but not tested by changing anything: the
+  electrons trapped with the ions heat as they are squeezed, and the charge they leave uncancelled
+  is what their temperature allows, a hump of about seven times that temperature.
+
+The slow beam has a sharp current threshold (campaign b28, 64³, first collapse):
+
+| fill | beam | first collapse |
+|---|---|---|
+| 1e-1 | 1.5 A, 6.8 keV | 2.07 |
+| 1e-1 | 2 A, 6.7 keV | 2.23 |
+| 1e-1 | 2 A, 6.8 keV | 2.21 |
+| 1e-1 | 3 A, 6.8 keV | 7.53 |
+| 3e-1 | 5 A, 5.5 keV | 1.60 |
+| 3e-1 | 6 A, 5.5 keV | 3.86 |
+| 3e-1 | 6 A, 6.0 keV | 2.43 |
+| 3e-1 | 8 A, 6.0 keV | 4.22 |
+
+- Below the threshold the slow electrons do not reach the centre and the collapse is no better
+  than with more 10 keV current. So lowering the current is not a way to keep the trapped
+  electrons few.
+- 8 A at 6.0 keV gives fill × compression of 1.27 at fill 3e-1, the largest so far, 64³ only.
+  10 A at 6.0 keV gave 2.44 (b25), so the window in current is narrow too.

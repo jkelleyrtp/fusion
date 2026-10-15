@@ -13,7 +13,7 @@ const fills = [
   { ions: "1 per 100", f: 1e-2, none: 10.43, beam: 18.74, beamSetting: "0.5 A at 6.8 keV", centre: 20.69 },
   { ions: "3 per 100", f: 3e-2, none: 4.07, beam: 12.88, beamSetting: "1 A at 6.7 keV", centre: 10.8 },
   { ions: "10 per 100", f: 1e-1, none: 1.69, beam: 7.53, beamSetting: "3 A at 6.8 keV", centre: 2.94 },
-  { ions: "30 per 100", f: 3e-1, none: null, beam: 3.86, beamSetting: "6 A at 5.5 keV" },
+  { ions: "30 per 100", f: 3e-1, none: null, beam: 4.22, beamSetting: "8 A at 6.0 keV" },
 ];
 const energyScan = [
   [6.1, 7.7], [6.2, 8.61], [6.3, 9.65], [6.4, 10.79], [6.6, 12.74], [6.7, 12.88], [6.8, 11.99],
@@ -88,7 +88,7 @@ function Report() {
     >
       <P>
         Shaping the electron well took compression from about 2× to 30×. The ions' own charge is now the limit, and a
-        low-energy electron beam from the wall, tuned to the well depth, lifts that limit two to five times. Ion fill ×
+        low-energy electron beam from the wall, tuned to the well depth, lifts that limit two to seven times. Ion fill ×
         compression is still about {Math.round(1000 / best / 100) * 100}× short of the roughly 1000 that useful power needs.
       </P>
       <StatsRow>
@@ -226,12 +226,14 @@ function Report() {
       <Section title="What is not established">
         <P>
           The wall-beam settings come from coarse scans at four ion fills, so better ones probably exist. All four
-          fills have a finer-mesh check (table above), but the best 30 per 100 setting (6 A at 5.5 keV) is 64³ only.
+          fills have a finer-mesh check (table above), but the best 30 per 100 setting (8 A at 6.0 keV) is 64³ only.
           At 10 and 30 per 100 the ions cancel much of the well, and the beam works by adding enough slow electrons
           to hold the centre at its own energy. Raising the 10 keV currents by 1.5–2× with no slow beam does not do
           the same: 2.1× at 10 per 100 and no collapse at 30 per 100. With the beam on, the cloud at those fills is
-          83–100% neutralised at the collapse and still stops, so something other than ion charge limits it there;
-          heating of the trapped electrons is my reading, not yet tested. One wall-beam run reaches six collapses and
+          83–100% neutralised at the collapse, and the remaining 10–20% of the ion charge is still enough to stop it.
+          The trapped slow electrons reach 650–740 eV at the collapse, and my reading, not yet tested, is that their
+          temperature sets how much charge they leave uncancelled. The beam also has a sharp current threshold:
+          2 A does nothing at 10 per 100 where 3 A works. One wall-beam run reaches six collapses and
           fades from 12.9× to 3.6×. Nothing here
           shows sustained compression, net power, or anything about cusp plugging.
         </P>
