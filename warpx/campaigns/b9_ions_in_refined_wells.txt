@@ -1,0 +1,8 @@
+r_m50A70_5A25 inputs_3d_electron_well my_constants.ppc_e=0.25 my_constants.current=50 my_constants.spread=0.7 my_constants.core_current=5 my_constants.core_spread=0.25 my_constants.fill=1e-3 my_constants.tmax=2.2e-7
+r_m50A70_8A25 inputs_3d_electron_well my_constants.ppc_e=0.25 my_constants.current=50 my_constants.spread=0.7 my_constants.core_current=8 my_constants.core_spread=0.25 my_constants.fill=1e-3 my_constants.tmax=2.0e-7
+r_m40A60_5A25 inputs_3d_electron_well my_constants.ppc_e=0.25 my_constants.current=40 my_constants.spread=0.6 my_constants.core_current=5 my_constants.core_spread=0.25 my_constants.fill=1e-3 my_constants.tmax=2.2e-7
+r_m50A70_5A25_f3e-3 inputs_3d_electron_well my_constants.ppc_e=0.25 my_constants.current=50 my_constants.spread=0.7 my_constants.core_current=5 my_constants.core_spread=0.25 my_constants.fill=3e-3 my_constants.tmax=2.2e-7
+r_m50A70_5A25_f1e-2 inputs_3d_electron_well my_constants.ppc_e=0.25 my_constants.current=50 my_constants.spread=0.7 my_constants.core_current=5 my_constants.core_spread=0.25 my_constants.fill=1e-2 my_constants.tmax=2.2e-7
+r_m50A50_5A15 inputs_3d_electron_well my_constants.ppc_e=0.25 my_constants.current=50 my_constants.spread=0.5 my_constants.core_current=5 my_constants.core_spread=0.15 my_constants.fill=1e-3 my_constants.tmax=1.8e-7
+r_s60_10A inputs_3d_electron_well my_constants.ppc_e=0.25 my_constants.current=10 my_constants.spread=0.6 my_constants.fill=1e-3 my_constants.tmax=2.4e-7
+r_m50A70_5A25_n128 inputs_3d_electron_well my_constants.ppc_e=0.25 my_constants.current=50 my_constants.spread=0.7 my_constants.core_current=5 my_constants.core_spread=0.25 my_constants.fill=1e-3 my_constants.tmax=7.0e-8 my_constants.ncell=128
