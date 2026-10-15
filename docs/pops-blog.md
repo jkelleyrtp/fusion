@@ -7,7 +7,7 @@ ions leak energy faster than they fuse unless the machine is huge. In the 1990s 
 that the usual escape route, keeping ions in some clever non-thermal state, costs more power than
 the fusion gives back.
 
-POPS (the periodically oscillating plasma sphere, from Los Alamos around 2000) is the one scheme
+POPS (the periodically oscillating plasma sphere, proposed at Los Alamos in the late 1990s) is the one scheme
 built to slip past that argument. Fill a small sphere with electrons so it becomes a
 bowl-shaped voltage well. Drop a cloud of ions in. In a perfect bowl every ion takes the same time
 to fall to the centre and come back, however far out it started. So the whole cloud collapses to a
@@ -74,7 +74,7 @@ Then we tried everything obvious to get past 1.6. More beam current made it wors
 changed nothing. A second beam timed to fire during the collapse got its electrons in, but they
 just displaced the first beam's, one for one. Starting from a bigger cloud helped slightly. Radio
 waves to pump the oscillation, as the original proposal imagined, pump it until ions hit the wall.
-And the squeeze fades with each bounce, typically by half over eight collapses.
+And the squeeze fades with each bounce, by about half over eight collapses in the best case.
 
 The electrons at the centre get hot as the cloud collapses, up to several hundred electron-volts,
 and hot electrons won't sit still to neutralise the ions. I think that's the heart of the limit, but
@@ -92,5 +92,5 @@ resolve the very centre of the cloud; a finer-mesh study is running. The electro
 idealised wall, not a real gun. The "1000" target is my own rough estimate. The ion counts are
 quoted against an ideal electron cloud, and the real ratios are about 1.65× higher.
 
-Still, as far as I can find, these are the first 3D numbers anyone has for this question. It cost
-a day of GPU time to get an answer that the original team, working in 2007, couldn't reach.
+Still, as far as I can find, these are the first 3D numbers anyone has for this question. It took
+about a day on modern GPUs to get an answer that was out of reach when the work stopped.
