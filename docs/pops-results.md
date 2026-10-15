@@ -485,10 +485,10 @@ use 0.5%.
 - Later collapses fade with the beam on in every run that has them. The longest, fill 3e-2 with
   1 A at 6.7 keV, gives 12.9, 7.3, 5.7, 5.3, 4.6, 3.6. The exception so far is 2 A at 7.0 keV
   (9.3, 8.0, 7.8, 7.7).
-- The largest fill × compression is 1.27 (fill 3e-1, 8 A, 6.0 keV, 64³ only), against 0.10–0.17
+- The largest fill × compression is 1.46 (fill 3e-1, 8 A, 6.25 keV, 64³ only), against 0.10–0.17
   with no beam. The 96³ checks at the two high fills give 7.59 against 7.53 (fill 1e-1, 3 A,
   6.8 keV) and 2.75 against 2.99 (fill 3e-1, 6 A, 5.0 keV).
-- Best fill × first compression found at each fill, with the beam: 0.19, 0.39, 0.75, 1.27 at
+- Best fill × first compression found at each fill, with the beam: 0.19, 0.39, 0.75, 1.46 at
   fills 1e-2, 3e-2, 1e-1, 3e-1. It rises with fill but more slowly than the fill does.
 - A beam speed spread of 0.05% in place of 0.2% changes nothing (7.50 against 7.53 at fill 1e-1,
   12.79 against 12.74 at fill 3e-2), nor does a sideways spread of 0.2% in place of 0.5% (7.46).
@@ -571,5 +571,49 @@ The slow beam has a sharp current threshold (campaign b28, 64³, first collapse)
 - Below the threshold the slow electrons do not reach the centre and the collapse is no better
   than with more 10 keV current. So lowering the current is not a way to keep the trapped
   electrons few.
-- 8 A at 6.0 keV gives fill × compression of 1.27 at fill 3e-1, the largest so far, 64³ only.
-  10 A at 6.0 keV gave 2.44 (b25), so the window in current is narrow too.
+- 8 A at 6.0 keV gives fill × compression of 1.27 at fill 3e-1, 64³ only. 10 A at 6.0 keV gave
+  2.44 (b25), so the window in current is narrow too.
+- Its second collapse is 1.41. At 52 ns the centre falls to −6.49 kV, below the 6.0 keV beam;
+  the slow-electron count drops by a quarter in 2 ns and the centre swings to +9.2 kV at 56 ns,
+  which turns the ions back at 3.6 mm. 6 A at 5.5 keV gives 3.86 then 3.23.
+
+A scan around the threshold (campaign b29, 64³, first collapse):
+
+| fill | beam | first collapse | fill × compression |
+|---|---|---|---|
+| 1e-1 | 2.5 A, 6.8 keV | 2.44 | 0.24 |
+| 1e-1 | 2.5 A, 7.0 keV | 2.34 | 0.23 |
+| 1e-1 | 4 A, 6.8 keV | 5.53 | 0.55 |
+| 1e-1 | 4 A, 7.0 keV | 6.50 | 0.65 |
+| 3e-1 | 7 A, 5.75 keV | 4.41 | 1.32 |
+| 3e-1 | 8 A, 5.75 keV | 3.22 | 0.97 |
+| 3e-1 | 8 A, 6.25 keV | 4.86 | 1.46 |
+| 3e-1 | 9 A, 6.25 keV | 3.87 | 1.16 |
+
+- 8 A at 6.25 keV gives fill × compression of 1.46, the largest so far, 64³ only.
+- At fill 1e-1 the threshold is between 2.5 and 3 A, and 3 A at 6.8 keV (7.53) stays the best.
+
+## A second slow beam switched on during the collapse (campaign b30): no gain
+
+A second wall beam of slightly higher energy is switched on for 8 ns as the cloud falls in, to
+keep feeding the centre after the first beam is shut out. Fill 1e-1 with 3 A at 6.8 keV (7.53
+without the second beam) unless stated, 64³, first collapse. The last columns are electron
+charge over ion charge inside the half-ion radius at the collapse.
+
+| second beam | first collapse | first-beam electrons / ions | second-beam electrons / ions | sum |
+|---|---|---|---|---|
+| none | 7.53 | 0.83 | – | 0.83 |
+| 1 A, 7.0 keV, from 13 ns | 7.51 | 0.59 | 0.23 | 0.82 |
+| 3 A, 7.0 keV, from 13 ns | 6.86 | 0.73 | 0.13 | 0.86 |
+| 3 A, 7.2 keV, from 13 ns | 6.92 | 0.65 | 0.20 | 0.85 |
+| 3 A, 7.5 keV, from 15 ns | 7.31 | 0.71 | 0.12 | 0.83 |
+| 3 A, 7.0 keV, from 16 ns | 7.57 | 0.82 | 0.01 | 0.83 |
+| 6 A, 7.0 keV, from 13 ns | 6.23 | 0.80 | 0.06 | 0.86 |
+| 3 A, 7.0 keV, always on | 3.89 | 0.00 | 0.69 | 0.69 |
+| fill 3e-2, 1 A at 6.6 keV + 1 A, 6.9 keV, from 14 ns (12.74 without) | 11.76 | 0.25 | 0.17 | 0.42 |
+
+- The second beam's electrons do get inside the ion cloud, but they replace first-beam electrons
+  one for one. The total stays at 0.82–0.86 at fill 1e-1 and 0.41–0.42 at fill 3e-2.
+- The second beam's electrons inside 1 mm have 900–1350 eV mean energy at the collapse, against
+  540–680 eV for the first beam's.
+- So supply of electrons during the collapse is not what limits the cancelled charge.
