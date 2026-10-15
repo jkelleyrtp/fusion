@@ -1,0 +1,88 @@
+# POPS stage B: electrons injected inward from a grounded spherical wall form the well; optional ions.
+# Override any my_constants value on the command line.
+
+my_constants.a = 0.01                 # sphere radius (m)
+my_constants.e0 = 1.0e4               # electron injection energy (eV)
+my_constants.current = 20.            # injected electron current over the whole wall (A)
+my_constants.spread = 0.02            # tangential momentum spread at the wall, in units of the normal momentum
+my_constants.mass_amu = 2.014
+my_constants.fill = 0.                # ions per electron of a uniform cloud with a well of depth e0
+my_constants.s0 = 0.3*a
+my_constants.ti = 1.                  # initial ion temperature (eV)
+my_constants.tmax = 3.0e-9            # run time (s)
+my_constants.dt = 1.0e-12
+my_constants.ncell = 64
+my_constants.ppc_e = 4
+my_constants.ppc_i = 8
+
+my_constants.gam = 1 + e0*q_e/(m_e*clight**2)
+my_constants.un = sqrt(gam**2 - 1)
+my_constants.mi = mass_amu*m_u
+my_constants.nions = fill*8*pi*epsilon0*e0*a/q_e
+my_constants.n0 = nions/((2*pi)**1.5*s0**3)
+my_constants.uti = sqrt(ti*q_e/mi)/clight
+
+max_step = tmax/dt
+warpx.const_dt = dt
+amr.n_cell = ncell ncell ncell
+amr.max_level = 0
+amr.blocking_factor = 8
+amr.max_grid_size = 64
+geometry.dims = 3
+geometry.prob_lo = -1.125*a -1.125*a -1.125*a
+geometry.prob_hi =  1.125*a  1.125*a  1.125*a
+boundary.field_lo = pec pec pec
+boundary.field_hi = pec pec pec
+boundary.particle_lo = absorbing absorbing absorbing
+boundary.particle_hi = absorbing absorbing absorbing
+
+warpx.do_electrostatic = labframe
+warpx.eb_implicit_function = "(x**2+y**2+z**2-a**2)"
+warpx.eb_potential(x,y,z,t) = "0."
+warpx.self_fields_required_precision = 1.e-6
+algo.field_gathering = momentum-conserving
+algo.particle_shape = 1
+warpx.serialize_initial_conditions = 1
+
+particles.species_names = electrons ions
+
+electrons.charge = -q_e
+electrons.mass = m_e
+electrons.injection_style = NFluxPerCell
+electrons.inject_from_embedded_boundary = 1
+electrons.num_particles_per_cell = ppc_e
+electrons.flux_profile = constant
+electrons.flux = current/(q_e*4*pi*a**2)
+electrons.momentum_distribution_type = gaussianflux
+electrons.ux_th = spread*un
+electrons.uy_th = spread*un
+electrons.uz_th = 0.002*un
+electrons.uz_m = un
+
+ions.charge = q_e
+ions.mass = mi
+ions.injection_style = NRandomPerCell
+ions.num_particles_per_cell = ppc_i
+ions.profile = parse_density_function
+ions.density_function(x,y,z) = "n0*exp(-(x**2+y**2+z**2)/(2*s0**2))*((x**2+y**2+z**2)<(0.95*a)**2)"
+ions.momentum_distribution_type = gaussian
+ions.ux_th = uti
+ions.uy_th = uti
+ions.uz_th = uti
+
+warpx.reduced_diags_names = ebeam ibeam number wall
+ebeam.type = BeamRelevant
+ebeam.species = electrons
+ebeam.intervals = 20
+ibeam.type = BeamRelevant
+ibeam.species = ions
+ibeam.intervals = 20
+number.type = ParticleNumber
+number.intervals = 20
+wall.type = ChargeOnEB
+wall.intervals = 20
+
+diagnostics.diags_names = diag1
+diag1.intervals = 0
+diag1.diag_type = Full
+diag1.fields_to_plot = phi rho
