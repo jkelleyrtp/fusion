@@ -389,23 +389,26 @@ the well depth. This is an external source, unlike the released electrons above.
 ## The wall beam at other ion fills, on a finer mesh, and with a spread (campaigns b20–b25)
 
 Same well and 64³ mesh unless stated. Campaigns b20–b25 were still running when these were read:
-most rows have one to three collapses.
+most rows have one to three collapses. Fill counts ions against the 1.39e11 electrons of an ideal
+uniform 10 kV cloud (`nions` in the deck). This well holds about 8.3e10 electrons (6.7e10 broad,
+1.7e10 narrow), so the ions number 1.65 × fill of the well's own electrons: 0.016, 0.05, 0.16
+and 0.49 at fills 1e-2, 3e-2, 1e-1 and 3e-1.
 
 | fill | beam | compression per collapse | fill × first compression |
 |---|---|---|---|
 | 1e-2 | none | 10.43, 8.85, 6.56 | 0.10 |
 | 1e-2 | 0.3 A, 6.7 keV | 15.20, 10.30 | 0.15 |
-| 1e-2 | 0.5 A, 6.8 keV | 18.74, 8.02 | 0.19 |
+| 1e-2 | 0.5 A, 6.8 keV | 18.74, 8.02, 5.78 | 0.19 |
 | 1e-2 | 0.5 A, 6.8 keV, 96³ | 18.21 | 0.18 |
 | 1e-2 | 1 A, 6.6 keV | 12.58, 10.33 | 0.13 |
 | 1e-2 | 1 A, 6.8 keV | 14.98, 10.75 | 0.15 |
-| 1e-2 | 1 A, 7.0 keV | 16.06, 8.34, 6.45 | 0.16 |
+| 1e-2 | 1 A, 7.0 keV | 16.06, 8.34, 6.45, 6.04 | 0.16 |
 | 1e-2 | 1 A, 7.2 keV | 14.25, 5.94, 4.34 | 0.14 |
 | 1e-2 | 1 A, 7.4 keV | 11.08, 4.35, 3.13 | 0.11 |
 | 3e-2 | none | 4.07, 4.18, 4.16 | 0.12 |
-| 3e-2 | 1 A, 6.6 keV, 96³ | 11.55 | 0.35 |
+| 3e-2 | 1 A, 6.6 keV, 96³ | 11.55, 8.40 | 0.35 |
 | 3e-2 | 1 A, 6.6 keV, 128³ | 11.12 | 0.33 |
-| 3e-2 | 1 A, 6.7 keV | 12.88, 7.26, 5.69 | 0.39 |
+| 3e-2 | 1 A, 6.7 keV | 12.88, 7.26, 5.69, 5.31, 4.63, 3.61 | 0.39 |
 | 3e-2 | 1.5 A, 6.9 keV | 11.32, 6.78 | 0.34 |
 | 3e-2 | 2 A, 7.8 keV | 7.86, 3.81 | 0.24 |
 | 3e-2 | 1 A, 6.6 keV, 2% spread | 9.65, 7.54 | 0.29 |
@@ -416,12 +419,12 @@ most rows have one to three collapses.
 | 1e-1 | 3 A, 4.8 keV | 2.08, 1.66 | 0.21 |
 | 1e-1 | 3 A, 5.2 keV | 2.43, 1.75 | 0.24 |
 | 1e-1 | 3 A, 5.6 keV | 3.04, 2.14 | 0.30 |
-| 1e-1 | 3 A, 6.0 keV | 4.16, 3.64 | 0.42 |
-| 1e-1 | 3 A, 6.4 keV | 6.17, 4.83 | 0.62 |
-| 1e-1 | 3 A, 6.8 keV | 7.53 | 0.75 |
-| 1e-1 | 3 A, 7.2 keV | 5.40 | 0.54 |
-| 1e-1 | 3 A, 7.6 keV | 2.33, 2.90 | 0.23 |
-| 1e-1 | 3 A, 8.2 keV | 2.17, 1.86 | 0.22 |
+| 1e-1 | 3 A, 6.0 keV | 4.16, 3.64, 2.29 | 0.42 |
+| 1e-1 | 3 A, 6.4 keV | 6.17, 4.83, 4.06 | 0.62 |
+| 1e-1 | 3 A, 6.8 keV | 7.53, 5.20 | 0.75 |
+| 1e-1 | 3 A, 7.2 keV | 5.40, 3.14 | 0.54 |
+| 1e-1 | 3 A, 7.6 keV | 2.33, 2.90, 3.18 | 0.23 |
+| 1e-1 | 3 A, 8.2 keV | 2.17, 1.86, 1.63 | 0.22 |
 | 1e-1 | 6 A, 5.6 keV | 2.03, 1.60 | 0.20 |
 | 1e-1 | 6 A, 7.2 keV | 4.00, 3.40 | 0.40 |
 | 3e-1 | none | no collapse | – |
@@ -431,10 +434,10 @@ most rows have one to three collapses.
 | 3e-1 | 6 A, 7.2 keV | no collapse | – |
 | 3e-1 | 10 A, 4.0 keV | 1.30 | 0.39 |
 | 3e-1 | 10 A, 5.0 keV | 1.57 | 0.47 |
-| 3e-1 | 10 A, 6.0 keV | 2.44 | 0.73 |
+| 3e-1 | 10 A, 6.0 keV | 2.44, 1.58 | 0.73 |
 | 3e-1 | 20 A, 5.0 keV | no collapse | – |
 | 3e-1 | 20 A, 6.0 keV | 1.40 | 0.42 |
-| 3e-1 | 20 A, 7.0 keV | 1.66 | 0.50 |
+| 3e-1 | 20 A, 7.0 keV | 1.66, 1.35 | 0.50 |
 
 "Spread" here is the beam's sideways momentum spread over its inward momentum; the other beam rows
 use 0.5%.
@@ -454,9 +457,21 @@ use 0.5%.
   electrons as the 68 A of 10 keV electrons, and the centre sits at the beam energy (−6.45 kV at
   6.4 keV). So here the beam acts as a steady store of slow electrons at the centre, not as a
   supply that responds to the ions as at fill 3e-2.
-- Fill 3e-1: without the beam the cloud does not collapse and the centre is only −1.4 to
-  −2.1 kV. 6 A at 5.0 keV gives 3.0 and 10 A at 6.0 keV gives 2.4. More current needs more
+- Fill 3e-1: without the beam the centre starts at +1.9 kV and the cloud expands from 5.05 to
+  6.4 mm rms before it turns; the ions have cancelled the well. 6 A at 5.0 keV gives 3.0 and 10 A at 6.0 keV gives 2.4. More current needs more
   energy, as at the lower fills, and 20 A does worse than 6 or 10 A at every energy tried.
+- The beam clamps the centre of the expanded cloud at its own energy at every fill: −4.9 kV with
+  5.0 keV, −6.0 kV with 6.0 keV, −6.9 kV with 6.8 keV. Its electron count grows to whatever does
+  that: 2.4e10 at fill 1e-1 (1.8 per ion) and 5.1e10 at fill 3e-1 (1.25 per ion, 61% of the
+  10 keV electrons). At fill 3e-1 the beam is therefore rebuilding the well, not trimming it.
+  Campaign b26 tests whether more 10 keV current with no slow beam does the same.
+- The count then freezes during the collapse (5.09e10 from 15 ns at fill 3e-1; 2.39e10 from
+  17 ns at fill 1e-1). A trough outside the ion cloud, at 4.7 mm and 3.0 mm, has dropped below
+  the beam energy and turns the beam back. The centre rises to −2.4 kV and −3.3 kV at the
+  collapse. This is the same self-blocking seen at fill 3e-2.
+- Later collapses fade with the beam on in every run that has them. The longest, fill 3e-2 with
+  1 A at 6.7 keV, gives 12.9, 7.3, 5.7, 5.3, 4.6, 3.6. The exception so far is 2 A at 7.0 keV
+  (9.3, 8.0, 7.8, 7.7).
 - The largest fill × compression is 0.90 (fill 3e-1, 6 A, 5.0 keV) and the next is 0.75 (fill
   1e-1, 3 A, 6.8 keV), against 0.10–0.17 with no beam. Both are first collapses on the 64³ mesh
   with no finer-mesh check, from scans in steps of 0.4–1 keV.

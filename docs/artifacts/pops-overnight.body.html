@@ -121,7 +121,8 @@ function Report() {
           First-collapse compression in the best well. The wall beam is a third electron population injected like the
           others. "Released at the centre" puts slow electrons there directly, which no gun can do; it shows what
           cancelling the ion charge is worth. The last table column lists fill × compression in the same order as the
-          three columns before it.
+          three columns before it. Ion counts are quoted against the 1.39×10¹¹ electrons of an ideal uniform 10 kV
+          cloud. The shaped well holds about 8.3×10¹⁰, so "30 per 100" is 49 ions per 100 of the well's own electrons.
         </P>
         <ChartContainer config={fillSeries} style={{ height: 280, width: "100%" }}>
           <BarChart data={fills}>
@@ -224,8 +225,9 @@ function Report() {
         <P>
           The wall-beam settings come from coarse scans at four ion fills, so better ones probably exist. The 1 and 3
           ions per 100 cases have finer-mesh checks (table above); the 10 and 30 per 100 cases are 64³ only, and the
-          highest numbers there are first collapses. No wall-beam run goes past four collapses yet. Runs covering both
-          are in progress. Nothing here
+          highest numbers there are first collapses. At those two fills the ions cancel much of the well, and the beam
+          works by adding enough slow electrons to hold the centre at its own energy. Runs in progress test whether
+          more 10 keV current does the same. One wall-beam run reaches six collapses and fades from 12.9× to 3.6×. Nothing here
           shows sustained compression, net power, or anything about cusp plugging.
         </P>
       </Section>
