@@ -47,6 +47,37 @@ def histogram(run: Path, name: str):
     return data[:, 0].astype(int), data[:, 2:]
 
 
+C_LIGHT = 299792458.0
+SHELL = 0.8e-3  # thickness of the flux-measuring shell just inside the wall, as set in the deck
+
+
+def shell_currents(run: Path, time: np.ndarray, electrons: np.ndarray) -> dict:
+    """Late-time currents (A) through the shell inside the wall, and what the count balance leaves for the rings.
+
+    Runs made before the deck had the shell histograms return nothing.
+    """
+    if not (run / "diags/reducedfiles/fcol.txt").exists():
+        return {}
+    out = {}
+    for name, label in (("fcol", "emitter"), ("fwall", "wall")):
+        data = np.loadtxt(run / f"diags/reducedfiles/{name}.txt", skiprows=1, ndmin=2)
+        when, weight = data[:, 1], data[:, 2:]
+        velocity = (-0.25 + 0.5 * (np.arange(weight.shape[1]) + 0.5) / weight.shape[1]) * C_LIGHT
+        late = when >= 0.8 * when[-1]
+        current = weight[late].mean(axis=0) * velocity / SHELL * Q_E
+        out[f"{label}_in_A"] = round(float(-current[velocity < 0].sum()), 4)
+        out[f"{label}_out_A"] = round(float(current[velocity > 0].sum()), 4)
+    last = time >= 0.8 * time[-1]
+    filling = np.polyfit(time[last], electrons[last], 1)[0] * Q_E
+    net_in = out["emitter_in_A"] - out["emitter_out_A"] + out["wall_in_A"] - out["wall_out_A"]
+    out["net_in_A"] = round(net_in, 4)
+    out["filling_A"] = round(float(filling), 4)
+    # Electrons that crossed the shell inward and are neither still in the device nor back out through
+    # the shell can only have landed on the rings.
+    out["ring_A"] = round(net_in - float(filling), 4)
+    return out
+
+
 def reduce(run: Path) -> dict:
     c = constants(run)
     number = np.loadtxt(run / "diags/reducedfiles/number.txt", skiprows=1, ndmin=2)
@@ -103,6 +134,7 @@ def reduce(run: Path) -> dict:
         "core_mean_eV": round(float((core * energy_bins).sum() / max(core.sum(), 1e-300)), 1),
         "outside_on_axis": round(float(out[cosine > 0.95].sum() / max(out.sum(), 1e-300)), 3),
         "outside_share": round(float(out.sum() / max(tail.sum(), 1e-300)), 4),
+        **shell_currents(run, time, electrons),
     }
 
 
