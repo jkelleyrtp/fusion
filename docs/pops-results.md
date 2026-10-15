@@ -365,15 +365,20 @@ The b19 rows (0.5 A; 1 A at 6.8 keV and above; 2 A at 7.0 and 7.4 keV) have one 
 
 - At 1 A the first collapse rises from 7.7 at 6.1 keV to 12.7 at 6.6 keV, holds at 6.8 keV, and
   falls to 5.8 at 7.0 keV. The useful window is about 0.5 keV wide and its upper edge is sharp.
-- The beam deepens the well it is injected into (−6.9 kV with 1 A at 6.6 keV, −7.1 kV at 7.0 keV).
-  The best energies sit just below the depth of the well with the beam in it. This reading comes
-  from the centre potentials in the table runs; the b19 probe data has not been examined yet.
+- The beam is turned back just short of the centre and its slow electrons pile up there. That
+  pulls the centre to 130–200 V below the beam energy at every energy from 6.6 to 7.4 keV
+  (−6.81 kV at 6.6 keV, −7.13 kV at 7.0 keV; −6.6 kV with no beam).
 - In the 6.6 keV run the beam's electron count in the sphere rises from 1.23 to 1.97 per ion as
-  the ions fall in. At about 16 ns a potential minimum of −6.68 kV forms 2.2 mm from the centre,
-  deeper than the beam energy, and the beam is shut out. Inside that radius the ion bump still
-  grows.
-- More current needs more energy: 2 A gives 5.9 at 6.4 keV and 10.5 at 7.4 keV, and its best
-  energy has not been found.
+  the ions fall in. From about 15 ns the lowest potential is no longer at the centre but 2.2 mm
+  out, at −6.68 kV, below the beam energy. The beam turns back there, and inside that radius the
+  ion bump still grows: the centre rises to −3.5 kV at the collapse.
+- At 7.0 keV and 1 A the pile-up does not survive the ions' arrival. Between 12 and 14 ns the
+  beam's count drops from 1.38 to 1.19 per ion and then to 0.95, the lowest potential in the
+  sphere rises to −5.5 kV, and the beam passes straight through. The collapse then reaches 5.8,
+  close to the run with no beam. 7.3 keV does the same from 10 ns.
+- 2 A holds the pile-up at 7.0 and 7.4 keV (3.0 electrons per ion at the collapse) and gives 9.3
+  and 10.5. At 6.4 keV the same 2 A gives 5.9.
+- The best energy for 2 A has not been found.
 - The gain lasts beyond the first collapse, unlike the released electrons: 7.7 and 6.5 on the
   second and third collapses against 4.2 without the beam.
 - Not yet checked: finer meshes, other ion fills, more than three collapses. At 12.7× the cloud's
