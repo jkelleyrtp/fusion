@@ -36,8 +36,10 @@ def reduce(run: Path, after: float, s0_over_a: float, mass_amu: float) -> dict:
     weight = turning**2 * np.exp(-(turning**2) / (2 * s0_over_a**2))  # ions starting at rest in a Gaussian cloud
     mean = np.sum(weight * period) / np.sum(weight)
     spread = np.sqrt(np.sum(weight * (period - mean) ** 2) / np.sum(weight)) / mean
+    predicted = test_ion_compression(fit.deriv(), phi[0], a, s0_over_a, mass_amu, 3.6 * mean)
     return {
         "run": run.name,
+        "predicted_compression": predicted,
         "well_centre_V": round(float(phi[0])),
         "well_half_radius_over_centre": round(float(np.interp(0.5 * a, x, phi) / phi[0]), 3),
         "bounce_period_ns": round(float(mean) * 1e9, 2),
@@ -45,6 +47,30 @@ def reduce(run: Path, after: float, s0_over_a: float, mass_amu: float) -> dict:
         "collapses_in_step": round(float(0.25 / spread), 1),  # bounces until the cloud is a quarter period out of step
         "period_inner_over_outer": round(float(np.interp(0.15, turning, period) / np.interp(0.6, turning, period)), 3),
     }
+
+
+def test_ion_compression(slope, centre: float, a: float, s0_over_a: float, mass_amu: float, duration: float) -> list[float]:
+    """Compression at each collapse of chargeless test ions released at 1 eV from a Gaussian cloud in the fitted well."""
+    rng = np.random.default_rng(0)
+    position = rng.normal(0, s0_over_a * a, (6000, 3))
+    position = position[np.linalg.norm(position, axis=1) < 0.95 * a]
+    velocity = rng.normal(0, np.sqrt(E / (mass_amu * AMU)), position.shape)
+    dt = duration / 12000
+
+    def acceleration(at: np.ndarray) -> np.ndarray:
+        u = np.minimum(np.sum(at**2, axis=1) / a**2, 1.0)
+        return (-E * centre * slope(u) * 2 / a**2 / (mass_amu * AMU))[:, None] * at
+
+    radius = []
+    velocity += 0.5 * dt * acceleration(position)
+    for _ in range(12000):
+        position += dt * velocity
+        velocity += dt * acceleration(position)
+        radius.append(np.sqrt(np.mean(np.sum(position**2, axis=1))))
+    radius = np.array(radius)
+    minima = [i for i in range(1, len(radius) - 1) if radius[i] < radius[i - 1] and radius[i] <= radius[i + 1]
+              and radius[i] < 0.7 * radius[0]]
+    return [round(float(s0_over_a * a * np.sqrt(3) / radius[i]), 1) for i in minima]
 
 
 if __name__ == "__main__":
