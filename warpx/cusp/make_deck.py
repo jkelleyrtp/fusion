@@ -44,7 +44,20 @@ def emitter(axis: str, sign: int) -> str:
             f"*(({others[0]}-({sign})*gun_off)**2+{others[1]}**2<gun_r**2)")
 
 
+def ring_shell(axis: str, sign: int) -> tuple[str, str]:
+    """(1 in a 0.6 mm shell around one ring's surface, velocity/c away from the ring's centreline)."""
+    others = [c for c in AXES if c != axis]
+    u = f"({axis}-({sign})*dc)"
+    rho = f"sqrt({others[0]}*{others[0]}+{others[1]}*{others[1]}+1e-12*a*a)"
+    d2 = f"(({rho}-rc)**2+{u}**2)"
+    inside = f"({d2}>(rm+0.2e-3)**2)*({d2}<(rm+0.8e-3)**2)"
+    away = f"(u{axis}*{u}+(u{others[0]}*{others[0]}+u{others[1]}*{others[1]})/{rho}*({rho}-rc))/sqrt({d2})"
+    return inside, away
+
+
 FACES = [(axis, sign) for axis in AXES for sign in (1, -1)]
+RING_SHELL = "(" + "+".join(ring_shell(*face)[0] for face in FACES) + ")"
+RING_AWAY = "(" + "+".join(f"{inside}*{away}" for inside, away in map(lambda face: ring_shell(*face), FACES)) + ")"
 PATCH = "(" + "+".join(emitter(*face) for face in FACES) + ")"
 CONDUCTOR = "x*x+y*y+z*z-rw*rw"
 for face in FACES:
@@ -143,7 +156,7 @@ ions.uz_th = uti
 """
 
 DIAGNOSTICS = """
-warpx.reduced_diags_names = ebeam ibeam number wall axis edge corner irad erad eke eall eout fcol fwall
+warpx.reduced_diags_names = ebeam ibeam number wall axis edge corner irad erad eke eall eout fcol fwall fring
 ebeam.type = BeamRelevant
 ebeam.species = electrons
 ebeam.intervals = 100
@@ -201,6 +214,16 @@ fwall.filter_function(t,x,y,z,ux,uy,uz) = "(x*x+y*y+z*z>(rw-1.0e-3)**2)*(x*x+y*y
 fwall.bin_number = 100
 fwall.bin_min = -0.25
 fwall.bin_max = 0.25
+# velocity (in units of c) away from the ring surface of electrons in a 0.6 mm shell around the six rings; the
+# inward minus the outward flux is the current the rings collect
+fring.type = ParticleHistogram
+fring.species = electrons
+fring.intervals = flux_every
+fring.histogram_function(t,x,y,z,ux,uy,uz) = "__RING_AWAY__/sqrt(1+ux*ux+uy*uy+uz*uz)"
+fring.filter_function(t,x,y,z,ux,uy,uz) = "__RING_SHELL__"
+fring.bin_number = 200
+fring.bin_min = -0.25
+fring.bin_max = 0.25
 # fields along three lines from the centre to the wall: a coil axis, a cube edge direction, a cube corner direction
 axis.x1_probe = rw
 axis.y1_probe = 0.
@@ -231,7 +254,7 @@ def deck() -> str:
         text += (f"{name}.type = FieldProbe\n{name}.probe_geometry = Line\n"
                  f"{name}.x_probe = 0.\n{name}.y_probe = 0.\n{name}.z_probe = 0.\n"
                  f"{name}.resolution = 193\n{name}.intervals = 1:1:1,probe_every\n")
-    return text.replace("__CONDUCTOR__", CONDUCTOR).replace("__OUTER__", OUTER).replace("__PATCH__", PATCH)
+    return text.replace("__CONDUCTOR__", CONDUCTOR).replace("__OUTER__", OUTER).replace("__PATCH__", PATCH).replace("__RING_AWAY__", RING_AWAY).replace("__RING_SHELL__", RING_SHELL)
 
 
 ORBIT = """

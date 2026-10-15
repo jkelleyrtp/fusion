@@ -90,7 +90,7 @@ ions.ux_th = uti
 ions.uy_th = uti
 ions.uz_th = uti
 
-warpx.reduced_diags_names = ebeam ibeam number wall axis edge corner irad erad eke eall eout fcol fwall
+warpx.reduced_diags_names = ebeam ibeam number wall axis edge corner irad erad eke eall eout fcol fwall fring
 ebeam.type = BeamRelevant
 ebeam.species = electrons
 ebeam.intervals = 100
@@ -148,6 +148,16 @@ fwall.filter_function(t,x,y,z,ux,uy,uz) = "(x*x+y*y+z*z>(rw-1.0e-3)**2)*(x*x+y*y
 fwall.bin_number = 100
 fwall.bin_min = -0.25
 fwall.bin_max = 0.25
+# velocity (in units of c) away from the ring surface of electrons in a 0.6 mm shell around the six rings; the
+# inward minus the outward flux is the current the rings collect
+fring.type = ParticleHistogram
+fring.species = electrons
+fring.intervals = flux_every
+fring.histogram_function(t,x,y,z,ux,uy,uz) = "((((sqrt(y*y+z*z+1e-12*a*a)-rc)**2+(x-(1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(y*y+z*z+1e-12*a*a)-rc)**2+(x-(1)*dc)**2)<(rm+0.8e-3)**2)*(ux*(x-(1)*dc)+(uy*y+uz*z)/sqrt(y*y+z*z+1e-12*a*a)*(sqrt(y*y+z*z+1e-12*a*a)-rc))/sqrt(((sqrt(y*y+z*z+1e-12*a*a)-rc)**2+(x-(1)*dc)**2))+(((sqrt(y*y+z*z+1e-12*a*a)-rc)**2+(x-(-1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(y*y+z*z+1e-12*a*a)-rc)**2+(x-(-1)*dc)**2)<(rm+0.8e-3)**2)*(ux*(x-(-1)*dc)+(uy*y+uz*z)/sqrt(y*y+z*z+1e-12*a*a)*(sqrt(y*y+z*z+1e-12*a*a)-rc))/sqrt(((sqrt(y*y+z*z+1e-12*a*a)-rc)**2+(x-(-1)*dc)**2))+(((sqrt(x*x+z*z+1e-12*a*a)-rc)**2+(y-(1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(x*x+z*z+1e-12*a*a)-rc)**2+(y-(1)*dc)**2)<(rm+0.8e-3)**2)*(uy*(y-(1)*dc)+(ux*x+uz*z)/sqrt(x*x+z*z+1e-12*a*a)*(sqrt(x*x+z*z+1e-12*a*a)-rc))/sqrt(((sqrt(x*x+z*z+1e-12*a*a)-rc)**2+(y-(1)*dc)**2))+(((sqrt(x*x+z*z+1e-12*a*a)-rc)**2+(y-(-1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(x*x+z*z+1e-12*a*a)-rc)**2+(y-(-1)*dc)**2)<(rm+0.8e-3)**2)*(uy*(y-(-1)*dc)+(ux*x+uz*z)/sqrt(x*x+z*z+1e-12*a*a)*(sqrt(x*x+z*z+1e-12*a*a)-rc))/sqrt(((sqrt(x*x+z*z+1e-12*a*a)-rc)**2+(y-(-1)*dc)**2))+(((sqrt(x*x+y*y+1e-12*a*a)-rc)**2+(z-(1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(x*x+y*y+1e-12*a*a)-rc)**2+(z-(1)*dc)**2)<(rm+0.8e-3)**2)*(uz*(z-(1)*dc)+(ux*x+uy*y)/sqrt(x*x+y*y+1e-12*a*a)*(sqrt(x*x+y*y+1e-12*a*a)-rc))/sqrt(((sqrt(x*x+y*y+1e-12*a*a)-rc)**2+(z-(1)*dc)**2))+(((sqrt(x*x+y*y+1e-12*a*a)-rc)**2+(z-(-1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(x*x+y*y+1e-12*a*a)-rc)**2+(z-(-1)*dc)**2)<(rm+0.8e-3)**2)*(uz*(z-(-1)*dc)+(ux*x+uy*y)/sqrt(x*x+y*y+1e-12*a*a)*(sqrt(x*x+y*y+1e-12*a*a)-rc))/sqrt(((sqrt(x*x+y*y+1e-12*a*a)-rc)**2+(z-(-1)*dc)**2)))/sqrt(1+ux*ux+uy*uy+uz*uz)"
+fring.filter_function(t,x,y,z,ux,uy,uz) = "((((sqrt(y*y+z*z+1e-12*a*a)-rc)**2+(x-(1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(y*y+z*z+1e-12*a*a)-rc)**2+(x-(1)*dc)**2)<(rm+0.8e-3)**2)+(((sqrt(y*y+z*z+1e-12*a*a)-rc)**2+(x-(-1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(y*y+z*z+1e-12*a*a)-rc)**2+(x-(-1)*dc)**2)<(rm+0.8e-3)**2)+(((sqrt(x*x+z*z+1e-12*a*a)-rc)**2+(y-(1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(x*x+z*z+1e-12*a*a)-rc)**2+(y-(1)*dc)**2)<(rm+0.8e-3)**2)+(((sqrt(x*x+z*z+1e-12*a*a)-rc)**2+(y-(-1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(x*x+z*z+1e-12*a*a)-rc)**2+(y-(-1)*dc)**2)<(rm+0.8e-3)**2)+(((sqrt(x*x+y*y+1e-12*a*a)-rc)**2+(z-(1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(x*x+y*y+1e-12*a*a)-rc)**2+(z-(1)*dc)**2)<(rm+0.8e-3)**2)+(((sqrt(x*x+y*y+1e-12*a*a)-rc)**2+(z-(-1)*dc)**2)>(rm+0.2e-3)**2)*(((sqrt(x*x+y*y+1e-12*a*a)-rc)**2+(z-(-1)*dc)**2)<(rm+0.8e-3)**2))"
+fring.bin_number = 200
+fring.bin_min = -0.25
+fring.bin_max = 0.25
 # fields along three lines from the centre to the wall: a coil axis, a cube edge direction, a cube corner direction
 axis.x1_probe = rw
 axis.y1_probe = 0.

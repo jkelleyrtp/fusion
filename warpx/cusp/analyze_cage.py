@@ -49,6 +49,7 @@ def histogram(run: Path, name: str):
 
 C_LIGHT = 299792458.0
 SHELL = 0.8e-3  # thickness of the flux-measuring shell just inside the wall, as set in the deck
+RING_SHELL = 0.6e-3  # thickness of the shell around the rings
 
 
 def shell_currents(run: Path, time: np.ndarray, electrons: np.ndarray) -> dict:
@@ -59,14 +60,19 @@ def shell_currents(run: Path, time: np.ndarray, electrons: np.ndarray) -> dict:
     if not (run / "diags/reducedfiles/fcol.txt").exists():
         return {}
     out = {}
-    for name, label in (("fcol", "emitter"), ("fwall", "wall")):
+    for name, label, thickness in (("fcol", "emitter", SHELL), ("fwall", "wall", SHELL), ("fring", "ring", RING_SHELL)):
+        if not (run / f"diags/reducedfiles/{name}.txt").exists():
+            continue
         data = np.loadtxt(run / f"diags/reducedfiles/{name}.txt", skiprows=1, ndmin=2)
         when, weight = data[:, 1], data[:, 2:]
         velocity = (-0.25 + 0.5 * (np.arange(weight.shape[1]) + 0.5) / weight.shape[1]) * C_LIGHT
         late = when >= 0.8 * when[-1]
-        current = weight[late].mean(axis=0) * velocity / SHELL * Q_E
+        current = weight[late].mean(axis=0) * velocity / thickness * Q_E
         out[f"{label}_in_A"] = round(float(-current[velocity < 0].sum()), 4)
         out[f"{label}_out_A"] = round(float(current[velocity > 0].sum()), 4)
+    if "ring_in_A" in out:
+        # Around the rings negative velocity is toward the ring surface, so "in" minus "out" is what they collect.
+        out["ring_direct_A"] = round(out.pop("ring_in_A") - out.pop("ring_out_A"), 4)
     last = time >= 0.8 * time[-1]
     filling = np.polyfit(time[last], electrons[last], 1)[0] * Q_E
     net_in = out["emitter_in_A"] - out["emitter_out_A"] + out["wall_in_A"] - out["wall_out_A"]
