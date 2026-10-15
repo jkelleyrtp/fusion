@@ -47,8 +47,10 @@ def histogram(run: Path, name: str):
 
 def reduce(run: Path) -> dict:
     c = constants(run)
-    number = np.loadtxt(run / "diags/reducedfiles/number.txt", skiprows=1)
+    number = np.loadtxt(run / "diags/reducedfiles/number.txt", skiprows=1, ndmin=2)
     time, electrons = number[:, 1], number[:, 6]
+    if time[-1] < 5.0e-10:
+        raise ValueError(f"{run.name} has only run {time[-1]:.2e} s; the emission rate needs 0.3 ns")
     # The wall source delivers a few percent less than the nominal current because the emitter patches
     # are cut cells. Nothing can be lost in the first 0.3 ns, so the early inventory gives the true rate.
     early = np.searchsorted(time, 3.0e-10)
