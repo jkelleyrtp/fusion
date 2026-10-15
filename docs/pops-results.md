@@ -268,3 +268,26 @@ largest over the smallest rms radius within each drive period (`analyze_rf_drive
 - At fill 1e-2 the starting cloud is not in balance (its own charge pushes it out), which is the
   early transient; after it the growth rate is the same as at low fill.
 
+### Stronger drive (campaign b14, 64³, 400 ns)
+
+Same well and starting cloud, h = 0.4 unless noted. Columns are drive periods 2, 4, 6, 8 and 10.
+
+| fill | swing | smallest radius / initial | ions kept |
+|---|---|---|---|
+| 1e-4 | 1.50, 2.51, 3.97, 5.43, 6.51 | 0.86, 0.66, 0.52, 0.44, 0.39 | 1.00, 1.00, 0.96, 0.85, 0.68 |
+| 1e-3 | 1.47, 2.50, 3.92, 5.22, 6.01 | 0.88, 0.68, 0.53, 0.45, 0.41 | 1.00, 1.00, 0.96, 0.84, 0.67 |
+| 1e-3, h = 0.7 | 1.98, 4.05, 4.91, 4.69, 4.13 | 0.80, 0.54, 0.50, 0.51, 0.54 | 1.00, 0.93, 0.67, 0.45, 0.32 |
+| 1e-2 | 1.34, 2.54, 4.02, 4.94, 5.12 | 1.06, 0.74, 0.57, 0.49, 0.46 | 1.00, 1.00, 0.94, 0.77, 0.63 |
+| 3e-2 | 1.40, 3.10, 5.41, 8.55, 10.04 | 1.25, 0.80, 0.53, 0.36, 0.30 | 1.00, 1.00, 0.85, 0.60, 0.37 |
+| 3e-2, drive 8% slower (periods 2 to 9) | 1.28, 3.15, 7.17, 14.68, 19.83 (period 9) | 1.29, 0.83, 0.46, 0.23, 0.17 (period 9) | 1.00, 0.99, 0.70, 0.30, 0.19 (period 9) |
+| 1e-1 | 1.88, 4.37, 9.89, 14.83, 11.32 | 1.42, 0.82, 0.37, 0.24, 0.26 | 1.00, 0.72, 0.32, 0.14, 0.07 |
+
+- The swing grows about 30% per period at h = 0.4 until ions reach the wall, from the fifth period
+  on. After that the cloud loses a third or more of its ions in five periods. The 96³ run agrees
+  over its four periods (1.13, 1.44, 1.86, 2.39 against 1.14, 1.47, 1.92, 2.50).
+- The smallest radius never falls below 0.39 of the starting radius while most ions are kept. The
+  smaller values at fill 3e-2 and 1e-1 come after most of the ions are gone, so they describe a
+  cloud with a lower fill, not a better collapse.
+- The drive pumps the oscillation until ions are lost. None of these runs reaches a steady
+  oscillation.
+
