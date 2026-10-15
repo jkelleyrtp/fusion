@@ -54,9 +54,9 @@ electrons giving energy to ions and to the time-varying field.
 The onset is where paper physics puts it. The space-charge limiting current of a beam of radius a
 in a grounded enclosure of radius b is I = 17 kA (γ^(2/3) − 1)^(3/2) / (1 + 2 ln(b/a)), which is
 4.5–7.9 A at 10 keV and 13–22 A at 20 keV for b/a between 10 and 3 (`paper.py`). Above that a
-real beam forms a virtual cathode and the excess current returns to the gun. Of the 55 complete
-cases that record the emitter potential, 34 exceed the b/a = 3 limit; 25 of those 34 have a
-potential minimum deeper than the gun voltage, which a grounded gun cannot produce. The structure
+real beam forms a virtual cathode and the excess current returns to the gun. Of the 51 distinct
+complete cases that record the emitter potential, 30 exceed the b/a = 3 limit; 21 of those 30 have
+a potential minimum deeper than the gun voltage, which a grounded gun cannot produce. The structure
 that does it is one to two cells wide (right panel), so it is also unresolved.
 
 ### Consequences for earlier claims

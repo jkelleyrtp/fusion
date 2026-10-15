@@ -20,6 +20,7 @@ for done in sorted(Path('.').rglob('DONE')):
         dwell_ns=dwell*1e9,src=float(np.mean(src)),phi0=last.get('potential_origin_V',e.get('potential_origin_V',float('nan'))),
         phimin=e.get('minimum_potential_V',float('nan')),
         e_out_over_in=(e['lost_kinetic_J']/abs(e['lost_charge_C']))/(e['injected_kinetic_J']/abs(e['injected_charge_C'])) if e.get('lost_charge_C') else float('nan')))
+rows=list({(r['campaign'],r['case']):r for r in rows}.values())  # a case can sit in both results/ and partial/
 json.dump(rows,open('/home/ubuntu/cusp/fresh/inventory.json','w'),indent=1)
 print(len(rows),"complete cases with electron histories")
 for r in rows:
