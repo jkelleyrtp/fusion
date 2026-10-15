@@ -84,6 +84,7 @@ my_constants.ppc_i = 8
 my_constants.probe_every = 1000
 my_constants.hist_every = 500
 my_constants.plot_every = 0
+my_constants.flux_every = 50
 my_constants.un = sqrt((1 + eb0*q_e/(m_e*clight**2))**2 - 1)
 my_constants.mi = mass_amu*m_u
 my_constants.n0 = nions/((2*pi)**1.5*s0**3)
@@ -141,7 +142,7 @@ ions.uz_th = uti
 """
 
 DIAGNOSTICS = """
-warpx.reduced_diags_names = ebeam ibeam number wall axis edge corner irad erad eke eall eout
+warpx.reduced_diags_names = ebeam ibeam number wall axis edge corner irad erad eke eall eout fcol fwall
 ebeam.type = BeamRelevant
 ebeam.species = electrons
 ebeam.intervals = 100
@@ -181,6 +182,24 @@ eout.filter_function(t,x,y,z,ux,uy,uz) = "x*x+y*y+z*z>(1.9*a)**2"
 eout.bin_number = 45
 eout.bin_min = 0.55
 eout.bin_max = 1.
+# radial velocity (in units of c, outward positive) of electrons in a 0.8 mm shell just inside the wall, split into the
+# columns in front of the emitters and the rest; weight*velocity/thickness summed over bins is the flux through the shell
+fcol.type = ParticleHistogram
+fcol.species = electrons
+fcol.intervals = flux_every
+fcol.histogram_function(t,x,y,z,ux,uy,uz) = "(ux*x+uy*y+uz*z)/sqrt((x*x+y*y+z*z)*(1+ux*ux+uy*uy+uz*uz))"
+fcol.filter_function(t,x,y,z,ux,uy,uz) = "(x*x+y*y+z*z>(rw-1.0e-3)**2)*(x*x+y*y+z*z<(rw-0.2e-3)**2)*(x*x+y*y+z*z-max(abs(x),max(abs(y),abs(z)))**2<(1.5*gun_r)**2)"
+fcol.bin_number = 100
+fcol.bin_min = -0.25
+fcol.bin_max = 0.25
+fwall.type = ParticleHistogram
+fwall.species = electrons
+fwall.intervals = flux_every
+fwall.histogram_function(t,x,y,z,ux,uy,uz) = "(ux*x+uy*y+uz*z)/sqrt((x*x+y*y+z*z)*(1+ux*ux+uy*uy+uz*uz))"
+fwall.filter_function(t,x,y,z,ux,uy,uz) = "(x*x+y*y+z*z>(rw-1.0e-3)**2)*(x*x+y*y+z*z<(rw-0.2e-3)**2)*(x*x+y*y+z*z-max(abs(x),max(abs(y),abs(z)))**2>=(1.5*gun_r)**2)"
+fwall.bin_number = 100
+fwall.bin_min = -0.25
+fwall.bin_max = 0.25
 # fields along three lines from the centre to the wall: a coil axis, a cube edge direction, a cube corner direction
 axis.x1_probe = rw
 axis.y1_probe = 0.
