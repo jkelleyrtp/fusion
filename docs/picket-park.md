@@ -1,7 +1,8 @@
 # Reproducing the picket-fence cusp of Park et al. 2019
 
-Status 2026-10-16: 2 of 16 cases complete. Both published numbers are matched at the baseline; the
-controls (seed, mesh, time step, ion mass, temperature) and the higher fills are still running.
+Status 2026-10-16: 7 of 16 cases complete. Both published numbers are matched at the baseline at 100 keV;
+at the paper's own temperature the holding time is 29% above it. The seed, mesh, time-step and ion-mass repeats
+and the higher fills have not run yet.
 Uses two unreviewed WarpX patches: paired injection and the coil field on the mesh
 ([warpx-patches.md](warpx-patches.md), [flux-injection-charge.md](flux-injection-charge.md)).
 
@@ -35,10 +36,26 @@ Uses two unreviewed WarpX patches: paired injection and the coil field on the me
   the paper. Ions are 64 electron masses.
 - 50 electron crossings in all; measurements are means over the last fifth.
 
+## Temperature repeats
+
+Same case, same mesh, colder electrons with the field lowered to keep the orbit.
+
+| Fed electron temperature | Holding time (electron crossings) | Current layer (orbits, their convention) | Mean electron energy ÷ (1.5 × fed temperature) |
+|---|---|---|---|
+| 100 keV (`pf_x1.0`) | 141 | 2.21 | 0.50 |
+| 25 keV (`pf_25keV_x1.0`) | 188 | 2.43 | 0.48 |
+| 6.25 keV (`pf_6keV_x1.0`) | 158 | 2.55 | 0.44 |
+| 2.76 keV (`pf_2.76keV_x1.0`) | 174 | 2.58 | 0.39 |
+
+- At the paper's own temperature the holding time is 172 crossings against its 135, and the layer 2.6 orbits
+  against 2.1. The 100 keV case is the closer one.
+- The mesh does not resolve the screening length below 100 keV, and an explicit code heats or cools plasma on
+  such a mesh, so the colder rows are not a cleaner comparison than the 100 keV one.
+
 ## Differences from the paper
 
 - **Electron temperature.** 100 keV here against about 2.8 keV (thermal speed 0.0735 of light) in the paper,
-  so that one mesh resolves the screening length. Cases at 25, 6.25 and 2.76 keV are queued.
+  so that one mesh resolves the screening length. See the temperature repeats below.
 - **Code.** WarpX is explicit; the paper's code is implicit and conserves energy exactly.
 - **Layer average.** The current profile here is a mean over 3 snapshots and 4 rows of cells; the paper uses 20.
 - **Fill.** The coil current and the fill of `pf_x1.0` are the paper's, converted to our units. Neither was
@@ -48,4 +65,4 @@ Uses two unreviewed WarpX patches: paired injection and the coil field on the me
 
 - Whether 141 crossings holds with another seed, a finer mesh and half the time step.
 - Whether the wall fails in the gap at 1.4× the baseline pressure, as the paper reports.
-- How the result changes with ion mass (16, 256) and temperature.
+- How the result changes with ion mass (16, 256).

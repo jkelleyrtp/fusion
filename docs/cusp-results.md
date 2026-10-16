@@ -47,22 +47,27 @@ coil openings is a few percent of the magnetic pressure or less.
   kA-turns; their holding times fall (7.3 → 5.8 → 2.8 ns at 8 kA-turns). A half-time-step repeat (32 kA-turns,
   3e23 per second) gives 11.1 against 10.4 ns.
 
-## 3. Size scan at fixed pressure ratio (2D picket fence): in progress, no conclusion
+## 3. Size scan (2D picket fence): 51 to 761 electron orbits, pressure ratio not yet matched
 
 Deck `inputs_rz_picket_fed`, the geometry checked against Park et al. 2019 in [picket-park.md](picket-park.md),
 at 0.25 to 4 times that paper's size measured in electron orbits. 100 keV electrons, ions of 64 electron masses
 unless the name says otherwise, 50 electron crossings. In the names, `s…` is the size against the paper's,
 `x…` the fill against that size's nominal fill, `k18` a sustaining feed of 1/18 of the filling feed (as in the
-paper), `nr…` a finer mesh and `m…` the ion mass.
+paper), `nr…` the mesh, `m…` the ion mass, `ppc4` four times the particles and `seed2` another seed.
 
 | Case | Coil radius in electron orbits at the edge | Pressure inside ÷ magnetic pressure outside | Holding time (electron crossings) | Change in number held over the last fifth | Current layer width (orbits at the fed temperature) | Gap stream half-height (mm) | Same, in electron orbits at the edge | Cells across the current layer |
 |---|---|---|---|---|---|---|---|---|
 | `ps_s0.25_k18` | 51 | 0.68 | 42 | −0.084 | 1.78 | 0.122 | 0.62 | 5.6 |
+| `ps_s0.25_k18_nr192` | 52 | 0.64 | 38 | −0.104 | 1.76 | 0.126 | 0.65 | 10.9 |
 | `ps_s0.25_k18_nr384` | 51 | 0.66 | 39 | −0.104 | 1.86 | 0.130 | 0.67 | 22.5 |
 | `ps_s0.25_x1.4_k18` | 58 | 0.71 | 44 | −0.080 | 1.91 | 0.137 | 0.79 | 5.3 |
 | `ps_s0.25_x2.0_k18` | 70 | 0.64 | 45 | −0.074 | 1.81 | 0.151 | 1.06 | 4.5 |
 | `ps_s0.5_k18` | 117 | 0.67 | 75 | −0.032 | 2.09 | 0.100 | 1.17 | 5.6 |
+| `ps_s0.5_k18_seed2` | 117 | 0.68 | 78 | −0.031 | 1.92 | 0.097 | 1.13 | 5.2 |
+| `ps_s0.5_k18_ppc4` | 121 | 0.64 | 64 | −0.051 | 2.21 | 0.106 | 1.29 | 5.5 |
 | `ps_s0.5_k18_nr384` | 116 | 0.61 | 64 | −0.050 | 1.98 | 0.106 | 1.23 | 11.4 |
+| `ps_s0.5_k9` | 125 | 0.68 | 72 | +0.016 | 1.99 | 0.115 | 1.43 | 5.1 |
+| `ps_s0.5_k18_long` (100 crossings) | 107 | 0.70 | 110 | +0.023 | 2.08 | 0.091 | 0.97 | 5.9 |
 | `ps_s0.5_x1.4_k18` | 133 | 0.66 | 79 | −0.026 | 1.99 | 0.124 | 1.65 | 5.3 |
 | `ps_s0.5_x2.0_k18` | 153 | 0.67 | 82 | −0.016 | 2.27 | 0.154 | 2.36 | 5.0 |
 | `ps_s0.5_k18_m16` | 79 | 0.68 | 54 | −0.052 | 1.92 | 0.070 | 0.55 | 6.6 |
@@ -72,20 +77,34 @@ paper), `nr…` a finer mesh and `m…` the ion mass.
 | `ps_s2_x0.5_k18` | 308 | 0.95 | 181 | +0.006 | 2.51 | 0.044 | 1.36 | 7.6 |
 | `ps_s2_x0.7_k18` | 340 | 1.08 | 178 | +0.005 | 2.50 | 0.055 | 1.88 | 7.1 |
 | `ps_s2_k18` | 364 | 1.07 | 183 | +0.007 | 2.82 | 0.060 | 2.19 | 6.9 |
+| `ps_s2_k36` | 379 | 1.03 | 195 | −0.016 | 3.48 | 0.058 | 2.20 | 8.8 |
+| `ps_s2_x0.7_k18_m16` | 257 | 1.20 | 125 | −0.013 | 2.14 | 0.025 | 0.65 | 7.1 |
+| `ps_s4_k18` | 761 | 1.21 | 266 | +0.019 | 2.47 | 0.040 | 3.02 | 5.2 |
+| `ps_s4_k72` | 717 | 1.15 | 267 | −0.020 | 5.45 | 0.039 | 2.83 | 13.1 |
 
 What can be said now:
-- The current layer stays 1.8 to 2.8 fed-temperature electron orbits wide over a factor of 7 in size.
-- The gap stream gets narrower in millimetres as the device grows and wider in electron orbits, and at each
-  size it widens with the fill. Because the pressure ratio is not the same across sizes (0.6 to 1.1), size and
-  pressure are not yet separated.
+- **The current layer does not grow with the device.** With the paper's sustaining feed (`k18`) it is 1.8, 2.1,
+  2.2, 2.8 and 2.5 fed-temperature electron orbits wide at 51, 117, 226, 364 and 761 orbits of radius.
+- **The gap stream does grow in electron orbits, but slower than the device:** 0.6, 1.2, 2.1, 2.2 and 3.0 orbits
+  at those sizes, about size^0.56, so as a fraction of the device it shrinks. It also widens with ion mass
+  (0.55, 1.17, 2.03 orbits at 16, 64, 256 electron masses at 0.5×), about mass^0.47, which is how an ion orbit
+  scales and not how an electron orbit does.
+- **Holding time in electron crossings rises with size, about size^0.7** (39, 75, 141, 183, 266). A fixed leak
+  width in orbits would give size^1.
+- Repeats at 0.5×: another seed gives 78 crossings against 75; four times the particles and twice the mesh both
+  give 64.
 
 What cannot:
-- The 0.25× and 0.5× cases are still losing plasma at the end (the number held falls 3 to 10% over the last
-  fifth), so their holding times are not steady values.
-- The 4× cases, the longer runs, the seed repeat and most of the ion-mass and particle-count controls have not
-  finished.
+- **The exponents are not at fixed pressure ratio.** It rises from 0.66 at 0.25× to 1.2 at 4×, and at each size
+  the gap stream widens with the fill.
+- **The layer width at the large sizes depends on the sustaining feed.** A quarter of the feed at 4× (`k72`)
+  gives 5.5 orbits against 2.5, and half the feed at 2× (`k36`) 3.5 against 2.8, with the holding time unchanged.
+- **Fifty crossings is short of a holding time at every size above 0.25×.** The 0.25× and 0.5× cases lose 3 to
+  10% of their plasma over the last fifth, and running 0.5× for 100 crossings gives 110 crossings against 75.
 - "Gap stream half-height" is the half width at half maximum of the density profile across the gap, not a
   measure of the area the plasma leaves through.
+- Cases still to finish: `ps_s2_x0.7_k18` at 16 and 256 electron masses is done only for 16; its long,
+  four-times-particles and 256-mass repeats are running.
 
 ## Not written up here
 
