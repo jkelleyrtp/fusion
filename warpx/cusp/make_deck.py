@@ -464,7 +464,8 @@ def beta_deck(fed: bool = False, jets: bool = False) -> str:
             for source, direction in (("up", "+1"), ("down", "-1")):
                 # A fed plasma is born at the centre moving outward; a jet starts outside moving inward.
                 where = f"({direction})*(-zg)" if jets else "0."
-                text += (f"{name}.{source}.uz_m = ({direction})*vj/clight\n" if jets else "")
+                # WarpX measures this drift along the flux direction, so it is positive for both guns.
+                text += (f"{name}.{source}.uz_m = vj/clight\n" if jets else "")
                 text += (f"{name}.{source}.injection_style = NFluxPerCell\n{name}.{source}.surface_flux_pos = {where}\n"
                          f"{name}.{source}.flux_normal_axis = z\n{name}.{source}.flux_direction = {direction}\n"
                          f"{name}.{source}.num_particles_per_cell = ppc_feed\n"

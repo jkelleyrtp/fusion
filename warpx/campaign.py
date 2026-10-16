@@ -92,9 +92,7 @@ run_case() {
   # A case whose first setting is np=K runs as K processes rather than one per GPU it was given, to compare speeds.
   local np=__GPUS__; [[ ${1:-} == np=* ]] && { np=${1#np=}; shift; }
   cd "$camp/$name"; local start=$(date +%s)
-  # While the case runs, keep its claim fresh and keep only the two newest checkpoints.
-  ( while sleep 60; do touch CLAIM; ls -d diags/chk[0-9]* 2>/dev/null | sort | head -n -2 | xargs -r rm -rf; done ) &
-  local beat=$! restart=""
+  local restart=""
   # Restart from the newest checkpoint that was written to the end, which the log shows by the next step finishing.
   for chk in $(ls -d diags/chk[0-9]* 2>/dev/null | sort -r); do
     grep -q "^STEP $(( 10#${chk##*chk} + 1 )) ends" run.log && { restart="amr.restart=$chk"; break; }
@@ -106,7 +104,15 @@ run_case() {
   fi
   echo "$job gpu $gpu ${restart:-fresh}" >> attempts.log
   local exe=$warpx; [[ $deck == inputs_rz_* ]] && exe=$warpx_rz
-  CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __LAUNCH__ "$exe" "$files/$deck" "$@" $restart >> run.log 2>&1; local code=$?
+  CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __LAUNCH__ "$exe" "$files/$deck" "$@" $restart >> run.log 2>&1 &
+  local run=$!
+  # While the case runs, keep its claim fresh, keep only the two newest checkpoints, and stop it if its log has
+  # not grown for __STALL__ seconds: a hung case would otherwise hold its GPU until the time limit.
+  ( while sleep $(( __STALL__ < 60 ? __STALL__ : 60 )); do
+      touch CLAIM; ls -d diags/chk[0-9]* 2>/dev/null | sort | head -n -2 | xargs -r rm -rf
+      [ $(( $(date +%s) - $(stat -c %Y run.log) )) -gt __STALL__ ] && { touch STALLED; kill $run; }; done ) &
+  local beat=$!
+  wait $run; local code=$?
   kill $beat 2>/dev/null
   echo $(( $(cat WALL_S 2>/dev/null || echo 0) + $(date +%s) - start )) > WALL_S
   if [ $code -eq 0 ]; then
@@ -114,6 +120,7 @@ run_case() {
     echo complete > DONE
     [ -n "$reducer" ] && { python3 "$files/$reducer" . > measured.tmp 2> reduce.log && mv measured.tmp measured.json; }
     rm -rf diags/chk[0-9]*
+  elif [ -f STALLED ]; then echo "failed: no output for __STALL__ seconds" > DONE
   elif [ $code -eq 124 ]; then echo "failed: time limit" > DONE
   else rm -f CLAIM  # stopped or crashed: leave it for another GPU, up to three tries
   fi
@@ -149,7 +156,7 @@ def free_nodes() -> int:
     return sum(int(line.split("│")[4]) for line in table.splitlines() if "compute.internal" in line)
 
 
-def job_spec(name: str, cases: str, timeout: int, gpus: int = 1) -> tuple[str, dict]:
+def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 1800) -> tuple[str, dict]:
     """The broker job for one node working on campaign `name`, carrying `cases` to add to its queue. Each case
     runs on `gpus` GPUs; more than one needs the WarpX build with MPI, which is kept beside the one without."""
     assert gpus in (1, 2, 4, 8), "a node's 8 GPUs must divide evenly between cases"
@@ -165,7 +172,7 @@ def job_spec(name: str, cases: str, timeout: int, gpus: int = 1) -> tuple[str, d
                             *(ROOT / "cusp").glob("*.dat"), *(ROOT / "cusp").glob("analyze_*.py"), *PATCHES]):
             archive.add(file, file.name)
     worker = (WORKER.replace("__BUILD_STEPS__", BUILD_STEPS).replace("__CAMP__", f"{SHARED}/campaigns/{name}")
-              .replace("__JOB__", token).replace("__BUILD__", build).replace("__TIMEOUT__", str(timeout))
+              .replace("__JOB__", token).replace("__BUILD__", build).replace("__TIMEOUT__", str(timeout)).replace("__STALL__", str(stall))
               .replace("__MPI__", "OFF" if gpus == 1 else "ON").replace("__LAUNCH__", launch).replace("__GPUS__", str(gpus))
               .replace("__PAYLOAD__", base64.b64encode(buffer.getvalue()).decode()))
     template = json.loads((ROOT.parent / "jobs/poisson-server-template.json").read_text())

@@ -30,8 +30,11 @@ class JetsTest(unittest.TestCase):
                           f"{species}.up.flux_direction = +1", deck)
             self.assertIn(f"{species}.down.surface_flux_pos = (-1)*(-zg)\n{species}.down.flux_normal_axis = z\n"
                           f"{species}.down.flux_direction = -1", deck)
-            self.assertIn(f"{species}.up.uz_m = (+1)*vj/clight", deck)
-            self.assertIn(f"{species}.down.uz_m = (-1)*vj/clight", deck)
+            # WarpX draws the speed along the flux direction and then applies the direction's sign, so a drift
+            # toward the centre is positive for both guns. A negative one is away from the centre and, once it
+            # passes the thermal speed, WarpX's sampler never returns.
+            self.assertIn(f"{species}.up.uz_m = vj/clight", deck)
+            self.assertIn(f"{species}.down.uz_m = vj/clight", deck)
         self.assertIn("my_constants.zg = 1.9*a", deck)
         self.assertIn("my_constants.dc = 1.3*a", deck)
 

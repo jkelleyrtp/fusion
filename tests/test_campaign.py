@@ -13,11 +13,12 @@ import campaign
 
 # Stands in for WarpX: runs to step 30 with a checkpoint every 10 steps, from the checkpoint named by amr.restart.
 # A case given `stop_at=N` is stopped at step N as if its node had been taken away, unless it is restarting.
+# A case given `hang=1` writes nothing and never ends.
 # It stops the worker's shells in one signal before itself (`timeout` gives it a process group of its own), so
 # that no shell outlives it long enough to claim the case again.
 STAND_IN = r"""#!/bin/bash
 start=0; stop=0; crash=0
-for arg in "$@"; do case $arg in amr.restart=*) start=$((10#${arg##*chk}));; stop_at=*) stop=${arg#*=};; crash=*) crash=1;; esac; done
+for arg in "$@"; do case $arg in amr.restart=*) start=$((10#${arg##*chk}));; stop_at=*) stop=${arg#*=};; crash=*) crash=1;; hang=*) exec sleep 600;; esac; done
 [ $crash -eq 1 ] && exit 134
 mkdir -p diags/reducedfiles
 [ $start -eq 0 ] && echo "#step" > diags/reducedfiles/number.txt
@@ -49,9 +50,9 @@ class WorkerTest(unittest.TestCase):
         self.env = {**os.environ, "WARPX": str(tools / "warpx"), "PATH": f"{tools}:{os.environ['PATH']}"}
         campaign.SHARED = str(self.shared)
 
-    def work(self, cases: str, gpus: int = 1) -> None:
+    def work(self, cases: str, gpus: int = 1, stall: int = 1800) -> None:
         """Run one node's worker to the end on campaign t, adding `cases` to its queue."""
-        _, template = campaign.job_spec("t", cases, 60, gpus)
+        _, template = campaign.job_spec("t", cases, 60, gpus, stall)
         subprocess.run(["bash", "-c", shlex.split(template["spec"]["entrypoint"])[2]], env=self.env, check=False,
                        start_new_session=True)  # so that a stand-in stopping its node stops only this worker
 
@@ -103,6 +104,12 @@ class WorkerTest(unittest.TestCase):
     def test_a_case_that_keeps_crashing_fails_after_three_tries(self) -> None:
         self.work("bad deck crash=1\ngood deck\n")
         self.assertEqual((self.camp / "bad/DONE").read_text().strip(), "failed after 3 tries")
+        self.assertEqual((self.camp / "good/DONE").read_text().strip(), "complete")
+
+    def test_a_case_that_writes_nothing_is_stopped_and_failed_without_another_try(self) -> None:
+        self.work("hung deck hang=1\ngood deck\n", stall=2)
+        self.assertEqual((self.camp / "hung/DONE").read_text().strip(), "failed: no output for 2 seconds")
+        self.assertEqual((self.camp / "hung/TRIES").read_text().strip(), "1")
         self.assertEqual((self.camp / "good/DONE").read_text().strip(), "complete")
 
 
