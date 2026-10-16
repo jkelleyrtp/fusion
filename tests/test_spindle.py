@@ -56,6 +56,16 @@ class SpindleTest(unittest.TestCase):
         position = np.linspace(0.05, 9.95, 100)
         self.assertAlmostEqual(analyze_spindle.half_width(position, np.exp(-position / 2)), 0.05 + 2 * math.log(2), delta=0.01)
 
+    def test_a_spike_a_cell_wide_on_the_axis_does_not_set_the_width_of_the_stream_through_a_coil(self) -> None:
+        radius = np.linspace(0.0125e-3, 9.9875e-3, 400)
+        density = np.where(radius < 4e-3, 1 - radius / 8e-3, 0.0)  # falls to half its peak at 4 mm, then stops
+        density[radius < 0.08e-3] *= 4
+        stream = analyze_spindle.stream_through_coil(radius, density * radius, 0.08e-3)
+        self.assertAlmostEqual(stream["stream_half_radius_in_coil_mm"], 3.9, delta=0.2)
+        self.assertAlmostEqual(stream["density_on_axis_over_nearby_in_coil"], 4.0, delta=0.2)
+        self.assertGreater(stream["stream_radius_holding_half_in_coil_mm"], 2.0)
+        self.assertLess(stream["stream_radius_holding_half_in_coil_mm"], 3.0)
+
 
 if __name__ == "__main__":
     unittest.main()

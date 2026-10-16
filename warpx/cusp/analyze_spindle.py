@@ -54,6 +54,30 @@ def half_width(position: np.ndarray, density: np.ndarray) -> float:
     return float(np.interp(0.5 * density[top], [density[k], density[k - 1]], [position[k], position[k - 1]]))
 
 
+def merge(position: np.ndarray, profile: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Average neighbouring bins in fours."""
+    whole = slice(None, len(position) // 4 * 4)
+    return position[whole].reshape(-1, 4).mean(axis=1), profile[whole].reshape(-1, 4).mean(axis=1)
+
+
+def stream_through_coil(radius: np.ndarray, count: np.ndarray, cell: float) -> dict:
+    """Width of the stream through a coil, from the number of particles counted in each ring of radius.
+
+    Within two cells of the axis the density is a spike (or, with the coils off, a dip) a cell wide sitting on a
+    stream millimetres across. The half-width is taken from outside it, and its height is reported separately.
+    """
+    density = count / radius
+    place, merged = merge(radius, density)
+    nearby = (radius > 2 * cell) & (radius < 6 * cell)
+    return {
+        "stream_half_radius_in_coil_mm": round(half_width(place[place > 2 * cell], merged[place > 2 * cell]) * 1e3, 4),
+        "stream_radius_holding_half_in_coil_mm": round(
+            float(np.interp(0.5, np.cumsum(count) / max(count.sum(), 1e-300), radius)) * 1e3, 4),
+        "density_on_axis_over_nearby_in_coil": round(
+            float(density[radius < cell].mean() / max(density[nearby].mean(), 1e-300)), 2),
+    }
+
+
 def leaving(run: Path, name: str, shell: float) -> tuple[np.ndarray, np.ndarray]:
     """(time, particles leaving per second) through one of the two counting shells."""
     data = table(run, name)
@@ -153,11 +177,11 @@ def reduce(run: Path) -> dict:
         for where, value in (("coil", "radius"), ("gap", "height")):
             data, position = table(run, f"{letter}_in_{where}"), bin_centres(run, f"{letter}_in_{where}")
             profile = data[(data[:, 1] >= 0.8 * fed_until) & (data[:, 1] <= fed_until), 2:].mean(axis=0)
-            # Counts per ring of radius become a density on dividing by the radius; the gap's bins are equal in volume.
-            profile = profile / position if where == "coil" else profile
-            merged = slice(None, len(position) // 4 * 4)
-            out[f"{species[:-1]}_stream_half_{value}_in_{where}_mm"] = round(half_width(
-                position[merged].reshape(-1, 4).mean(axis=1), profile[merged].reshape(-1, 4).mean(axis=1)) * 1e3, 4)
+            if where == "coil":
+                for key, number in stream_through_coil(position, profile, c["rw"] / c["nr"]).items():
+                    out[f"{species[:-1]}_{key}"] = number
+            else:
+                out[f"{species[:-1]}_stream_half_height_in_gap_mm"] = round(half_width(*merge(position, profile)) * 1e3, 4)
     if c["coil_at"]:
         out["core_pressure_over_magnetic_in_coil"] = float(f"{out['core_pressure_Pa'] / (field_in_coil**2 / (2 * MU0)):.3g}")
         out["core_pressure_over_magnetic_in_gap"] = float(f"{out['core_pressure_Pa'] / (field_in_gap**2 / (2 * MU0)):.3g}")
