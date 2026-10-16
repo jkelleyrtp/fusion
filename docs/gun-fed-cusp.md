@@ -88,6 +88,23 @@ the end of the run, which is 20 ns later unless a longer time is given.
 - A hundred times the firing rate costs 15% of the held time at 32 kA-turns and 28% at 128.
 - Still running: 512 kA-turns and ions of 918 electron masses.
 
+## Third set: mouths closer to the coils
+
+Mouths at 1.6 coil radii unless said (the coil planes are at 1.3). 60 ns of firing.
+
+| Case | Coils (kA-turns) | Held (ns) | Left 20 ns after stop | Mouths at 1.9, for comparison |
+|---|---|---|---|---|
+| `r_off_near` | 0 | 1.78 | 1% | 1.21 |
+| `r_8k_near` | 8 | 3.53 | 5% | 2.17 |
+| `q_32k_near` | 32 | 7.23 | 22% | 4.86 |
+| `r_32k_near_f1e24` | 32, 100 times the firing rate | 5.95 | 12% | 4.14 |
+| `r_32k_at_1.4` | 32, mouths at 1.4 | 8.46 | 22% | |
+
+- With the mouths at 1.4 coil radii, just outside the coil planes, plasma fired in is held longer (8.5 ns) than
+  plasma born on a disc at the centre (7.6 ns).
+- A second 192-cell repeat with the mouths at 1.9 (`q_32k_n192`) gives 5.08 ns, the same as the first (5.09).
+- Still running: 128 kA-turns, a long firing, heavier ions and a 192-cell repeat with the mouths at 1.6.
+
 ## Limits
 
 - Light ions (up to 229 electron masses so far) and one device size. One mesh repeat, which moves the held time by 5%.
