@@ -1,4 +1,4 @@
-"""Prepare (not submit) a one-node WarpX job: build WarpX for CUDA once on shared storage, each GPU runs its share of the cases in turn."""
+"""Prepare (not submit) a one-node WarpX job: build WarpX for CUDA once on shared storage, each GPU takes the next case from a shared queue."""
 import argparse
 import base64
 import hashlib
@@ -32,10 +32,11 @@ if [ ! -x __BUILD__/build/bin/warpx.3d ]; then
     && cmake --build build -j 32 > build.log 2>&1 || { tail -30 configure.log build.log; echo build > "$out/JOB_FAILED"; exit 0; }
   cd "$out"
 fi
-# Each GPU works through its own share of the cases, so a slow case holds one GPU, not the node.
+# The GPUs share one queue and each takes the next case when it is free, so a slow case holds one GPU, not the node.
 grep -v '^[[:space:]]*$' cases.txt > queue.txt
 for gpu in 0 1 2 3 4 5 6 7; do
-  ( awk -v g=$gpu 'NR % 8 == (g + 1) % 8' queue.txt | while read -r name deck rest; do
+  ( while line=$(flock queue.lock sh -c 'head -n 1 queue.txt; sed -i 1d queue.txt') && [ -n "$line" ]; do
+      read -r name deck rest <<< "$line"
       mkdir -p "$name"
       ( cd "$name" && start=$(date +%s) \
         && CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __BUILD__/build/bin/warpx.3d "$out/$deck" $rest > run.log 2>&1 \
