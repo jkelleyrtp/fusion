@@ -24,8 +24,8 @@ eligible for preemption or eviction, so do not promise instant capacity reclamat
 ## One node
 
 The entrypoint keeps `--actor-num-nodes 1`, `--actor-num-gpus-per-node 8` (or fewer) and
-`--rollout-num-gpus 0`, and uses GPUs only within that node. Multi-GPU today means independent
-cases, one per GPU.
+`--rollout-num-gpus 0`, and uses GPUs only within that node. The older jobs run independent cases, one per GPU.
+`warpx/campaign.py` can also run one WarpX case across the node's GPUs; see `multi-gpu.md`.
 
 ## Releasing the node
 
