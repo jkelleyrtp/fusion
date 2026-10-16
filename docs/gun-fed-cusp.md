@@ -122,7 +122,10 @@ Mouths at 1.9 coil radii, firing long enough to settle:
 - Held time goes as mass^0.34 over a factor of 16 in mass (`q_32k_m918`: settled, loss time after stop 61 ns).
 - Mouths at 1.6, firing for 150 ns (`r_32k_near_long`): 7.44 ns, settled. With 192 cells (`r_32k_near_n192`):
   7.07 ns against 7.23 at 128 cells.
-- Still running: 128 kA-turns and heavier ions with the mouths at 1.6, and real deuterium (`fed3`, `d_*`).
+- Mouths at 1.6, 128 kA-turns, firing for 180 ns (`r_128k_near`): 12.1 ns, against 9.6 with the mouths at 1.9
+  and 11.9 for plasma born at the centre; 19% left 60 ns after the guns stop.
+- Mouths at 1.6, ions of 229 electron masses (`r_32k_near_m229`): 10.3 ns, against 7.8 with the mouths at 1.9.
+- All 42 cases of `jet3` are complete. Real deuterium is running (`fed3`, `d_*`).
 
 ## Limits
 
