@@ -105,6 +105,25 @@ Mouths at 1.6 coil radii unless said (the coil planes are at 1.3). 60 ns of firi
 - A second 192-cell repeat with the mouths at 1.9 (`q_32k_n192`) gives 5.08 ns, the same as the first (5.09).
 - Still running: 128 kA-turns, a long firing, heavier ions and a 192-cell repeat with the mouths at 1.6.
 
+## Scans completed since (2026-10-16, 15:17 UTC)
+
+Mouths at 1.9 coil radii, firing long enough to settle:
+
+| Coils (kA-turns) | 0 | 8 | 32 | 128 | 512 |
+|---|---|---|---|---|---|
+| Held (ns) | 1.21 | 2.17 | 4.87 | 9.63 | 10.5, still rising slowly |
+
+| Ion mass (electron masses) | 57 | 229 | 918 |
+|---|---|---|---|
+| Held at 32 kA-turns (ns) | 4.87 | 7.81 | 12.62 |
+
+- The gain from the field flattens above 128 kA-turns. At 512 (`q_512k_long`) 41% is still inside 60 ns after the
+  guns stop, with a loss time of 85 ns.
+- Held time goes as mass^0.34 over a factor of 16 in mass (`q_32k_m918`: settled, loss time after stop 61 ns).
+- Mouths at 1.6, firing for 150 ns (`r_32k_near_long`): 7.44 ns, settled. With 192 cells (`r_32k_near_n192`):
+  7.07 ns against 7.23 at 128 cells.
+- Still running: 128 kA-turns and heavier ions with the mouths at 1.6, and real deuterium (`fed3`, `d_*`).
+
 ## Limits
 
 - Light ions (up to 229 electron masses so far) and one device size. One mesh repeat, which moves the held time by 5%.
