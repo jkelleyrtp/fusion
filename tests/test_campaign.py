@@ -13,12 +13,13 @@ import campaign
 
 # Stands in for WarpX: runs to step 30 with a checkpoint every 10 steps, from the checkpoint named by amr.restart.
 # A case given `stop_at=N` is stopped at step N as if its node had been taken away, unless it is restarting.
-# A case given `hang=1` writes nothing and never ends.
+# A case given `hang=1` writes nothing and never ends. One given `slow_after=N` stops making progress at step N
+# on its first try.
 # It stops the worker's shells in one signal before itself (`timeout` gives it a process group of its own), so
 # that no shell outlives it long enough to claim the case again.
 STAND_IN = r"""#!/bin/bash
-start=0; stop=0; crash=0
-for arg in "$@"; do case $arg in amr.restart=*) start=$((10#${arg##*chk}));; stop_at=*) stop=${arg#*=};; crash=*) crash=1;; hang=*) exec sleep 600;; esac; done
+start=0; stop=0; crash=0; slow=0
+for arg in "$@"; do case $arg in amr.restart=*) start=$((10#${arg##*chk}));; stop_at=*) stop=${arg#*=};; crash=*) crash=1;; hang=*) exec sleep 600;; slow_after=*) slow=${arg#*=};; esac; done
 [ $crash -eq 1 ] && exit 134
 mkdir -p diags/reducedfiles
 [ $start -eq 0 ] && echo "#step" > diags/reducedfiles/number.txt
@@ -26,6 +27,7 @@ for step in $(seq $((start + 1)) 30); do
   echo "STEP $step ends"; echo "$step" >> diags/reducedfiles/number.txt
   [ $((step % 10)) -eq 0 ] && mkdir -p diags/chk$(printf %06d $step)
   [ $start -eq 0 ] && [ $step -eq $stop ] && { kill -9 -- -$(ps -o sid= -p $$ | tr -d ' '); kill -9 0; }
+  [ $start -eq 0 ] && [ $slow -gt 0 ] && [ $step -eq $slow ] && exec sleep 600
 done
 exit 0
 """
@@ -50,9 +52,9 @@ class WorkerTest(unittest.TestCase):
         self.env = {**os.environ, "WARPX": str(tools / "warpx"), "PATH": f"{tools}:{os.environ['PATH']}"}
         campaign.SHARED = str(self.shared)
 
-    def work(self, cases: str, gpus: int = 1, stall: int = 1800) -> None:
+    def work(self, cases: str, gpus: int = 1, stall: int = 1800, timeout: int = 60) -> None:
         """Run one node's worker to the end on campaign t, adding `cases` to its queue."""
-        _, template = campaign.job_spec("t", cases, 60, gpus, stall)
+        _, template = campaign.job_spec("t", cases, timeout, gpus, stall)
         subprocess.run(["bash", "-c", shlex.split(template["spec"]["entrypoint"])[2]], env=self.env, check=False,
                        start_new_session=True)  # so that a stand-in stopping its node stops only this worker
 
@@ -111,6 +113,13 @@ class WorkerTest(unittest.TestCase):
         self.assertEqual((self.camp / "hung/DONE").read_text().strip(), "failed: no output for 2 seconds")
         self.assertEqual((self.camp / "hung/TRIES").read_text().strip(), "1")
         self.assertEqual((self.camp / "good/DONE").read_text().strip(), "complete")
+
+    def test_a_case_out_of_time_carries_on_from_a_checkpoint_it_reached_and_fails_if_it_reached_none(self) -> None:
+        self.work("far deck slow_after=15\nnowhere deck hang=1\n", timeout=2)
+        self.assertEqual((self.camp / "far/DONE").read_text().strip(), "complete")
+        self.assertIn("amr.restart=diags/chk000010", (self.camp / "far/attempts.log").read_text())
+        self.assertEqual(self.rows("far"), [str(step) for step in range(1, 31)])
+        self.assertEqual((self.camp / "nowhere/DONE").read_text().strip(), "failed: time limit")
 
 
 if __name__ == "__main__":

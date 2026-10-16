@@ -98,8 +98,9 @@ run_case() {
     grep -q "^STEP $(( 10#${chk##*chk} + 1 )) ends" run.log && { restart="amr.restart=$chk"; break; }
   done
   # The stopped try wrote diagnostics past its last checkpoint; drop those rows so the restart does not repeat them.
+  local step=0
   if [ -n "$restart" ]; then
-    local step=$((10#${restart##*chk}))
+    step=$((10#${restart##*chk}))
     for file in diags/reducedfiles/*.txt; do awk -v last=$step 'NR == 1 || $1 <= last' "$file" > trim.tmp && mv trim.tmp "$file"; done
   fi
   echo "$job gpu $gpu ${restart:-fresh}" >> attempts.log
@@ -121,7 +122,13 @@ run_case() {
     [ -n "$reducer" ] && { python3 "$files/$reducer" . > measured.tmp 2> reduce.log && mv measured.tmp measured.json; }
     rm -rf diags/chk[0-9]*
   elif [ -f STALLED ]; then echo "failed: no output for __STALL__ seconds" > DONE
-  elif [ $code -eq 124 ]; then echo "failed: time limit" > DONE
+  elif [ $code -eq 124 ]; then
+    # Out of time. If it left a later checkpoint than the one it started from, another try carries on from there.
+    local reached=0
+    for chk in $(ls -d diags/chk[0-9]* 2>/dev/null | sort -r); do
+      grep -q "^STEP $(( 10#${chk##*chk} + 1 )) ends" run.log && { reached=$((10#${chk##*chk})); break; }
+    done
+    if [ $reached -gt $step ]; then rm -f CLAIM; else echo "failed: time limit" > DONE; fi
   else rm -f CLAIM  # stopped or crashed: leave it for another GPU, up to three tries
   fi
 }
