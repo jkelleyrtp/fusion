@@ -96,16 +96,13 @@ def shell_currents(run: Path, time: np.ndarray, electrons: np.ndarray) -> dict:
 MU0, EPS0, M_E = 4e-7 * np.pi, 8.8541878128e-12, 9.1093837015e-31
 
 
-def axis_field_peak(coil_at: float, a: float) -> float:
-    """Largest field (T) on a coil axis out to the wall, summed over the six loops by Biot-Savart. It peaks
-    near the coil plane, the point cusp an electron has to get through."""
+def coil_field(points: np.ndarray, coil_at: float, a: float) -> np.ndarray:
+    """Field vectors (T) of the six coils at `points` (n by 3, metres), summed by Biot-Savart."""
     angle = np.linspace(0, 2 * np.pi, 721)[:-1]
     ring = a * np.stack([np.zeros_like(angle), np.cos(angle), np.sin(angle)], axis=1)
     step = np.roll(ring, -1, axis=0) - ring
     middle = ring + 0.5 * step
-    points = np.zeros((400, 3))
-    points[:, 0] = np.linspace(0, 2.4 * a, 400)
-    total = np.zeros_like(points)
+    total = np.zeros_like(points, dtype=float)
     for axis in range(3):
         for sign in (1, -1):
             # The loop template lies in the y-z plane; roll its coordinates so its normal is `axis`.
@@ -113,7 +110,15 @@ def axis_field_peak(coil_at: float, a: float) -> float:
             element = np.roll(step, axis, axis=1) * -sign
             gap = points[:, None, :] - centre[None, :, :]
             total += (np.cross(element[None, :, :], gap) / np.linalg.norm(gap, axis=2, keepdims=True) ** 3).sum(axis=1)
-    return float(np.linalg.norm(total, axis=1).max() * MU0 * coil_at / (4 * np.pi))
+    return total * MU0 * coil_at / (4 * np.pi)
+
+
+def axis_field_peak(coil_at: float, a: float) -> float:
+    """Largest field (T) on a coil axis out to the wall. It peaks near the coil plane, the point cusp an
+    electron has to get through."""
+    points = np.zeros((400, 3))
+    points[:, 0] = np.linspace(0, 2.4 * a, 400)
+    return float(np.linalg.norm(coil_field(points, coil_at, a), axis=1).max())
 
 
 def scales(c: dict, electrons: float, core_share: float, core_mean_ev: float, drive_ev: float) -> dict:
