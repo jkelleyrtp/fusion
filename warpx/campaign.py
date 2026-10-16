@@ -177,8 +177,12 @@ def my_pods() -> list[str]:
 
 
 def free_nodes() -> int:
+    """Nodes free for a new job: those the cluster shows free, less one for each of our jobs already waiting
+    for one (the broker gives a freed node to those first)."""
     table = shell("COLUMNS=250 uv run train gpus --cluster aws-usw2", cwd=RESEARCH)
-    return sum(int(line.split("│")[4]) for line in table.splitlines() if "compute.internal" in line)
+    jobs = shell("COLUMNS=250 uv run train job list --cluster aws-usw2", cwd=RESEARCH)
+    waiting = sum("jonathan-warpx-" in line and "QUEUED" in line.split("│")[3] for line in jobs.splitlines() if line.count("│") > 3)
+    return sum(int(line.split("│")[4]) for line in table.splitlines() if "compute.internal" in line) - waiting
 
 
 def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 1800, pause: int = 120, look: int = 60) -> tuple[str, dict]:
