@@ -422,9 +422,26 @@ my_constants.ppc_feed = 0.5           # particles made per cell of the disc, per
 """
 
 
-def beta_deck(fed: bool = False) -> str:
+JETS = """
+# No plasma starts inside. Two guns outside the cage, on the z axis beyond the +z and -z coils, each send a
+# neutral plasma jet toward the centre through the coil opening, along the field there. What is held inside
+# is then plasma that got in from outside.
+my_constants.feed = 1.e22             # electrons, and ions, leaving the two guns together per second
+my_constants.rf = 0.3*a               # radius of each gun's mouth (m)
+my_constants.zg = 1.9*a               # distance of each gun's mouth from the centre (m)
+my_constants.vj = 0.                  # speed added to every jet particle toward the centre (m/s)
+my_constants.toff = 1.                # time the guns stop (s)
+my_constants.ppc_feed = 0.5           # particles made per cell of the mouth, per species, per step
+"""
+
+
+def beta_deck(fed: bool = False, jets: bool = False) -> str:
     text = BETA + "particles.B_ext_particle_init_style = parse_B_ext_particle_function\n"
-    if fed:
+    if jets:
+        text = text.replace("# A ball of neutral plasma released at", "# Neutral plasma jets fired from outside into") + JETS
+        text = text.replace("There are no electrodes and no emitters: this deck tests what the field does, not how the plasma gets in.",
+                            "There are no electrodes: this deck tests how much of a jet from outside the field holds.")
+    elif fed:
         text = text.replace("# A ball of neutral plasma released", "# A ball of neutral plasma released, and then fed,") + FEED
     for component in AXES:
         text += f'particles.B{component}_external_particle_function(x,y,z,t) = "{field(component)}"\n'
@@ -434,13 +451,21 @@ def beta_deck(fed: bool = False) -> str:
                  f"{name}.profile = parse_density_function\n"
                  f'{name}.density_function(x,y,z) = "n0*(x*x+y*y+z*z<r0*r0)"\n'
                  f"{name}.momentum_distribution_type = gaussian\n")
-        if fed:
+        if jets:
+            # Drop the starting ball: the four lines just written for this species.
+            text = text[:text.index(f"{name}.injection_style")]
+            text += f"{name}.injection_sources = up down\n"
+        elif fed:
             text = text.replace(f"{name}.injection_style", f"{name}.injection_sources = ball up down\n{name}.ball.injection_style")
             for prefix in (f"{name}.num_particles_per_cell_each_dim", f"{name}.profile", f"{name}.density_function",
                            f"{name}.momentum_distribution_type"):
                 text = text.replace(prefix, prefix.replace(f"{name}.", f"{name}.ball.", 1))
+        if fed or jets:
             for source, direction in (("up", "+1"), ("down", "-1")):
-                text += (f"{name}.{source}.injection_style = NFluxPerCell\n{name}.{source}.surface_flux_pos = 0.\n"
+                # A fed plasma is born at the centre moving outward; a jet starts outside moving inward.
+                where = f"({direction})*(-zg)" if jets else "0."
+                text += (f"{name}.{source}.uz_m = ({direction})*vj/clight\n" if jets else "")
+                text += (f"{name}.{source}.injection_style = NFluxPerCell\n{name}.{source}.surface_flux_pos = {where}\n"
                          f"{name}.{source}.flux_normal_axis = z\n{name}.{source}.flux_direction = {direction}\n"
                          f"{name}.{source}.num_particles_per_cell = ppc_feed\n"
                          f"{name}.{source}.flux_profile = parse_flux_function\n"
@@ -595,4 +620,5 @@ if __name__ == "__main__":
     here.with_name("h2_ionization.dat").write_text(h2_ionization())
     here.with_name("inputs_3d_cusp_beta").write_text(beta_deck())
     here.with_name("inputs_3d_cusp_fed").write_text(beta_deck(fed=True))
+    here.with_name("inputs_3d_cusp_jets").write_text(beta_deck(jets=True))
     here.with_name("inputs_rz_spindle_fed").write_text(spindle_deck())

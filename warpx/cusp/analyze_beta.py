@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reduce plasma-ball runs of inputs_3d_cusp_beta and inputs_3d_cusp_fed to one JSON line each.
+"""Reduce runs of inputs_3d_cusp_beta, inputs_3d_cusp_fed and inputs_3d_cusp_jets to one JSON line each.
 
     python3 analyze_beta.py RUN_DIR [RUN_DIR ...]
 
@@ -19,11 +19,12 @@ from analyze_cage import M_E, MU0, Q_E, coil_field
 def constants(run: Path) -> dict:
     """The my_constants values this run used, and whether it solved the full fields or only the charge."""
     text = (run / "warpx_used_inputs").read_text()
-    names = ("a", "coil_at", "n0", "r0", "te", "ti", "mass_amu", "dt", "ncell", "ppd")
+    names = ("a", "coil_at", "te", "ti", "mass_amu", "dt", "ncell")
     # WarpX echoes each constant followed by a comment holding its evaluated value.
     out = {name: float(re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE).group(1)) for name in names}
-    # Only the fed deck has a feed; the plain ball is a feed of zero.
-    for name in ("feed", "toff"):
+    # WarpX echoes only the constants a deck uses. Only the fed and jet decks have a feed, only the jet deck has
+    # guns and only it has no starting ball; a constant that is absent reads as zero.
+    for name in ("feed", "toff", "zg", "vj", "rf", "n0", "r0", "ppd"):
         found = re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE)
         out[name] = float(found.group(1)) if found else 0.0
     out["charge_only"] = bool(re.search(r"^warpx\.do_electrostatic = labframe", text, re.MULTILINE))
@@ -73,6 +74,45 @@ def loss_time_ns(time: np.ndarray, count: np.ndarray) -> float | None:
     late = time >= 0.8 * time[-1]
     rate = -np.polyfit(time[late], count[late], 1)[0]
     return round(float(count[late].mean() / rate * 1e9), 1) if rate > 0 else None
+
+
+def jets(run: Path, c: dict) -> dict:
+    """Where the guns are and how they are aimed, and how much of what they fire is inside the cage, counted
+    within the distance of the coil planes from the centre. `fired_held_ns` is the amount inside over the firing
+    rate: the time an average fired particle spends inside, zero if nothing gets in."""
+    mouth = np.array([[0.0, 0.0, c["zg"]]])
+    aim = np.array([0.0, 0.0, -1.0])
+    out = {
+        "gun_mouths_over_a": [[0.0, 0.0, round(c["zg"] / c["a"], 3)], [0.0, 0.0, -round(c["zg"] / c["a"], 3)]],
+        "gun_mouth_radius_over_a": round(c["rf"] / c["a"], 3),
+        "gun_aim": "toward the centre along the z axis",
+        "jet_speed_m_per_s": c["vj"],
+        "fired_per_s": c["feed"],
+        "guns_stop_ns": None,
+    }
+    if c["coil_at"]:
+        at_mouth = coil_field(mouth, c["coil_at"], c["a"])[0]
+        at_opening = coil_field(np.array([[0.0, 0.0, 1.3 * c["a"]]]), c["coil_at"], c["a"])[0]
+        cosine = abs(at_mouth @ aim) / np.linalg.norm(at_mouth)
+        out["angle_of_aim_to_coil_field_deg"] = round(float(np.degrees(np.arccos(min(cosine, 1.0)))), 2)
+        out["coil_field_at_opening_over_at_mouth"] = round(float(np.linalg.norm(at_opening) / np.linalg.norm(at_mouth)), 3)
+    for name, species in (("erad", "electrons"), ("irad", "ions")):
+        data, radius = table(run, name), bin_centres(run, name)
+        time, inside = data[:, 1], data[:, 2:][:, radius < 1.3 * c["a"]].sum(axis=1)
+        stop = min(time[-1], c["toff"])
+        late = (time >= 0.8 * stop) & (time <= stop)
+        assert late.sum() >= 4, "under four histograms in the last fifth of the firing"
+        growth = np.polyfit((time[late] - time[late].mean()) * 1e9, inside[late], 1)[0] * 1e9
+        out[f"{species}_inside_late_in_firing"] = float(f"{inside[late].mean():.4g}")
+        # Near 0 the amount inside has settled; near 1 everything fired is still accumulating.
+        out[f"{species}_inside_growth_over_fired"] = round(float(growth / c["feed"]), 3)
+        out[f"{species}_fired_held_ns"] = round(float(inside[late].mean() / c["feed"] * 1e9), 3)
+        if c["toff"] < time[-1]:
+            out["guns_stop_ns"] = round(c["toff"] * 1e9, 2)
+            after = time >= c["toff"] + 0.5 * (time[-1] - c["toff"])
+            out[f"{species}_inside_at_end_over_at_stop"] = round(float(inside[-1] / max(np.interp(c["toff"], time, inside), 1e-300)), 4)
+            out[f"{species}_inside_loss_time_after_stop_ns"] = loss_time_ns(time[after], inside[after]) if after.sum() >= 4 else None
+    return out
 
 
 def field_change(run: Path, c: dict, line: str) -> dict:
@@ -145,20 +185,23 @@ def reduce(run: Path) -> dict:
         "charge_only": c["charge_only"],
         "end_ns": round(float(time[-1] * 1e9), 2),
         # pressure of the starting ball over the magnetic pressure of the coil field, at two places
-        "pressure_ratio_at_coil_opening": round(pressure / (throat_field**2 / (2 * MU0)), 4) if c["coil_at"] else None,
-        "pressure_ratio_at_ball_edge": round(pressure / (edge_field**2 / (2 * MU0)), 3) if c["coil_at"] else None,
-        "electrons_left": round(float(electrons[-1] / electrons[0]), 4),
-        "ions_left": round(float(ions[-1] / ions[0]), 4),
+        "pressure_ratio_at_coil_opening": round(pressure / (throat_field**2 / (2 * MU0)), 4) if c["coil_at"] and c["n0"] else None,
+        "pressure_ratio_at_ball_edge": round(pressure / (edge_field**2 / (2 * MU0)), 3) if c["coil_at"] and c["n0"] else None,
+        "electrons_left": round(float(electrons[-1] / electrons[0]), 4) if electrons[0] else None,
+        "ions_left": round(float(ions[-1] / ions[0]), 4) if ions[0] else None,
         "electron_loss_time_ns": loss_time_ns(time, electrons),
         "ion_loss_time_ns": loss_time_ns(time, ions),
-        "electron_energy_left": round(float(energy[-1, 3] / energy[0, 3]), 3),
-        "ion_energy_over_start": round(float(energy[-1, 4] / energy[0, 4]), 3),
-        "own_magnetic_energy_over_plasma": float(f"{fields[-1, 4] / energy[0, 2]:.3e}"),
+        "electron_energy_left": round(float(energy[-1, 3] / energy[0, 3]), 3) if electrons[0] else None,
+        "ion_energy_over_start": round(float(energy[-1, 4] / energy[0, 4]), 3) if ions[0] else None,
+        # against the plasma energy at the start, or now if the run started empty
+        "own_magnetic_energy_over_plasma": float(f"{fields[-1, 4] / (energy[0, 2] if electrons[0] else energy[-1, 2]):.3e}"),
         "electron_stream_half_width_mm": round(stream_half_width(run, "ethroat", 0.7 * time[-1]) * 1e3, 3),
         "ion_stream_half_width_mm": round(stream_half_width(run, "ithroat", 0.7 * time[-1]) * 1e3, 3),
         "electron_orbit_at_coil_opening_mm": round(float(gyroradius * 1e3), 3) if c["coil_at"] else None,
     }
-    if c["feed"]:
+    if c["zg"]:
+        out.update(jets(run, c))
+    elif c["feed"]:
         # While the feed is on, what leaves per second is the feed minus the growth of what is held.
         late = (time >= 0.8 * min(time[-1], c["toff"])) & (time <= c["toff"])
         assert late.sum() >= 4, "under four counts in the last fifth of the feed"
