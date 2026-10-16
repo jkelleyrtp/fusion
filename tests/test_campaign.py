@@ -52,11 +52,13 @@ class WorkerTest(unittest.TestCase):
         self.env = {**os.environ, "WARPX": str(tools / "warpx"), "PATH": f"{tools}:{os.environ['PATH']}"}
         campaign.SHARED = str(self.shared)
 
-    def work(self, cases: str, gpus: int = 1, stall: int = 1800, timeout: int = 60) -> None:
-        """Run one node's worker to the end on campaign t, adding `cases` to its queue."""
-        _, template = campaign.job_spec("t", cases, timeout, gpus, stall)
-        subprocess.run(["bash", "-c", shlex.split(template["spec"]["entrypoint"])[2]], env=self.env, check=False,
-                       start_new_session=True)  # so that a stand-in stopping its node stops only this worker
+    def work(self, cases: str, gpus: int = 1, stall: int = 1800, timeout: int = 60, starts: int = 1) -> None:
+        """Run one node's worker to the end on campaign t, adding `cases` to its queue. With `starts` above one the
+        same job is started again after it ends, as the broker does with a job whose node it took."""
+        _, template = campaign.job_spec("t", cases, timeout, gpus, stall, pause=1, look=1)
+        for _ in range(starts):
+            subprocess.run(["bash", "-c", shlex.split(template["spec"]["entrypoint"])[2]], env=self.env, check=False,
+                           start_new_session=True)  # so that a stand-in stopping its node stops only this worker
 
     def rows(self, name: str) -> list[str]:
         return (self.camp / name / "diags/reducedfiles/number.txt").read_text().split()[1:]
@@ -94,6 +96,20 @@ class WorkerTest(unittest.TestCase):
         self.assertEqual((self.camp / "stopped/DONE").read_text().strip(), "complete")
         self.assertIn("amr.restart=diags/chk000020", (self.camp / "stopped/attempts.log").read_text())
         self.assertEqual(self.rows("stopped"), [str(step) for step in range(1, 31)])
+
+    def test_a_job_started_again_takes_back_the_cases_its_earlier_start_had_claimed(self) -> None:
+        self.work("stopped deck stop_at=25\n", starts=2)  # the claim is seconds old when the job starts again
+        self.assertEqual((self.camp / "stopped/DONE").read_text().strip(), "complete")
+        self.assertIn("amr.restart=diags/chk000020", (self.camp / "stopped/attempts.log").read_text())
+
+    def test_tries_that_reached_a_later_checkpoint_do_not_count_towards_the_three(self) -> None:
+        self.work("stopped deck stop_at=25\n")
+        (self.camp / "stopped/TRIES").write_text("3\n")  # as if stopped three times, each further on than the last
+        (self.camp / "stopped/attempts.log").write_text("job gpu 0 amr.restart=diags/chk000010\n")
+        (self.camp / "stopped/CLAIM").unlink()
+        self.work("")
+        self.assertEqual((self.camp / "stopped/DONE").read_text().strip(), "complete")
+        self.assertEqual((self.camp / "stopped/TRIES").read_text().strip(), "1")
 
     def test_a_checkpoint_cut_short_is_not_used(self) -> None:
         self.work("stopped deck stop_at=20\n")  # stopped right after writing checkpoint 20: no step 21 in the log

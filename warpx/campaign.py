@@ -58,9 +58,12 @@ fi"""
 
 WORKER = r"""
 set -uo pipefail
-export camp=__CAMP__; job=__JOB__; files=$camp/files-$job; warpx=${WARPX:-__BUILD__/build/bin/warpx.3d}
+export camp=__CAMP__ job=__JOB__; files=$camp/files-$job; warpx=${WARPX:-__BUILD__/build/bin/warpx.3d}
 warpx_rz=${WARPX:-__BUILD__/build-rz/bin/warpx.rz}
-mkdir -p "$files" "$camp/logs"; cd "$camp"
+# The broker starts a job again after taking its node away. Each start is a new run of this script, told apart
+# by `me`, which every claim it makes carries.
+export me="$job $(hostname) $$ $(date +%s)"
+mkdir -p "$files" "$camp/logs"; cd "$camp"; rm -f "$files"/busy.*
 exec >> "$camp/logs/$job.log" 2>&1
 echo "__PAYLOAD__" | base64 -d | tar -xzf - -C "$files"
 nvidia-smi -L
@@ -72,18 +75,20 @@ flock "$camp/lock" bash -c 'touch all_cases.txt queue.txt
   done' "$files"
 
 # Print the next case and claim it: the head of the queue, or failing that a case that has no result and whose
-# worker has not touched its CLAIM file for five minutes (its node was reclaimed). Three tries, then it is failed.
+# worker is gone. A worker is gone if it has not touched its CLAIM file for five minutes (its node was
+# reclaimed), or at once if the claim was made by an earlier start of this same job.
 next_case() {
   flock "$camp/lock" bash -c 'cd "$camp"; line=$(head -n 1 queue.txt); sed -i 1d queue.txt
     if [ -z "$line" ]; then
       while read -r name rest; do
-        [ -f "$name/DONE" ] || [ -n "$(find "$name/CLAIM" -mmin -5 2>/dev/null)" ] && continue
-        if [ "$(cat "$name/TRIES" 2>/dev/null || echo 0)" -ge 3 ]; then echo "failed after 3 tries" > "$name/DONE"; continue; fi
+        [ -f "$name/DONE" ] && continue
+        claim=$(cat "$name/CLAIM" 2>/dev/null)
+        [ -n "$(find "$name/CLAIM" -mmin -5 2>/dev/null)" ] && { [ "${claim%% *}" != "$job" ] || [ "$claim" = "$me" ]; } && continue
         line="$name $rest"; break
       done < all_cases.txt
     fi
     [ -z "$line" ] && exit 0
-    read -r name rest <<< "$line"; mkdir -p "$name"; touch "$name/CLAIM"
+    read -r name rest <<< "$line"; mkdir -p "$name"; echo "$me" > "$name/CLAIM"
     echo $(( $(cat "$name/TRIES" 2>/dev/null || echo 0) + 1 )) > "$name/TRIES"; echo "$line"'
 }
 
@@ -103,6 +108,10 @@ run_case() {
     step=$((10#${restart##*chk}))
     for file in diags/reducedfiles/*.txt; do awk -v last=$step 'NR == 1 || $1 <= last' "$file" > trim.tmp && mv trim.tmp "$file"; done
   fi
+  # TRIES counts the tries that began from this same point. A try that was stopped after writing a later
+  # checkpoint got somewhere, so the count starts again; three from one point and the case is failed.
+  [ "$(tail -n 1 attempts.log 2>/dev/null | awk '{print $NF}')" = "${restart:-fresh}" ] || echo 1 > TRIES
+  if [ "$(cat TRIES)" -gt 3 ]; then echo "failed after 3 tries" > DONE; return; fi
   echo "$job gpu $gpu ${restart:-fresh}" >> attempts.log
   local exe=$warpx; [[ $deck == inputs_rz_* ]] && exe=$warpx_rz
   CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __LAUNCH__ "$exe" "$files/$deck" "$@" $restart >> run.log 2>&1 &
@@ -129,14 +138,23 @@ run_case() {
       grep -q "^STEP $(( 10#${chk##*chk} + 1 )) ends" run.log && { reached=$((10#${chk##*chk})); break; }
     done
     if [ $reached -gt $step ]; then rm -f CLAIM; else echo "failed: time limit" > DONE; fi
-  else rm -f CLAIM  # stopped or crashed: leave it for another GPU, up to three tries
+  else
+    # Stopped or crashed: leave it for another GPU. If the node is being taken away this shell is about to be
+    # stopped too, and taking another case first would only spend one of that case's tries, so wait.
+    rm -f CLAIM; sleep __PAUSE__
   fi
 }
 
 # Each case gets __GPUS__ of the node's eight GPUs. Given more than one, WarpX splits its box between them, one
 # process per GPU.
+# With nothing to take, a GPU keeps looking once a minute for as long as another GPU of this node is working (the
+# node is held anyway), since a case whose node was reclaimed can be taken five minutes after its last heartbeat.
 for first in $(seq 0 __GPUS__ 7); do
-  ( while line=$(next_case) && [ -n "$line" ]; do run_case $(seq -s, $first $((first + __GPUS__ - 1))) $line; done ) &
+  ( while true; do
+      line=$(next_case)
+      if [ -z "$line" ]; then ls "$files"/busy.* > /dev/null 2>&1 || break; sleep __LOOK__; continue; fi
+      touch "$files/busy.$first"; run_case $(seq -s, $first $((first + __GPUS__ - 1))) $line; rm -f "$files/busy.$first"
+    done ) &
 done
 wait
 echo "$job finished $(date -u +%FT%TZ)"
@@ -163,7 +181,7 @@ def free_nodes() -> int:
     return sum(int(line.split("│")[4]) for line in table.splitlines() if "compute.internal" in line)
 
 
-def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 1800) -> tuple[str, dict]:
+def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 1800, pause: int = 120, look: int = 60) -> tuple[str, dict]:
     """The broker job for one node working on campaign `name`, carrying `cases` to add to its queue. Each case
     runs on `gpus` GPUs; more than one needs the WarpX build with MPI, which is kept beside the one without."""
     assert gpus in (1, 2, 4, 8), "a node's 8 GPUs must divide evenly between cases"
@@ -180,6 +198,7 @@ def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 18
             archive.add(file, file.name)
     worker = (WORKER.replace("__BUILD_STEPS__", BUILD_STEPS).replace("__CAMP__", f"{SHARED}/campaigns/{name}")
               .replace("__JOB__", token).replace("__BUILD__", build).replace("__TIMEOUT__", str(timeout)).replace("__STALL__", str(stall))
+              .replace("__PAUSE__", str(pause)).replace("__LOOK__", str(look))
               .replace("__MPI__", "OFF" if gpus == 1 else "ON").replace("__LAUNCH__", launch).replace("__GPUS__", str(gpus))
               .replace("__PAYLOAD__", base64.b64encode(buffer.getvalue()).decode()))
     template = json.loads((ROOT.parent / "jobs/poisson-server-template.json").read_text())

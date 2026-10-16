@@ -406,5 +406,23 @@
     "submitted": "2026-10-16T16:04:56+00:00"
    }
   ]
+ },
+ "val1": {
+  "question": "Is the two-coil cusp deck sound with 100 keV electrons: same result at twice the mesh, half the time step and another seed, and Gauss's law kept?",
+  "cases": [
+   "v_nr256 inputs_rz_spindle_fed my_constants.ppc_feed=0.5 my_constants.ppd=2 my_constants.n0=0. my_constants.hist_every=500 my_constants.plot_every=0 my_constants.chk_every=100000 my_constants.tmax=4.e-9 my_constants.coil_at=60000. my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.feed=4.4e22 my_constants.nr=256",
+   "v_nr512 inputs_rz_spindle_fed my_constants.ppc_feed=0.5 my_constants.ppd=2 my_constants.n0=0. my_constants.hist_every=500 my_constants.plot_every=0 my_constants.chk_every=100000 my_constants.tmax=4.e-9 my_constants.coil_at=60000. my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.feed=4.4e22 my_constants.nr=512 my_constants.ppc_feed=0.25",
+   "v_nr256_half_dt inputs_rz_spindle_fed my_constants.ppc_feed=0.5 my_constants.ppd=2 my_constants.n0=0. my_constants.hist_every=500 my_constants.plot_every=0 my_constants.chk_every=100000 my_constants.tmax=4.e-9 my_constants.coil_at=60000. my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.feed=4.4e22 my_constants.nr=256 my_constants.dt=0.3*rw/nr/clight",
+   "v_nr256_seed2 inputs_rz_spindle_fed my_constants.ppc_feed=0.5 my_constants.ppd=2 my_constants.n0=0. my_constants.hist_every=500 my_constants.plot_every=0 my_constants.chk_every=100000 my_constants.tmax=4.e-9 my_constants.coil_at=60000. my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.feed=4.4e22 my_constants.nr=256 warpx.random_seed=7",
+   "v_nr256_ti1e5 inputs_rz_spindle_fed my_constants.ppc_feed=0.5 my_constants.ppd=2 my_constants.n0=0. my_constants.hist_every=500 my_constants.plot_every=0 my_constants.chk_every=100000 my_constants.tmax=4.e-9 my_constants.coil_at=60000. my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.feed=4.4e22 my_constants.nr=256 my_constants.ti=1.e5",
+   "v_nr256_gauss inputs_rz_spindle_fed my_constants.ppc_feed=0.5 my_constants.ppd=2 my_constants.n0=0. my_constants.hist_every=500 my_constants.plot_every=0 my_constants.chk_every=100000 my_constants.tmax=4.e-9 my_constants.coil_at=60000. my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.feed=4.4e22 my_constants.nr=256 my_constants.tmax=1.e-9 diag1.fields_to_plot=\"divE rho\""
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-8e46f4ac1498",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T17:26:05+00:00"
+   }
+  ]
  }
 }
