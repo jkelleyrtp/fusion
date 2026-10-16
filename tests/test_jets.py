@@ -38,6 +38,16 @@ class JetsTest(unittest.TestCase):
         self.assertIn("my_constants.zg = 1.9*a", deck)
         self.assertIn("my_constants.dc = 1.3*a", deck)
 
+    def test_every_fed_electron_starts_on_top_of_an_ion(self) -> None:
+        """Each source is paired, and the two species give WarpX the same plane, flux and particles per cell."""
+        for name in ("inputs_3d_cusp_jets", "inputs_3d_cusp_fed", "inputs_rz_spindle_fed"):
+            lines = (CUSP / name).read_text().splitlines()
+            for source in ("up", "down"):
+                electrons = [line for line in lines if line.startswith(f"electrons.{source}.")]
+                ions = [line.replace("ions.", "electrons.", 1) for line in lines if line.startswith(f"ions.{source}.")]
+                self.assertIn(f"electrons.{source}.flux_paired = 1", electrons, name)
+                self.assertEqual(electrons, ions, name)
+
     def test_the_reducer_counts_only_what_is_inside_the_coil_planes(self) -> None:
         """Half of what is in the box sits inside, level while the guns fire, then drains to a quarter."""
         radius = (np.arange(96) + 0.5) * 0.024 / 96

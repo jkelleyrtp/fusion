@@ -468,6 +468,8 @@ def beta_deck(fed: bool = False, jets: bool = False) -> str:
                 text += (f"{name}.{source}.uz_m = vj/clight\n" if jets else "")
                 text += (f"{name}.{source}.injection_style = NFluxPerCell\n{name}.{source}.surface_flux_pos = {where}\n"
                          f"{name}.{source}.flux_normal_axis = z\n{name}.{source}.flux_direction = {direction}\n"
+                         # Each electron starts on top of an ion (docs/flux-injection-charge.md).
+                         f"{name}.{source}.flux_paired = 1\n"
                          f"{name}.{source}.num_particles_per_cell = ppc_feed\n"
                          f"{name}.{source}.flux_profile = parse_flux_function\n"
                          f'{name}.{source}.flux_function(x,y,z,t) = "0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*(t<toff)"\n'
@@ -585,6 +587,8 @@ def spindle_deck() -> str:
         for source, direction in (("up", "+1"), ("down", "-1")):
             text += (f"{name}.{source}.injection_style = NFluxPerCell\n{name}.{source}.surface_flux_pos = 0.\n"
                      f"{name}.{source}.flux_normal_axis = z\n{name}.{source}.flux_direction = {direction}\n"
+                     # Each electron starts on top of an ion (docs/flux-injection-charge.md).
+                     f"{name}.{source}.flux_paired = 1\n"
                      f"{name}.{source}.num_particles_per_cell = ppc_feed\n"
                      f"{name}.{source}.flux_profile = parse_flux_function\n"
                      f'{name}.{source}.flux_function(x,y,z,t) = "0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*(t<toff)"\n'
