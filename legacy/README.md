@@ -1,3 +1,17 @@
+# Legacy: the in-house particle code (September 2026)
+
+This directory is the project as it stood before the move to WarpX: a fixed-field orbit tracker, an FP64
+electrostatic particle-in-cell code with a CUDA backend, their job files, results, viewer and design notes.
+Nothing outside `legacy/` uses it. It is kept because `docs/fresh-analysis.md` here audits it and explains why
+the project moved on. Paths below are relative to this directory; job files that name
+`/home/ubuntu/repos/fusion/jobs/...` predate the move and would need `legacy/` added.
+
+```bash
+PYTHONPATH=src OMP_NUM_THREADS=1 python3 -m unittest discover -s tests   # from legacy/
+```
+
+The original README follows.
+
 # Biconic cusp electron trap — GPU kinetic simulation
 
 Full-orbit test-particle (non-PIC) tracking of electrons in the static field of two coaxial

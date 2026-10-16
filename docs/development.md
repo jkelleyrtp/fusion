@@ -2,39 +2,42 @@
 
 ## Layout
 
-| path | what |
+| Path | What |
 |---|---|
-| `src/transient_pic.py`, `src/pic_kernels.py`, `src/pic_cuda.py` | FP64 electron PIC, its reference particle operators and the CUDA operators |
-| `src/run_transient_pic.py` | external-gun electrostatic PIC driver: geometry, guns, casings, output |
-| `src/ion_pic.py` | coupled electron and ion PIC with gas ionization and charge exchange |
-| `src/electrostatic.py`, `src/steady_space_charge.py` | grounded-box Poisson solver and the stationary trajectory–Poisson iteration |
-| `src/run_pic_campaign.py`, `src/run_parameter_sweep.py`, `src/run_space_charge_pilot.py` | one-node campaign runners |
-| `src/analyze_*.py` | reductions of fetched campaigns |
-| `src/accept_pic_cuda.py`, `src/validate_pic_*.py`, `src/diagnose_pic_*.py`, `src/profile_pic_step.py`, `src/benchmark_*.py` | CUDA acceptance, validation, diagnosis and timing |
-| `src/job_progress.py`, `src/export_viewer.py`, `src/serve_viewer.py`, `web/` | dashboard data and the browser control room |
-| `src/cusp_sim.py`, `src/cusp_viz.py`, `src/cuda_build_cache.py` | legacy fixed-field orbit simulator, its plots and its CUDA build cache |
-| `analysis/fresh/` | scripts behind `docs/fresh-analysis.md` |
-| `jobs/*.yaml` | broker-submittable single-node RayJobs |
-| `results/` | reports and summaries pulled back from runs |
-| `docs/` | designs, evidence and analyses |
-| `tests/` | stdlib unittest suite |
+| `warpx/campaign.py` | Campaign runner: `submit`, `add`, `status`, `sync`, `reduce`, `local` |
+| `warpx/job-template.json` | The broker job every campaign node is submitted as |
+| `warpx/cusp/inputs_*`, `warpx/cusp/make_deck.py` | Cusp decks and the script that writes them |
+| `warpx/cusp/analyze_*.py` | Reducers: one finished case to one `measured.json`. `REDUCERS` in `campaign.py` maps decks to them |
+| `warpx/cusp/check_*.py`, `vacuum_dwell.py` | Checks of the patches against independent calculations |
+| `warpx/pops/` | Decks and reducers of the electron-well study |
+| `warpx/campaigns/<study>/*.txt` | Case lists: one case per line, `name deck setting=value ...` |
+| `warpx/campaigns/registry.json` | Each campaign's question, cases and jobs. Written by `campaign.py`; names are never reused |
+| `warpx/results/<campaign>.jsonl` | Reduced table of each campaign as last fetched, one line per finished case |
+| `warpx/patches/` | Patches applied to WarpX 26.10 |
+| `tests/` | stdlib `unittest` suite for the above |
+| `docs/` | Results, methods, prior work |
+| `legacy/` | The in-house particle code and everything that belongs to it |
+
+Paths outside the repository that `campaign.py` uses: the local WarpX checkout and CPU builds under
+`/home/ubuntu/warpx/warpx`, fetched results under `/home/ubuntu/warpx/results`, and shared storage on the
+cluster at `/public/jonathan/cusp`.
 
 ## Checks
 
 ```bash
-PYTHONPATH=src OMP_NUM_THREADS=1 python3 -m unittest discover -s tests
+OMP_NUM_THREADS=1 python3 -m unittest discover -s tests
+ruff check tests warpx/campaign.py
 ```
 
-There is no repo-wide lint or type policy. `src/cusp_sim.py` and `src/cusp_viz.py` are standalone
-legacy scripts; do not broaden linting to them or refactor them. These modules have a narrow policy:
+The legacy code keeps its own suite and narrow lint policy, in [`legacy/README.md`](../legacy/README.md):
 
 ```bash
-ruff check src/cuda_build_cache.py tests/test_cuda_build_cache.py
-mypy --follow-imports=silent src/cuda_build_cache.py
-
-ruff check src/transient_pic.py src/run_transient_pic.py tests/test_transient_pic.py tests/test_transient_cli.py
-mypy --follow-imports=silent src/transient_pic.py src/run_transient_pic.py
-
-ruff check src/electrostatic.py src/steady_space_charge.py
-mypy --follow-imports=silent src/electrostatic.py src/steady_space_charge.py
+cd legacy && PYTHONPATH=src OMP_NUM_THREADS=1 python3 -m unittest discover -s tests
 ```
+
+## Adding a result
+
+1. Add the cases to a file under `warpx/campaigns/<study>/` and run them with `campaign.py`.
+2. `campaign.py sync NAME`, then copy `table.jsonl` to `warpx/results/NAME.jsonl`.
+3. Only cases whose `DONE` reads `complete` are in the table. Quote case names in the write-up so every number
+   can be found there.

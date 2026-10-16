@@ -2,7 +2,8 @@
 
 Binding rules for agents working in this repository. Explanations and how-tos live in `docs/`:
 
-- `docs/fresh-analysis.md`: current reading of the results, known model limits and research direction. Read this first.
+- `README.md`: the question, where the results stand and the layout. Read this first.
+- `docs/cusp-results.md`: the current tables. `docs/README.md` indexes the rest.
 - `docs/gpu-jobs.md`: how GPU jobs are submitted and why the rules below exist.
 - `docs/development.md`: repository layout, tests and lint commands.
 
@@ -29,6 +30,7 @@ Binding rules for agents working in this repository. Explanations and how-tos li
 
 ## Checks
 
-Run the tests before committing code: `PYTHONPATH=src OMP_NUM_THREADS=1 python3 -m unittest discover -s tests`.
-Lint and type-check only the modules listed in `docs/development.md`; do not broaden linting to
-the legacy scripts.
+Run the tests before committing code: `OMP_NUM_THREADS=1 python3 -m unittest discover -s tests`, and
+`ruff check tests warpx/campaign.py`. If you touch `legacy/`, run its suite too:
+`cd legacy && PYTHONPATH=src OMP_NUM_THREADS=1 python3 -m unittest discover -s tests`. Do not broaden
+linting to the legacy scripts.

@@ -1,8 +1,17 @@
 # WarpX runs
 
-Simulations here use WarpX (https://github.com/BLAST-WarpX/warpx, tag 26.10), not the PIC code in `src/`.
+Simulations here use WarpX (https://github.com/BLAST-WarpX/warpx, tag 26.10) with the patches in `patches/`.
 
-Local CPU build used for development:
+| | |
+|---|---|
+| `campaign.py`, `job-template.json` | runs campaigns on the cluster or locally |
+| `cusp/` | cusp decks, deck writer, reducers, patch checks |
+| `pops/` | electron-well decks and reducers |
+| `campaigns/<study>/` | case lists; `campaigns/registry.json` records every campaign |
+| `results/` | reduced table of each campaign as last fetched |
+| `patches/` | the WarpX patches, how to apply and build ([README](patches/README.md)) |
+
+Local CPU build used for development (apply the patches first):
 
 ```bash
 git clone --depth 1 --branch 26.10 https://github.com/BLAST-WarpX/warpx.git && cd warpx
@@ -26,7 +35,8 @@ python3 campaign.py sync em4      # fetches finished cases into results/em4 and 
 - Names cannot be reused: `campaigns/registry.json` records each campaign's question, cases and jobs.
 - `submit` refuses if it would hold more than `MAX_NODES` nodes or if too few nodes are free.
 - A case whose node is taken away is restarted from its last checkpoint by another GPU, once its
-  `CLAIM` file has gone five minutes without being touched. A case that stops three times is failed.
+  `CLAIM` file has gone five minutes without being touched. A case is failed when WarpX itself ends badly
+  three times from the same point; losing its node does not count.
   The decks checkpoint every `chk_every` steps.
 - Each finished case is reduced on the node to `measured.json` by the script `REDUCERS` names for
   its deck.
@@ -76,15 +86,18 @@ reduces it: what is held, the rate of leaving through the coils and through the 
 the width of each leak next to an electron orbit there, and how far the field has been pushed out.
 `campaign.py` runs any deck named `inputs_rz_*` with a second, cylindrical WarpX build.
 
-Limits of that deck: the plasma is born inside, so it is a control and not evidence about capture
-from a gun. Nothing can vary around the axis, which rules out any instability that needs to. The
-coil field is still a fixed formula. The reducer's coil field is checked against the deck's formula
-in `tests/test_spindle.py`; no run of this deck on a GPU has been checked yet.
+Limits of that deck: the plasma is born inside. Nothing can vary around the axis, which rules out any
+instability that needs to. The coil field is still a fixed formula. The reducer's coil field is checked
+against the deck's formula in `tests/test_spindle.py`. Mesh, seed and time-step repeats on the GPU build are
+in `results/sp2.jsonl`.
+
+`inputs_rz_picket_fed` is the same in a periodic row of alternating coils (a picket fence), the geometry of
+Park et al. 2019, reduced by `analyze_picket.py`. See `docs/picket-park.md` and `docs/cusp-results.md`.
 
 ## patches/
 
-`campaign.py` applies these to WarpX 26.10 before building. For the local build:
-`git apply <this directory>/*.patch` in the WarpX checkout.
+`campaign.py` applies these to WarpX 26.10 before building. How to apply and build by hand is in
+[`patches/README.md`](patches/README.md); the checks behind each are in `docs/warpx-patches.md`.
 
 `ionization-secondary-energy.patch` adds `<collision>.ionization_secondary_energy_scale`. Stock
 WarpX gives each of the two electrons leaving an ionisation half the energy in a random direction.

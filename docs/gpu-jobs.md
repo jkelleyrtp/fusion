@@ -9,8 +9,10 @@ The simulations run on shared B200 capacity managed by the slime job broker. The
 cd /home/ubuntu/repos/research
 uv run train gpus --cluster aws-usw2          # free capacity
 uv run train job list --cluster aws-usw2      # what is running
-uv run train job submit /home/ubuntu/repos/fusion/jobs/<name>.yaml --cluster aws-usw2 --priority 1
+uv run train job submit <job>.yaml --cluster aws-usw2 --priority 1
 ```
+
+`warpx/campaign.py submit` writes the job file from `warpx/job-template.json` and runs these commands itself.
 
 An equivalent authorized cluster is acceptable only after inspecting its availability the same way.
 All broker interaction goes through `uv run train job ...` and `uv run train gpus`.
@@ -24,8 +26,7 @@ eligible for preemption or eviction, so do not promise instant capacity reclamat
 ## One node
 
 The entrypoint keeps `--actor-num-nodes 1`, `--actor-num-gpus-per-node 8` (or fewer) and
-`--rollout-num-gpus 0`, and uses GPUs only within that node. The older jobs run independent cases, one per GPU.
-`warpx/campaign.py` can also run one WarpX case across the node's GPUs; see `multi-gpu.md`.
+`--rollout-num-gpus 0`, and uses GPUs only within that node. `warpx/campaign.py` runs independent cases, one per GPU, and can also run one WarpX case across the node's GPUs; see `multi-gpu.md`.
 
 ## Releasing the node
 
@@ -34,7 +35,8 @@ it ends.
 
 ## Preemption
 
-A preempted simulation restarts the whole sweep from scratch; there is no checkpoint or resume.
-Member results are written incrementally to `<out>/<tag>/` on FSx, so partial outputs survive, and
-a rerun creates a new timestamped run directory. A case is complete only when its `DONE` file
-reads `complete`.
+The broker takes a priority-1 node back whenever higher-priority work needs it, and starts the job again when
+a node is free. Do not resubmit around it. Each case checkpoints every `chk_every` steps; when the job comes
+back, or another node of the same campaign has a free GPU, the case carries on from its last checkpoint. A
+case is failed only if WarpX itself ends badly three times from the same point; losing its node does not
+count. A case is complete only when its `DONE` file reads `complete`.
