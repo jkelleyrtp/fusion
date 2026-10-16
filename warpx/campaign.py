@@ -115,10 +115,11 @@ run_case() {
     step=$((10#${restart##*chk}))
     for file in diags/reducedfiles/*.txt; do awk -v last=$step 'NR == 1 || $1 <= last' "$file" > trim.tmp && mv trim.tmp "$file"; done
   fi
-  # TRIES counts the tries that began from this same point. A try that was stopped after writing a later
-  # checkpoint got somewhere, so the count starts again; three from one point and the case is failed.
-  [ "$(tail -n 1 attempts.log 2>/dev/null | awk '{print $NF}')" = "${restart:-fresh}" ] || echo 1 > TRIES
-  if [ "$(cat TRIES)" -gt 3 ]; then echo "failed after 3 tries" > DONE; return; fi
+  # CRASHES counts the tries from this same point that WarpX itself ended badly; three and the case is failed. A try
+  # that ended because its node was taken away is not counted, however many there are, nor is one that got
+  # as far as a later checkpoint. TRIES counts every try, for `status`.
+  [ "$(tail -n 1 attempts.log 2>/dev/null | awk '{print $NF}')" = "${restart:-fresh}" ] || echo 0 > CRASHES
+  if [ "$(cat CRASHES 2>/dev/null || echo 0)" -ge 3 ]; then echo "failed after 3 tries" > DONE; return; fi
   echo "$job gpu $gpu ${restart:-fresh}" >> attempts.log
   local exe=$warpx; [[ $deck == inputs_rz_* ]] && exe=$warpx_rz
   CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __LAUNCH__ "$exe" "$files/$deck" "$@" $restart >> run.log 2>&1 &
@@ -147,8 +148,8 @@ run_case() {
     if [ $reached -gt $step ]; then rm -f CLAIM; else echo "failed: time limit" > DONE; fi
   else
     # Stopped or crashed: leave it for another GPU. If the node is being taken away this shell is about to be
-    # stopped too, and taking another case first would only spend one of that case's tries, so wait.
-    rm -f CLAIM; sleep __PAUSE__
+    # stopped too, so wait: only a shell that outlives the wait saw WarpX itself fail, and counts a crash.
+    sleep __PAUSE__; echo $(( $(cat CRASHES 2>/dev/null || echo 0) + 1 )) > CRASHES; rm -f CLAIM
   fi
 }
 

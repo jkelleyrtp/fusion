@@ -115,14 +115,21 @@ class WorkerTest(unittest.TestCase):
         self.assertEqual((self.camp / "stopped/DONE").read_text().strip(), "complete")
         self.assertIn("amr.restart=diags/chk000020", (self.camp / "stopped/attempts.log").read_text())
 
-    def test_tries_that_reached_a_later_checkpoint_do_not_count_towards_the_three(self) -> None:
+    def test_crashes_before_a_later_checkpoint_was_reached_do_not_count_towards_the_three(self) -> None:
         self.work("stopped deck stop_at=25\n")
-        (self.camp / "stopped/TRIES").write_text("3\n")  # as if stopped three times, each further on than the last
+        (self.camp / "stopped/CRASHES").write_text("3\n")  # as if it had crashed three times from checkpoint 10
         (self.camp / "stopped/attempts.log").write_text("job gpu 0 amr.restart=diags/chk000010\n")
         (self.camp / "stopped/CLAIM").unlink()
         self.work("")
         self.assertEqual((self.camp / "stopped/DONE").read_text().strip(), "complete")
-        self.assertEqual((self.camp / "stopped/TRIES").read_text().strip(), "1")
+
+    def test_a_case_whose_node_is_taken_away_again_and_again_at_the_same_point_is_not_failed(self) -> None:
+        self.work("stopped deck stop_at=25\n")
+        (self.camp / "stopped/TRIES").write_text("7\n")  # seven tries from checkpoint 20, none of them a crash
+        (self.camp / "stopped/attempts.log").write_text("job gpu 0 amr.restart=diags/chk000020\n" * 7)
+        (self.camp / "stopped/CLAIM").unlink()
+        self.work("")
+        self.assertEqual((self.camp / "stopped/DONE").read_text().strip(), "complete")
 
     def test_a_checkpoint_cut_short_is_not_used(self) -> None:
         self.work("stopped deck stop_at=20\n")  # stopped right after writing checkpoint 20: no step 21 in the log
