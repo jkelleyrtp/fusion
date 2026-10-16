@@ -52,6 +52,14 @@ class SpindleTest(unittest.TestCase):
         np.testing.assert_allclose(axial, exact, rtol=1e-9, atol=1e-12)
         np.testing.assert_allclose(radial, 0, atol=1e-12)
 
+    def test_the_electron_orbit_allows_for_speeds_near_that_of_light(self) -> None:
+        # Momentum from energy: pc = sqrt(T^2 + 2 T m c^2), with m c^2 = 510998.95 eV.
+        for energy in (1.0e4, 1.0e5):
+            expected = math.sqrt(energy**2 + 2 * energy * 510998.95) / 299792458.0
+            self.assertAlmostEqual(analyze_spindle.orbit_times_field(energy) / expected, 1.0, places=5)
+        slow = math.sqrt(2 * 1.0e5 * 510998.95) / 299792458.0
+        self.assertGreater(analyze_spindle.orbit_times_field(1.0e5) / slow, 1.04)
+
     def test_half_width_is_where_the_density_halves(self) -> None:
         position = np.linspace(0.05, 9.95, 100)
         self.assertAlmostEqual(analyze_spindle.half_width(position, np.exp(-position / 2)), 0.05 + 2 * math.log(2), delta=0.01)

@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from analyze_cage import M_E, MU0, Q_E
+from analyze_cage import C_LIGHT, M_E, MU0, Q_E
 
 from analyze_beta import bin_centres, table
 
@@ -58,6 +58,15 @@ def merge(position: np.ndarray, profile: np.ndarray) -> tuple[np.ndarray, np.nda
     """Average neighbouring bins in fours."""
     whole = slice(None, len(position) // 4 * 4)
     return position[whole].reshape(-1, 4).mean(axis=1), profile[whole].reshape(-1, 4).mean(axis=1)
+
+
+def orbit_times_field(energy_eV: float) -> float:
+    """Orbit radius times field (T m) of an electron of this kinetic energy: its momentum over its charge.
+
+    The second term is the correction for speeds near that of light: 5% at 100 keV, under 1% at 10 keV.
+    """
+    energy = energy_eV * Q_E
+    return float(np.sqrt(2 * energy * M_E + (energy / C_LIGHT) ** 2) / Q_E)
 
 
 def stream_through_coil(radius: np.ndarray, count: np.ndarray, cell: float) -> dict:
@@ -138,7 +147,7 @@ def reduce(run: Path) -> dict:
     assert ((recorded >= 0.8 * fed_until) & (recorded <= fed_until)).sum() >= 4, "under four histograms in the last fifth of the feed"
     field_in_coil = float(np.hypot(*coil_field(np.array([0.0]), np.array([c["dc"]]), c))[0])
     field_in_gap = float(np.hypot(*coil_field(np.array([c["rc"]]), np.array([0.0]), c))[0])
-    orbit = np.sqrt(2 * c["te"] * Q_E * M_E) / Q_E
+    orbit = orbit_times_field(c["te"])
     out = {
         "run": run.resolve().name,
         "complete": (run / "DONE").exists() and (run / "DONE").read_text().strip() == "complete",
