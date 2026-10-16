@@ -39,19 +39,20 @@ REDUCERS = {"inputs_rz_spindle_fed": "analyze_spindle.py", "inputs_3d_cusp_beta"
 # Two executables are built from one source tree: the 3D one with conducting boundaries inside the box, and the
 # cylindrical (r, z) one, which WarpX's electromagnetic solver does not support them in.
 BUILD_STEPS = r"""if [ ! -x "$warpx" ] || [ ! -x "$warpx_rz" ]; then
-  mkdir -p __BUILD__ && cd __BUILD__ || exit 1
-  python3 -m pip install -q --target __BUILD__/tools cmake ninja
-  export PATH=__BUILD__/tools/bin:$PATH PYTHONPATH=__BUILD__/tools
-  [ -d src ] || { git clone -q --depth 1 --branch 26.10 https://github.com/BLAST-WarpX/warpx.git src \
-    && for patch in "$files"/*.patch; do git -C src apply "$patch" || { echo patch-failed; exit 0; }; done; }
-  for kind in "3 ON build $warpx" "RZ OFF build-rz $warpx_rz"; do
-    read -r dims eb dir exe <<< "$kind"
-    [ -x "$exe" ] && continue
-    cmake -S src -B $dir -G Ninja -DWarpX_DIMS=$dims -DWarpX_COMPUTE=CUDA -DWarpX_MPI=__MPI__ -DWarpX_EB=$eb \
-      -DWarpX_OPENPMD=OFF -DWarpX_FFT=OFF -DWarpX_QED=OFF -DWarpX_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release > configure-$dir.log 2>&1 \
-      && cmake --build $dir -j 32 > $dir.log 2>&1 || { tail -30 configure-$dir.log $dir.log; echo build-failed; exit 0; }
-  done
-  cd "$camp"
+  # One build at a time: a job on another node may have found the same executables missing.
+  mkdir -p __BUILD__
+  ( flock 9; cd __BUILD__ || exit 1
+    python3 -m pip install -q --target __BUILD__/tools cmake ninja
+    export PATH=__BUILD__/tools/bin:$PATH PYTHONPATH=__BUILD__/tools
+    [ -d src ] || { git clone -q --depth 1 --branch 26.10 https://github.com/BLAST-WarpX/warpx.git src \
+      && for patch in "$files"/*.patch; do git -C src apply "$patch" || { echo patch-failed; exit 1; }; done; }
+    for kind in "3 ON build $warpx" "RZ OFF build-rz $warpx_rz"; do
+      read -r dims eb dir exe <<< "$kind"
+      [ -x "$exe" ] && continue
+      cmake -S src -B $dir -G Ninja -DWarpX_DIMS=$dims -DWarpX_COMPUTE=CUDA -DWarpX_MPI=__MPI__ -DWarpX_EB=$eb \
+        -DWarpX_OPENPMD=OFF -DWarpX_FFT=OFF -DWarpX_QED=OFF -DWarpX_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release > configure-$dir.log 2>&1 \
+        && cmake --build $dir -j 32 > $dir.log 2>&1 || { tail -30 configure-$dir.log $dir.log; echo build-failed; exit 1; }
+    done ) 9> __BUILD__/build.lock || exit 0
 fi"""
 
 WORKER = r"""

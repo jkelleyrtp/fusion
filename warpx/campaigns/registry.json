@@ -88,6 +88,11 @@
     "job": "jonathan-warpx-a05acf2f1b54",
     "gpus_per_case": 1,
     "submitted": "2026-10-16T05:25:58+00:00"
+   },
+   {
+    "job": "jonathan-warpx-5b03dfcef0dd",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T06:30:08+00:00"
    }
   ]
  },
