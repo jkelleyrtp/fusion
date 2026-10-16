@@ -230,5 +230,25 @@
     "submitted": "2026-10-16T07:50:05+00:00"
    }
   ]
+ },
+ "jet2": {
+  "question": "Does giving the plasma fired from the two outside guns a directed speed toward the centre get more of it into the six-coil cusp, and does it stay?",
+  "cases": [
+   "k_32k_v5e6 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.vj=5.e6",
+   "k_32k_v1e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.vj=1.e7",
+   "k_32k_v2e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.vj=2.e7",
+   "k_32k_te1e3_v1e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.te=1.e3 my_constants.vj=1.e7",
+   "k_32k_te1e3_v2e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.te=1.e3 my_constants.vj=2.e7",
+   "k_8k_v1e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=8000. my_constants.vj=1.e7",
+   "k_128k_v1e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=128000. my_constants.vj=1.e7",
+   "k_32k_v1e7_f1e23 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.vj=1.e7 my_constants.feed=1.e23"
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-86d1782c1bd3",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T08:44:21+00:00"
+   }
+  ]
  }
 }
