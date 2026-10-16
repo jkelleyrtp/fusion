@@ -310,13 +310,26 @@
    "s_16k_f1e22 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e22",
    "s_16k_f1e23_m229 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=4.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23 my_constants.mass_amu=0.12562",
    "s_16k_f1e23_m918 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=6.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23 my_constants.mass_amu=0.5036",
-   "s_16k_f1e23_stop inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=4.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23 my_constants.toff=2.e-8"
+   "s_16k_f1e23_stop inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=4.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23 my_constants.toff=2.e-8",
+   "s_8k_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=8000. my_constants.feed=1.e23",
+   "s_32k_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=32000. my_constants.feed=1.e23",
+   "s_16k_f1e21 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e21",
+   "s_16k_f1e23_nr256 inputs_rz_spindle_fed my_constants.nr=256 my_constants.ppc_feed=0.5 my_constants.ppd=2 my_constants.hist_every=500 my_constants.plot_every=32000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23",
+   "s_16k_f1e23_seed2 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23 warpx.random_seed=2",
+   "s_16k_f1e23_ppc4 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=1. my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23",
+   "s_32k_f1e24 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=32000. my_constants.feed=1.e24",
+   "s_64k_f1e24 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=64000. my_constants.feed=1.e24"
   ],
   "jobs": [
    {
     "job": "jonathan-warpx-e33a5b687294",
     "gpus_per_case": 1,
     "submitted": "2026-10-16T09:54:29+00:00"
+   },
+   {
+    "job": "jonathan-warpx-b4c6f2aafeac",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T10:29:54+00:00"
    }
   ]
  }
