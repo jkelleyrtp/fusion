@@ -54,8 +54,26 @@ The leak-stream half-width changes by up to 3%, against 2% between seeds. The la
 single probe line is dominated by noise in both modes (it varies several-fold between seeds) and is not a
 usable comparison.
 
-**Not checked.** Runs on more than one GPU, the cylindrical build, meshes coarser than 128 cells across the
-device, and restart from a checkpoint with the option on.
+**Check 3: the cylindrical build, with periodic ends and a restart** (`inputs_rz_picket_fed`, 96 radial cells,
+1280 steps on a CPU; a short filling run, not a result):
+
+| Run | Electrons lost | Ions lost | Electron energy (J) | Ion energy (J) |
+|---|---|---|---|---|
+| field per particle | 4.33e12 | 2.43e12 | 4.129 | 8.201 |
+| field on the mesh | 4.28e12 | 2.40e12 | 4.078 | 8.254 |
+| field on the mesh, second seed | 4.37e12 | 2.51e12 | 4.049 | 8.241 |
+
+The two modes differ by 1% in particles lost and in energy, which is the spread between seeds. A run stopped at
+step 400 and started again from its checkpoint holds the same number of electrons at step 800 as an
+uninterrupted one to 0.1%, and beyond the coils its field differs from the coil field by 1.2% (uninterrupted:
+1.1%), so the coil field is neither lost nor added twice on restart. At step 0 the field on the mesh is within
+0.05% of an endless row of coils on the coil plane.
+
+With the option on, the field written to plot files includes the coil field; with it off it does not.
+`analyze_picket.py` relies on the former.
+
+**Not checked.** Agreement between the two modes on more than one GPU (with or without a restart), and meshes
+coarser than 128 cells across the device in 3D.
 
 ## `flux-paired.patch`
 

@@ -35,7 +35,7 @@ PATCHES = sorted((ROOT / "patches").glob("*.patch"))
 # The build directory is named after the patches applied to WarpX 26.10, so a changed patch gets a fresh build.
 BUILD = f"{SHARED}/warpx-26.10-cuda-" + hashlib.sha256(b"".join(patch.read_bytes() for patch in PATCHES)).hexdigest()[:8]
 # Which script reduces a finished case, by the deck it ran.
-REDUCERS = {"inputs_rz_spindle_fed": "analyze_spindle.py", "inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_jets": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
+REDUCERS = {"inputs_rz_spindle_fed": "analyze_spindle.py", "inputs_rz_picket_fed": "analyze_picket.py", "inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_jets": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
             "inputs_3d_cusp_cage_gas": "analyze_cage.py"}
 
 # Two executables are built from one source tree: the 3D one with conducting boundaries inside the box, and the
@@ -186,26 +186,32 @@ def free_nodes() -> int:
     return sum(int(line.split("│")[4]) for line in table.splitlines() if "compute.internal" in line) - waiting
 
 
-def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 1800, pause: int = 120, look: int = 60) -> tuple[str, dict]:
-    """The broker job for one node working on campaign `name`, carrying `cases` to add to its queue. Each case
-    runs on `gpus` GPUs; more than one needs the WarpX build with MPI, which is kept beside the one without."""
-    assert gpus in (1, 2, 4, 8), "a node's 8 GPUs must divide evenly between cases"
-    build, launch = (BUILD, "") if gpus == 1 else (BUILD + "-mpi", "mpirun --allow-run-as-root --bind-to none -np $np")
-    token = uuid.uuid4().hex[:12]
+def payload(texts: dict[str, str]) -> str:
+    """What a worker needs beside WarpX, packed for a shell to unpack: the decks, the reducers and which deck
+    each reducer serves, the WarpX patches, and the files given here by name."""
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
-        for content, filename in ((cases, "cases.txt"), (json.dumps(REDUCERS), "reducers.json")):
+        for filename, content in {**texts, "reducers.json": json.dumps(REDUCERS)}.items():
             info = tarfile.TarInfo(filename)
             info.size = len(content.encode())
             archive.addfile(info, io.BytesIO(content.encode()))
         for file in sorted([*(ROOT / "pops").glob("inputs_*"), *(ROOT / "cusp").glob("inputs_*"),
                             *(ROOT / "cusp").glob("*.dat"), *(ROOT / "cusp").glob("analyze_*.py"), *PATCHES]):
             archive.add(file, file.name)
+    return base64.b64encode(buffer.getvalue()).decode()
+
+
+def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 1800, pause: int = 120, look: int = 60) -> tuple[str, dict]:
+    """The broker job for one node working on campaign `name`, carrying `cases` to add to its queue. Each case
+    runs on `gpus` GPUs; more than one needs the WarpX build with MPI, which is kept beside the one without."""
+    assert gpus in (1, 2, 4, 8), "a node's 8 GPUs must divide evenly between cases"
+    build, launch = (BUILD, "") if gpus == 1 else (BUILD + "-mpi", "mpirun --allow-run-as-root --bind-to none -np $np")
+    token = uuid.uuid4().hex[:12]
     worker = (WORKER.replace("__BUILD_STEPS__", BUILD_STEPS).replace("__CAMP__", f"{SHARED}/campaigns/{name}")
               .replace("__JOB__", token).replace("__BUILD__", build).replace("__TIMEOUT__", str(timeout)).replace("__STALL__", str(stall))
               .replace("__PAUSE__", str(pause)).replace("__LOOK__", str(look))
               .replace("__MPI__", "OFF" if gpus == 1 else "ON").replace("__LAUNCH__", launch).replace("__GPUS__", str(gpus))
-              .replace("__PAYLOAD__", base64.b64encode(buffer.getvalue()).decode()))
+              .replace("__PAYLOAD__", payload({"cases.txt": cases})))
     template = json.loads((ROOT.parent / "jobs/poisson-server-template.json").read_text())
     template["metadata"]["name"] = f"jonathan-warpx-{token}"
     spec = template["spec"]
@@ -253,11 +259,14 @@ def submit(args: argparse.Namespace) -> None:
     print(f"{args.name}: {len(new)} new cases, {args.nodes} nodes; holding {held + args.nodes} of {MAX_NODES}, {free - args.nodes} free")
 
 
-def on_cluster(command: str) -> str:
-    """Run a command where shared storage is mounted, which is inside any of this script's running jobs."""
+def on_cluster(command: str, given: str | None = None) -> str:
+    """Run a command where shared storage is mounted, which is inside any of this script's running jobs.
+    `given` is what the command reads as its input."""
     pods = [pod for pod in my_pods() if "Running" in shell(f"kubectl --context {CONTEXT} get pod {pod} --no-headers")]
     assert pods, "no job of ours is running, so shared storage cannot be read right now"
-    return shell(f"kubectl --context {CONTEXT} exec {pods[0]} -- bash -c {shlex.quote(command)}")
+    flag = "" if given is None else "-i "
+    return subprocess.run(f"kubectl --context {CONTEXT} exec {flag}{pods[0]} -- bash -c {shlex.quote(command)}", shell=True,
+                          input=given, capture_output=True, text=True, check=True).stdout
 
 
 def queue_command(name: str, cases: list[str]) -> str:
@@ -275,6 +284,9 @@ def add(args: argparse.Namespace) -> None:
     clash = sorted({line.split()[0] for line in entry["cases"]} & {line.split()[0] for line in new})
     assert not clash, f"campaign {args.name} already has cases {clash}"
     assert len({line.split()[0] for line in new}) == len(new), "case names repeat within the file"
+    # The new cases may use decks and reducers written since those nodes' jobs were submitted.
+    on_cluster(f"cd {SHARED}/campaigns/{args.name} && base64 -d > added.tgz && for files in files-*/; do tar -xzf added.tgz -C $files; done",
+               given=payload({}))
     on_cluster(queue_command(args.name, new))
     entry["cases"] += new
     REGISTRY.write_text(json.dumps(known, indent=1) + "\n")

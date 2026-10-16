@@ -13,19 +13,24 @@ import numpy as np
 AXES = "xyz"
 
 
-def loop(axis: str, sign: int) -> dict[str, str]:
-    """Field components of the coil centred at sign*dc on `axis`, with its moment pointing at the centre."""
-    u = f"({axis}-({sign})*dc)"
+def loop_at(axis: str, centre: str, share: str) -> dict[str, str]:
+    """Field components of a coil centred at `centre` on `axis`, carrying `share` times coil_at."""
+    u = f"({axis}-{centre})"
     others = [c for c in AXES if c != axis]
     rho = f"sqrt({others[0]}*{others[0]}+{others[1]}*{others[1]}+1e-12*a*a)"
     alpha2 = f"(rc*rc+{rho}**2+{u}**2-2*rc*{rho})"
     beta = f"sqrt(rc*rc+{rho}**2+{u}**2+2*rc*{rho})"
     k = f"(sqrt(4*rc*{rho})/{beta})"
     ell_k, ell_e = f"comp_ellint_1({k})", f"comp_ellint_2({k})"
-    scale = f"({-sign})*mu0*coil_at/(2*pi)"
+    scale = f"{share}*mu0*coil_at/(2*pi)"
     axial = f"{scale}/({alpha2}*{beta})*((rc*rc-{rho}**2-{u}**2)*{ell_e}+{alpha2}*{ell_k})"
     radial = f"{scale}*{u}/({alpha2}*{beta}*{rho}**2)*((rc*rc+{rho}**2+{u}**2)*{ell_e}-{alpha2}*{ell_k})"
     return {axis: axial, others[0]: f"{radial}*{others[0]}", others[1]: f"{radial}*{others[1]}"}
+
+
+def loop(axis: str, sign: int) -> dict[str, str]:
+    """Field components of the coil centred at sign*dc on `axis`, with its moment pointing at the centre."""
+    return loop_at(axis, f"({sign})*dc", f"({-sign})")
 
 
 def field(component: str) -> str:
@@ -573,11 +578,9 @@ particles.B_ext_particle_init_style = parse_B_ext_particle_function
 """
 
 
-def spindle_deck() -> str:
-    text = SPINDLE
-    for component in AXES:
-        text += (f'particles.B{component}_external_particle_function(x,y,z,t) = "'
-                 + "+".join(loop("z", sign)[component] for sign in (1, -1)) + '"\n')
+def fed_at_centre(flux: str) -> str:
+    """Both species born on a disc at the centre at `flux` per area per second on each face, and in a starting ball."""
+    text = ""
     for name in ("electrons", "ions"):
         # Both species start on the same regular lattice, so the plasma is exactly neutral at the start.
         text += (f"{name}.injection_sources = ball up down\n{name}.ball.injection_style = NUniformPerCell\n"
@@ -591,21 +594,15 @@ def spindle_deck() -> str:
                      f"{name}.{source}.flux_paired = 1\n"
                      f"{name}.{source}.num_particles_per_cell = ppc_feed\n"
                      f"{name}.{source}.flux_profile = parse_flux_function\n"
-                     f'{name}.{source}.flux_function(x,y,z,t) = "0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*(t<toff)"\n'
+                     f'{name}.{source}.flux_function(x,y,z,t) = "{flux}"\n'
                      f"{name}.{source}.momentum_distribution_type = gaussianflux\n")
-    radius, speed = "sqrt(x*x+y*y)", "/sqrt(1+ux*ux+uy*uy+uz*uz)"
-    # name: (what is binned, which particles, lowest bin, highest bin, bins). The two "through" histograms hold
-    # the velocity (in units of c) out through a shell near the can; weight * velocity / shell thickness, summed
-    # over the bins, is the number leaving per second by that route.
-    histograms = {
-        "rad": ("sqrt(x*x+y*y+z*z)", "1", "0.", "sqrt(rw*rw+zw*zw)", 120),
-        "in_coil": (radius, "abs(abs(z)-dc)<0.02*a", "0.", "rc", 400),
-        "in_gap": ("abs(z)", f"abs({radius}-rc)<0.02*a", "0.", "dc", 400),
-        "through_coils": (f"uz*(2*(z>0)-1){speed}", "(abs(z)>zw-2*shell)*(abs(z)<zw-shell)", "-1.", "1.", 200),
-        "through_gap": (f"(ux*x+uy*y)/{radius}{speed}", f"({radius}>rw-2*shell)*({radius}<rw-shell)", "-1.", "1.", 200),
-        "energy": ("{mass}*clight**2/q_e*(sqrt(1+ux*ux+uy*uy+uz*uz)-1)", "1", "0.", "12.*te", 120),
-    }
-    names = []
+    return text
+
+
+def histogram_lines(histograms: dict[str, tuple[str, str, str, str, int]]) -> tuple[list[str], str]:
+    """Names and deck lines of one histogram per species for each entry of
+    name: (what is binned, which particles, lowest bin, highest bin, bins)."""
+    names, text = [], ""
     for species, mass in (("electrons", "m_e"), ("ions", "mi")):
         for name, (value, keep, low, high, bins) in histograms.items():
             names.append(f"{species[0]}_{name}")
@@ -613,7 +610,88 @@ def spindle_deck() -> str:
                      f'{names[-1]}.histogram_function(t,x,y,z,ux,uy,uz) = "{value.format(mass=mass)}"\n'
                      f'{names[-1]}.filter_function(t,x,y,z,ux,uy,uz) = "{keep}"\n'
                      f"{names[-1]}.bin_number = {bins}\n{names[-1]}.bin_min = {low}\n{names[-1]}.bin_max = {high}\n")
-    return text.replace("__HISTOGRAMS__", " ".join(names))
+    return names, text
+
+
+RADIUS, SPEED = "sqrt(x*x+y*y)", "/sqrt(1+ux*ux+uy*uy+uz*uz)"
+ENERGY = ("{mass}*clight**2/q_e*(sqrt(1+ux*ux+uy*uy+uz*uz)-1)", "1", "0.", "12.*te", 120)
+# Velocity (in units of c) outward through a shell near the can; weight * velocity / shell thickness, summed over
+# the bins, is the number leaving per second through the can's side.
+THROUGH_SIDE = (f"(ux*x+uy*y)/{RADIUS}{SPEED}", f"({RADIUS}>rw-2*shell)*({RADIUS}<rw-shell)", "-1.", "1.", 200)
+
+
+def spindle_deck() -> str:
+    text = SPINDLE
+    for component in AXES:
+        text += (f'particles.B{component}_external_particle_function(x,y,z,t) = "'
+                 + "+".join(loop("z", sign)[component] for sign in (1, -1)) + '"\n')
+    text += fed_at_centre("0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*(t<toff)")
+    names, lines = histogram_lines({
+        "rad": ("sqrt(x*x+y*y+z*z)", "1", "0.", "sqrt(rw*rw+zw*zw)", 120),
+        "in_coil": (RADIUS, "abs(abs(z)-dc)<0.02*a", "0.", "rc", 400),
+        "in_gap": ("abs(z)", f"abs({RADIUS}-rc)<0.02*a", "0.", "dc", 400),
+        "through_coils": (f"uz*(2*(z>0)-1){SPEED}", "(abs(z)>zw-2*shell)*(abs(z)<zw-shell)", "-1.", "1.", 200),
+        "through_gap": THROUGH_SIDE,
+        "energy": ENERGY,
+    })
+    return (text + lines).replace("__HISTOGRAMS__", " ".join(names))
+
+
+PICKET_COILS = 12   # coils kept on each side of the middle one; the field is then within 0.05% of an endless row's
+
+PICKET = """
+# What follows turns the two-coil deck above into a picket fence: an endless row of coils on one axis, each
+# carrying the opposite current to its neighbours, so the only leaks are the ring-shaped gaps between coils.
+# The mesh holds one period (a coil in the middle, half a coil at each end) and repeats along the axis. This is
+# the arrangement of Park et al. 2019 (arXiv:1901.08041): coil spacing half the coil radius, plasma lost at 1.4
+# to 1.5 coil radii, plasma fed within 0.3 coil radii of the axis, ions of 64 electron masses as hot as the
+# electrons. They fill for 10 electron crossings of the coil diameter and then feed at about 1/18 of that rate.
+# The coil field is put on the mesh once (docs/warpx-patches.md); per particle, 25 coils would be too slow.
+my_constants.h = 0.5*rc               # spacing of neighbouring coils (m)
+my_constants.rw = 1.5*a
+my_constants.zw = h
+my_constants.coil_at = 156800.       # 2 pi * 41.6 times the electrons' thermal momentum over (charge * mu0): our reading of the paper's figures
+my_constants.n0 = 0.
+my_constants.te = 1.e5
+my_constants.ti = te
+my_constants.mass_amu = 0.035109      # 64 electron masses
+my_constants.feed = 6.9e24            # electrons, and ions, born per second while filling
+my_constants.tfill = 1.649e-9         # time the filling ends (s)
+my_constants.sustain = 1./18.         # feed after that, as a share of the filling feed
+my_constants.tmax = 8.25e-9           # 50 electron crossings of the coil diameter
+my_constants.nr = 384
+my_constants.ppc_feed = 1.
+my_constants.hist_every = 500
+my_constants.plot_every = 5000
+boundary.field_lo = none periodic
+boundary.field_hi = pec periodic
+boundary.particle_lo = none periodic
+boundary.particle_hi = absorbing periodic
+particles.B_ext_particle_on_grid = 1
+"""
+
+
+def picket_deck() -> str:
+    text = spindle_deck() + PICKET
+    for component in AXES:
+        coils = []
+        for k in range(-PICKET_COILS, PICKET_COILS + 1):
+            # Half weight for the two end coils: the row then ends on a whole number of opposed pairs.
+            share = (0.5 if abs(k) == PICKET_COILS else 1.0) * (-1) ** k
+            coils.append(loop_at("z", f"({k})*h", f"({share})")[component])
+        text += f'particles.B{component}_external_particle_function(x,y,z,t) = "' + "+".join(coils) + '"\n'
+    text += fed_at_centre("0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*((t<tfill)+sustain*(t>=tfill))")
+    names, lines = histogram_lines({
+        "rad": (RADIUS, "1", "0.", "rw", 150),
+        # Across the wall in the plane of the middle coil, across it in the plane of a gap, and across a gap
+        # at the coil radius: lines 1, 2 and 3 of the paper.
+        "line1": (RADIUS, "abs(z)<0.02*a", "0.", "rw", 600),
+        "line2": (RADIUS, "abs(abs(z)-0.5*h)<0.02*a", "0.", "rw", 600),
+        "line3": ("abs(z)", f"abs({RADIUS}-rc)<0.02*a", "0.", "h", 400),
+        "through_side": THROUGH_SIDE,
+        "energy": ENERGY,
+    })
+    return text + lines + "warpx.reduced_diags_names = number energy fields " + " ".join(names) + "\n"
 
 
 if __name__ == "__main__":
@@ -627,3 +705,4 @@ if __name__ == "__main__":
     here.with_name("inputs_3d_cusp_fed").write_text(beta_deck(fed=True))
     here.with_name("inputs_3d_cusp_jets").write_text(beta_deck(jets=True))
     here.with_name("inputs_rz_spindle_fed").write_text(spindle_deck())
+    here.with_name("inputs_rz_picket_fed").write_text(picket_deck())
