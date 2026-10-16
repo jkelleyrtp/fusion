@@ -1,5 +1,8 @@
 """The campaign worker script, run locally with a stand-in for WarpX."""
 import argparse
+import contextlib
+import io
+import json
 import os
 import shlex
 import subprocess
@@ -181,6 +184,20 @@ class LocalTest(unittest.TestCase):
         self.run_local("good inputs_rz_x\n")
         with self.assertRaises(AssertionError):
             self.run_local("good inputs_rz_x crash=1\n")
+
+    def test_a_complete_case_that_was_never_reduced_is_named_rather_than_silently_left_out_of_the_table(self) -> None:
+        campaign.REGISTRY.write_text(json.dumps({"t": {"question": "q", "jobs": [], "cases": [
+            "reduced inputs_rz_spindle_fed", "bare inputs_rz_spindle_fed", "stopped inputs_rz_spindle_fed"]}}))
+        for case, state in (("reduced", "complete"), ("bare", "complete"), ("stopped", "failed: time limit")):
+            (campaign.RESULTS / "t" / case).mkdir(parents=True)
+            (campaign.RESULTS / "t" / case / "DONE").write_text(state + "\n")
+        (campaign.RESULTS / "t/reduced/measured.json").write_text('{"width": 1}')
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said):
+            campaign.table("t")
+        self.assertEqual((campaign.RESULTS / "t/table.jsonl").read_text(), '{"case": "reduced", "width": 1}\n')
+        self.assertIn("complete but not reduced", said.getvalue())
+        self.assertTrue(said.getvalue().strip().endswith(": bare"))
 
 
 if __name__ == "__main__":

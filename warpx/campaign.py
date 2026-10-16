@@ -349,7 +349,7 @@ def table(name: str, again: bool = False) -> None:
     """Write one line per complete case of a campaign to its table.jsonl, reducing each again here if asked."""
     target = RESULTS / name
     decks = {line.split()[0]: line.split()[1] for line in registry()[name]["cases"]}
-    rows = []
+    rows, unreduced = [], []
     for done in sorted(target.glob("*/DONE")):
         measured = done.parent / "measured.json"
         if again and done.read_text().strip() == "complete" and decks[done.parent.name] in REDUCERS:
@@ -357,10 +357,15 @@ def table(name: str, again: bool = False) -> None:
             measured.write_text(shell(f"{sys.executable} {ROOT / 'cusp' / REDUCERS[decks[done.parent.name]]} {done.parent}"))
         if done.read_text().strip() == "complete" and measured.exists() and measured.read_text().strip():
             rows.append(json.dumps({"case": done.parent.name, **json.loads(measured.read_text())}))
+        elif done.read_text().strip() == "complete" and decks[done.parent.name] in REDUCERS:
+            unreduced.append(done.parent.name)
     (target / "table.jsonl").write_text("\n".join(rows) + "\n")
     states = [done.read_text().strip() for done in target.glob("*/DONE")]
     print(f"{name}: {states.count('complete')} complete, {len(states) - states.count('complete')} failed, "
           f"{len(registry()[name]['cases']) - len(states)} to go; {len(rows)} rows in {target}/table.jsonl")
+    if unreduced:
+        # A node taken away between a case finishing and its reduction leaves the case complete with no row.
+        print(f"complete but not reduced, so not in the table (run `campaign.py reduce {name}`): {' '.join(unreduced)}")
 
 
 def local(args: argparse.Namespace) -> None:
