@@ -60,6 +60,14 @@ class SpindleTest(unittest.TestCase):
         slow = math.sqrt(2 * 1.0e5 * 510998.95) / 299792458.0
         self.assertGreater(analyze_spindle.orbit_times_field(1.0e5) / slow, 1.04)
 
+    def test_pressure_is_two_thirds_of_the_energy_for_slow_particles_and_less_for_fast_ones(self) -> None:
+        rest = 510998.95 * 1.602176634e-19
+        self.assertAlmostEqual(analyze_spindle.pressure_per_particle(1e-6 * rest, analyze_spindle.M_E) / (1e-6 * rest), 2 / 3, places=5)
+        # One particle of 100 keV: momentum times speed is T (T + 2 m c^2) / (T + m c^2).
+        energy = 1.0e5 * 1.602176634e-19
+        self.assertAlmostEqual(analyze_spindle.pressure_per_particle(energy, analyze_spindle.M_E) / energy, 0.6121, places=3)
+        self.assertAlmostEqual(analyze_spindle.pressure_per_particle(1e3 * rest, analyze_spindle.M_E) / (1e3 * rest), 1 / 3, places=3)
+
     def test_half_width_is_where_the_density_halves(self) -> None:
         position = np.linspace(0.05, 9.95, 100)
         self.assertAlmostEqual(analyze_spindle.half_width(position, np.exp(-position / 2)), 0.05 + 2 * math.log(2), delta=0.01)

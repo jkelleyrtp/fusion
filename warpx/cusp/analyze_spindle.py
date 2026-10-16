@@ -16,6 +16,8 @@ from pathlib import Path
 import numpy as np
 from analyze_cage import C_LIGHT, M_E, MU0, Q_E
 
+M_U = 1.66053906660e-27
+
 from analyze_beta import bin_centres, table
 
 C = 299792458.0
@@ -40,6 +42,16 @@ def coil_field(r: np.ndarray, z: np.ndarray, c: dict) -> tuple[np.ndarray, np.nd
         radial += scale * (u * np.cos(angle) / gap).sum(axis=-1)
         axial += scale * ((c["rc"] - r[..., None] * np.cos(angle)) / gap).sum(axis=-1)
     return radial, axial
+
+
+def pressure_per_particle(mean_energy: float, mass: float) -> float:
+    """Pressure over number density (J) of particles of this mean kinetic energy (J): a third of momentum times speed.
+
+    Two thirds of the energy for slow particles, falling towards one third for fast ones; taken at the mean
+    energy, not averaged over the spread. For 100 keV electrons it is 8% below two thirds.
+    """
+    rest = mass * C_LIGHT**2
+    return mean_energy * (mean_energy + 2 * rest) / (mean_energy + rest) / 3
 
 
 def half_width(position: np.ndarray, density: np.ndarray) -> float:
@@ -182,7 +194,7 @@ def reduce(run: Path) -> dict:
         core = data[recent, 2:].mean(axis=0)[radius < 0.5 * c["rc"]].sum() / (4 / 3 * np.pi * (0.5 * c["rc"]) ** 3)
         out[f"{species}_core_density_per_m3"] = float(f"{core:.4g}")
         out.setdefault("core_pressure_Pa", 0.0)
-        out["core_pressure_Pa"] += core * 2 / 3 * each
+        out["core_pressure_Pa"] += core * pressure_per_particle(each, M_E if index == 0 else c["mass_amu"] * M_U)
         for where, value in (("coil", "radius"), ("gap", "height")):
             data, position = table(run, f"{letter}_in_{where}"), bin_centres(run, f"{letter}_in_{where}")
             profile = data[(data[:, 1] >= 0.8 * fed_until) & (data[:, 1] <= fed_until), 2:].mean(axis=0)
