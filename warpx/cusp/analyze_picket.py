@@ -35,12 +35,15 @@ def thermal_speed(temperature_eV: float, mass: float) -> float:
     return float(C_LIGHT * u / np.sqrt(1 + u * u))
 
 
-def field_on_coil_plane(run: Path, after: float) -> tuple[np.ndarray, np.ndarray] | None:
-    """(radius, field strength) across the plane of the middle coil, averaged over the snapshots later than `after`.
+def on_coil_plane(run: Path, after: float) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+    """(radius over the wall's, field strength, current density around the axis) across the plane of the middle
+    coil, averaged over the snapshots later than `after`.
 
-    With the coil field on the mesh, the snapshots hold the coil field and the plasma's together.
+    With the coil field on the mesh, the snapshots hold the coil field and the plasma's together. The profiles
+    are kept beside the other reduced diagnostics, so a case can be reduced again where its snapshots are not.
     """
-    strengths = []
+    kept = run / "diags/reducedfiles/on_coil_plane.txt"
+    rows = []
     for snapshot in sorted(p for p in (run / "diags").glob("diag1[0-9]*") if (p / "Level_0/Cell_D_00000").exists()):
         header = (snapshot / "Header").read_text().split("\n")
         names = header[2 : 2 + int(header[1])]
@@ -51,25 +54,74 @@ def field_on_coil_plane(run: Path, after: float) -> tuple[np.ndarray, np.ndarray
             nr, nz = (int(value) + 1 for value in high.split(","))
             cube = dict(zip(names, np.frombuffer(data.read(len(names) * nr * nz * 8), dtype="<f8").reshape(len(names), nz, nr)))
         middle = slice(nz // 2 - 2, nz // 2 + 2)
-        strengths.append(np.sqrt(cube["Br"][middle] ** 2 + cube["Bz"][middle] ** 2 + cube["Bt"][middle] ** 2).mean(axis=0))
-    if not strengths:
+        strength = np.sqrt(cube["Br"][middle] ** 2 + cube["Bz"][middle] ** 2 + cube["Bt"][middle] ** 2).mean(axis=0)
+        rows.append((strength, cube["jt"][middle].mean(axis=0)))
+    if rows:
+        strength, current = np.mean(rows, axis=0)
+        np.savetxt(kept, np.column_stack([(np.arange(nr) + 0.5) / nr, strength, current]),
+                   header=f"radius over the wall's, field strength (T), current density around the axis (A/m2); {len(rows)} snapshots")
+    if not kept.exists():
         return None
-    return (np.arange(nr) + 0.5) / nr, np.mean(strengths, axis=0)
+    profile = np.loadtxt(kept)
+    return profile[:, 0], profile[:, 1], profile[:, 2]
+
+
+def current_layer(radius: np.ndarray, current: np.ndarray, near: float, within: float) -> dict:
+    """The layer of current at the plasma's edge: where it peaks within `within` of `near`, and its full width
+    at half that peak. This is the thickness Park et al. 2019 quote."""
+    size = np.abs(current)
+    window = np.nonzero(np.abs(radius - near) < within)[0]
+    peak = window[np.argmax(size[window])]
+    half = 0.5 * size[peak]
+    inner = outer = peak
+    while inner > 0 and size[inner] >= half:
+        inner -= 1
+    while outer < len(radius) - 1 and size[outer] >= half:
+        outer += 1
+    if size[inner] >= half or size[outer] >= half:
+        return {}
+    low = float(np.interp(half, [size[inner], size[inner + 1]], [radius[inner], radius[inner + 1]]))
+    high = float(np.interp(half, [size[outer], size[outer - 1]], [radius[outer], radius[outer - 1]]))
+    return {"peak_at": float(radius[peak]), "from": low, "to": high, "width": high - low}
 
 
 def edge(radius: np.ndarray, count: np.ndarray, c: dict) -> dict:
     """Where the plasma ends in the plane of a coil, and over what distance its density falls from 90% to 10% of
-    the density inside. Inside is between 0.4 and 0.6 coil radii, beyond the feed and before the edge. Each
-    level is taken at the outermost place the density still reaches it, so ripples further in do not count."""
+    the density just inside the edge.
+
+    The density also falls slowly from the centre outward, so "inside" is a band 0.03 coil radii wide that
+    ends one edge thickness short of the place the density halves; the band is moved until the thickness it
+    gives stops changing. Each level is taken at the outermost place the density still reaches it, so
+    ripples further in do not count.
+    """
     density = count / radius
+    step = radius[1] - radius[0]
+
+    def places(level: float) -> dict[float, float]:
+        found = {}
+        for share in (0.9, 0.5, 0.1):
+            reached = np.nonzero(density >= share * level)[0]
+            if not len(reached) or reached[-1] == len(radius) - 1:
+                return {}
+            k = reached[-1]
+            found[share] = float(np.interp(share * level, [density[k + 1], density[k]], [radius[k + 1], radius[k]]))
+        return found
+
     level = density[(radius > 0.4 * c["rc"]) & (radius < 0.6 * c["rc"])].mean()
-    place = {}
-    for share in (0.9, 0.5, 0.1):
-        reached = np.nonzero(density >= share * level)[0]
-        if not len(reached) or reached[-1] == len(radius) - 1:
+    place = places(level)
+    short = 0.04 * c["rc"]
+    for _ in range(8):
+        if not place:
             return {}
-        k = reached[-1]
-        place[share] = float(np.interp(share * level, [density[k + 1], density[k]], [radius[k + 1], radius[k]]))
+        band = (radius > place[0.5] - short - 0.03 * c["rc"]) & (radius < place[0.5] - short)
+        level = density[band].mean()
+        place = places(level)
+        if not place:
+            return {}
+        thickness = max(place[0.1] - place[0.9], 2 * step)
+        if abs(thickness - short) < step:
+            break
+        short = thickness
     return {"level": float(level), "middle": place[0.5], "thickness": place[0.1] - place[0.9]}
 
 
@@ -125,9 +177,9 @@ def reduce(run: Path) -> dict:
         folded = 0.5 * (profile + profile[::-1])[len(profile) // 2 :]
         out[f"{species[:-1]}_stream_half_height_in_gap_mm"] = round(half_width(height[: len(folded)], folded) * 1e3, 4)
     out["pressure_inside_Pa"] = float(f"{pressure:.4g}")
-    field = field_on_coil_plane(run, 0.8 * time[-1])
-    if field is not None and electron_edge:
-        radius, strength = field[0] * c["rw"], field[1]
+    profiles = on_coil_plane(run, 0.8 * time[-1])
+    if profiles is not None and electron_edge:
+        radius, strength, current = profiles[0] * c["rw"], profiles[1], profiles[2]
         middle, thickness = electron_edge["middle"], electron_edge["thickness"]
         at_edge = float(np.interp(middle, radius, strength))
         outside = float(np.interp(middle + thickness, radius, strength))
@@ -139,6 +191,18 @@ def reduce(run: Path) -> dict:
         out["edge_thickness_in_electron_orbits"] = round(float(thickness * Q_E * at_edge / momentum), 2)
         out["coil_radius_in_electron_orbits_at_edge"] = round(float(c["rc"] * Q_E * at_edge / momentum), 1)
         out["pressure_inside_over_magnetic_outside_edge"] = float(f"{pressure / (outside**2 / (2 * MU0)):.3g}")
+        layer = current_layer(radius, current, middle, 0.1 * c["rc"])
+        if layer:
+            inside = (radius >= layer["from"]) & (radius <= layer["to"])
+            mean = float(strength[inside].mean())
+            # Park et al. take the orbit from the temperature the plasma is fed at and the mean field in the layer.
+            fed = np.sqrt(c["te"] * Q_E * M_E) / (Q_E * mean)
+            out["current_layer_at_over_coil_radius"] = round(layer["peak_at"] / c["rc"], 4)
+            out["current_layer_width_mm"] = round(layer["width"] * 1e3, 4)
+            out["current_layer_width_in_cells"] = round(layer["width"] / (radius[1] - radius[0]), 1)
+            out["field_in_current_layer_T"] = round(mean, 4)
+            out["current_layer_width_in_orbits_at_fed_temperature"] = round(float(layer["width"] / fed), 2)
+            out["current_layer_width_in_orbits_at_measured_pressure"] = round(float(layer["width"] * Q_E * mean / momentum), 2)
     return out
 
 

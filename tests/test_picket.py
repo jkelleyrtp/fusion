@@ -62,6 +62,22 @@ class PicketTest(unittest.TestCase):
         self.assertAlmostEqual(found["thickness"], 0.0008, places=5)
         self.assertAlmostEqual(found["level"], 3e9, delta=3e3)
 
+    def test_the_current_layer_is_measured_at_half_its_peak_and_a_larger_current_elsewhere_is_ignored(self) -> None:
+        radius = (np.arange(384) + 0.5) * 0.015 / 384
+        # A layer 0.2 mm wide at half its height, at 7.3 mm, under the far larger current of a coil at 10 mm.
+        current = -4e9 * np.exp(-4 * np.log(2) * ((radius - 0.0073) / 0.0002) ** 2) + 5e10 * np.exp(-(((radius - 0.01) / 0.0002) ** 2))
+        found = analyze_picket.current_layer(radius, current, 0.00735, 0.001)
+        self.assertAlmostEqual(found["peak_at"], 0.0073, delta=2e-5)
+        self.assertAlmostEqual(found["width"], 0.0002, delta=1e-5)
+
+    def test_a_density_that_falls_slowly_from_the_centre_does_not_thicken_the_edge(self) -> None:
+        radius = (np.arange(600) + 0.5) * 0.015 / 600
+        # Density falling from 2.5 at the centre to 1 at 7.9 mm, then in a straight line to nothing at 8.1 mm.
+        density = np.where(radius < 0.0079, 1 + 1.5 * (0.0079 - radius) / 0.0079, np.clip((0.0081 - radius) / 0.0002, 0.0, 1.0))
+        found = analyze_picket.edge(radius, radius * density, {"rc": 0.01})
+        self.assertAlmostEqual(found["middle"], 0.008, delta=2e-5)
+        self.assertAlmostEqual(found["thickness"], 0.00016, delta=5e-5)
+
 
 if __name__ == "__main__":
     unittest.main()

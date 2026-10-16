@@ -9,6 +9,7 @@ checkpoint. Each finished case is reduced on the node to `measured.json`.
   campaign.py add NAME --cases FILE                                    give more cases to the nodes a campaign already has
   campaign.py status NAME                                             what each case is doing
   campaign.py sync NAME                                               fetch finished cases and write table.jsonl
+  campaign.py reduce NAME [--only PREFIX]                             reduce finished cases again on the node, with the reducers here
 """
 import argparse
 import base64
@@ -276,6 +277,24 @@ def queue_command(name: str, cases: list[str]) -> str:
             f"{{ echo \"$name $rest\" >> all_cases.txt; echo \"$name $rest\" >> queue.txt; }}; done' <<< {shlex.quote(lines)}")
 
 
+def ship(name: str) -> None:
+    """Give every node of a campaign this checkout's decks and reducers in place of the ones its job brought."""
+    on_cluster(f"cd {SHARED}/campaigns/{name} && base64 -d > added.tgz && for files in files-*/; do tar -xzf added.tgz -C $files; done",
+               given=payload({}))
+
+
+def reduce(args: argparse.Namespace) -> None:
+    """Reduce a campaign's complete cases again on its node, where their field snapshots are, with this
+    checkout's reducers. `sync --reduce` does the same here, from the reduced diagnostics alone."""
+    ship(args.name)
+    decks = {line.split()[0]: line.split()[1] for line in registry()[args.name]["cases"]}
+    wanted = " ".join(f"{case}:{REDUCERS[deck]}" for case, deck in decks.items() if case.startswith(args.only) and deck in REDUCERS)
+    print(on_cluster(f"cd {SHARED}/campaigns/{args.name} && files=$(ls -d files-*/ | head -n 1) && for pair in {wanted}; do "
+                     "case=${pair%%:*}; [ \"$(cat $case/DONE 2>/dev/null)\" = complete ] || continue; "
+                     "( cd $case && python3 ../$files/${pair##*:} . > measured.tmp 2> reduce.log && mv measured.tmp measured.json "
+                     "&& echo \"$case reduced\" || echo \"$case: $(tail -n 1 reduce.log)\" ); done"), end="")
+
+
 def add(args: argparse.Namespace) -> None:
     """Give more cases to the nodes a campaign already holds: a GPU there takes one when it finishes its own."""
     known = registry()
@@ -285,8 +304,7 @@ def add(args: argparse.Namespace) -> None:
     assert not clash, f"campaign {args.name} already has cases {clash}"
     assert len({line.split()[0] for line in new}) == len(new), "case names repeat within the file"
     # The new cases may use decks and reducers written since those nodes' jobs were submitted.
-    on_cluster(f"cd {SHARED}/campaigns/{args.name} && base64 -d > added.tgz && for files in files-*/; do tar -xzf added.tgz -C $files; done",
-               given=payload({}))
+    ship(args.name)
     on_cluster(queue_command(args.name, new))
     entry["cases"] += new
     REGISTRY.write_text(json.dumps(known, indent=1) + "\n")
@@ -311,10 +329,12 @@ def sync(args: argparse.Namespace) -> None:
     """Fetch the reduced diagnostics of finished cases and write one line per complete case to table.jsonl."""
     target = RESULTS / args.name
     target.mkdir(parents=True, exist_ok=True)
-    have = " ".join(f"--exclude={path.parent.name}" for path in target.glob("*/DONE"))
-    packed = on_cluster(f"cd {SHARED}/campaigns/{args.name} && tar -czf - {have} all_cases.txt $(ls -d */DONE | sed 's|/DONE||' | "
-                        "sed 's|.*|& |' | awk '{print $1\"/DONE \"$1\"/WALL_S \"$1\"/attempts.log \"$1\"/warpx_used_inputs \"$1\"/diags/reducedfiles\"}') "
-                        "$(ls */measured.json 2>/dev/null) 2>/dev/null | base64 -w0")
+    # Cases fetched before are not fetched again, apart from what `reduce` may have written since.
+    have = " ".join(path.parent.name for path in target.glob("*/DONE"))
+    packed = on_cluster(f"cd {SHARED}/campaigns/{args.name} && tar -czf - all_cases.txt $(for done in */DONE; do case=${{done%/DONE}}; "
+                        f"case ' {have} ' in *\" $case \"*) ;; *) echo $case/DONE $case/WALL_S $case/attempts.log $case/warpx_used_inputs "
+                        "$case/diags/reducedfiles ;; esac; done) "
+                        "$(ls */measured.json */diags/reducedfiles/on_coil_plane.txt 2>/dev/null) 2>/dev/null | base64 -w0")
     with tarfile.open(fileobj=io.BytesIO(base64.b64decode(packed)), mode="r:gz") as archive:
         archive.extractall(target, filter="data")
     decks = {line.split()[0]: line.split()[1] for line in registry()[args.name]["cases"]}
@@ -335,12 +355,14 @@ def sync(args: argparse.Namespace) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name, function in (("submit", submit), ("add", add), ("status", status), ("sync", sync)):
+    for name, function in (("submit", submit), ("add", add), ("status", status), ("sync", sync), ("reduce", reduce)):
         command = commands.add_parser(name)
         command.add_argument("name")
         command.set_defaults(function=function)
         if name == "sync":
             command.add_argument("--reduce", action="store_true", help="reduce every complete case again here, with this checkout's reducers")
+        if name == "reduce":
+            command.add_argument("--only", default="", help="reduce only the cases whose names start with this")
         if name == "add":
             command.add_argument("--cases", type=Path, required=True, help="lines of: name deck [key=value ...]")
         if name == "submit":
