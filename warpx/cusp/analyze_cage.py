@@ -187,7 +187,7 @@ def reduce(run: Path) -> dict:
     # What an electron leaving the wall has when it reaches the centre of the empty device.
     drive_ev = centre[steps[0]] - c["wall_v"] + c["eb0"]
     return {
-        "run": run.name,
+        "run": run.resolve().name,
         # Only a run whose DONE file reads "complete" counts as a result.
         "status": (run / "DONE").read_text().strip() if (run / "DONE").exists() else "running",
         "coil_at": c["coil_at"], "current_A": c["current"], "vgrid_V": c["vgrid"], "ncell": c["ncell"],

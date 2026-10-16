@@ -116,7 +116,7 @@ def reduce(run: Path) -> dict:
     field_in_gap = float(np.hypot(*coil_field(np.array([c["rc"]]), np.array([0.0]), c))[0])
     orbit = np.sqrt(2 * c["te"] * Q_E * M_E) / Q_E
     out = {
-        "run": run.name,
+        "run": run.resolve().name,
         "complete": (run / "DONE").exists() and (run / "DONE").read_text().strip() == "complete",
         "coil_kAt": c["coil_at"] / 1e3,
         "feed_per_s": c["feed"],

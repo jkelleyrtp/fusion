@@ -135,7 +135,7 @@ def reduce(run: Path) -> dict:
     pressure = c["n0"] * (c["te"] + c["ti"]) * Q_E
     gyroradius = np.sqrt(2 * c["te"] * Q_E * M_E) / (Q_E * max(throat_field, 1e-30))
     out = {
-        "run": run.name,
+        "run": run.resolve().name,
         "complete": (run / "DONE").exists() and (run / "DONE").read_text().strip() == "complete",
         "n0_per_m3": c["n0"],
         "ion_mass_amu": c["mass_amu"],
@@ -161,6 +161,7 @@ def reduce(run: Path) -> dict:
     if c["feed"]:
         # While the feed is on, what leaves per second is the feed minus the growth of what is held.
         late = (time >= 0.8 * min(time[-1], c["toff"])) & (time <= c["toff"])
+        assert late.sum() >= 4, "under four counts in the last fifth of the feed"
         out["feed_per_s"] = c["feed"]
         out["feed_stops_ns"] = round(c["toff"] * 1e9, 2) if c["toff"] < time[-1] else None
         # The holding times below are measured over this window, the last fifth of the feed.
