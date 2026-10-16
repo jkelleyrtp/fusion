@@ -42,7 +42,7 @@ BUILD_STEPS = r"""if [ ! -x "$warpx" ]; then
   export PATH=__BUILD__/tools/bin:$PATH PYTHONPATH=__BUILD__/tools
   [ -d src ] || { git clone -q --depth 1 --branch 26.10 https://github.com/BLAST-WarpX/warpx.git src \
     && for patch in "$files"/*.patch; do git -C src apply "$patch" || { echo patch-failed; exit 0; }; done; }
-  cmake -S src -B build -G Ninja -DWarpX_DIMS=3 -DWarpX_COMPUTE=CUDA -DWarpX_MPI=OFF -DWarpX_EB=ON \
+  cmake -S src -B build -G Ninja -DWarpX_DIMS=3 -DWarpX_COMPUTE=CUDA -DWarpX_MPI=__MPI__ -DWarpX_EB=ON \
     -DWarpX_OPENPMD=OFF -DWarpX_FFT=OFF -DWarpX_QED=OFF -DWarpX_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release > configure.log 2>&1 \
     && cmake --build build -j 32 > build.log 2>&1 || { tail -30 configure.log build.log; echo build-failed; exit 0; }
   cd "$camp"
@@ -94,7 +94,7 @@ run_case() {
     for file in diags/reducedfiles/*.txt; do awk -v last=$step 'NR == 1 || $1 <= last' "$file" > trim.tmp && mv trim.tmp "$file"; done
   fi
   echo "$job gpu $gpu ${restart:-fresh}" >> attempts.log
-  CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ "$warpx" "$files/$deck" "$@" $restart >> run.log 2>&1; local code=$?
+  CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __LAUNCH__ "$warpx" "$files/$deck" "$@" $restart >> run.log 2>&1; local code=$?
   kill $beat 2>/dev/null
   echo $(( $(cat WALL_S 2>/dev/null || echo 0) + $(date +%s) - start )) > WALL_S
   if [ $code -eq 0 ]; then
@@ -107,8 +107,10 @@ run_case() {
   fi
 }
 
-for gpu in 0 1 2 3 4 5 6 7; do
-  ( while line=$(next_case) && [ -n "$line" ]; do run_case $gpu $line; done ) &
+# Each case gets __GPUS__ of the node's eight GPUs. Given more than one, WarpX splits its box between them, one
+# process per GPU.
+for first in $(seq 0 __GPUS__ 7); do
+  ( while line=$(next_case) && [ -n "$line" ]; do run_case $(seq -s, $first $((first + __GPUS__ - 1))) $line; done ) &
 done
 wait
 echo "$job finished $(date -u +%FT%TZ)"
@@ -135,8 +137,11 @@ def free_nodes() -> int:
     return sum(int(line.split("│")[4]) for line in table.splitlines() if "compute.internal" in line)
 
 
-def job_spec(name: str, cases: str, timeout: int) -> tuple[str, dict]:
-    """The broker job for one node working on campaign `name`, carrying `cases` to add to its queue."""
+def job_spec(name: str, cases: str, timeout: int, gpus: int = 1) -> tuple[str, dict]:
+    """The broker job for one node working on campaign `name`, carrying `cases` to add to its queue. Each case
+    runs on `gpus` GPUs; more than one needs the WarpX build with MPI, which is kept beside the one without."""
+    assert gpus in (1, 2, 4, 8), "a node's 8 GPUs must divide evenly between cases"
+    build, launch = (BUILD, "") if gpus == 1 else (BUILD + "-mpi", f"mpirun --allow-run-as-root --bind-to none -np {gpus}")
     token = uuid.uuid4().hex[:12]
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
@@ -148,7 +153,8 @@ def job_spec(name: str, cases: str, timeout: int) -> tuple[str, dict]:
                             *(ROOT / "cusp").glob("*.dat"), *(ROOT / "cusp").glob("analyze_*.py"), *PATCHES]):
             archive.add(file, file.name)
     worker = (WORKER.replace("__BUILD_STEPS__", BUILD_STEPS).replace("__CAMP__", f"{SHARED}/campaigns/{name}")
-              .replace("__JOB__", token).replace("__BUILD__", BUILD).replace("__TIMEOUT__", str(timeout))
+              .replace("__JOB__", token).replace("__BUILD__", build).replace("__TIMEOUT__", str(timeout))
+              .replace("__MPI__", "OFF" if gpus == 1 else "ON").replace("__LAUNCH__", launch).replace("__GPUS__", str(gpus))
               .replace("__PAYLOAD__", base64.b64encode(buffer.getvalue()).decode()))
     template = json.loads((ROOT.parent / "jobs/poisson-server-template.json").read_text())
     template["metadata"]["name"] = f"jonathan-warpx-{token}"
@@ -177,12 +183,12 @@ def submit(args: argparse.Namespace) -> None:
     assert free >= args.nodes, f"only {free} nodes are free"
     for index in range(args.nodes):
         # Every job carries all the new cases; the first to start queues them and the rest find them queued.
-        token, template = job_spec(args.name, "\n".join(new) + "\n", args.timeout)
+        token, template = job_spec(args.name, "\n".join(new) + "\n", args.timeout, args.gpus_per_case)
         folder = JOBS / f"{args.name}-{token}"
         folder.mkdir(parents=True)
         (folder / "job.yaml").write_text(json.dumps(template, indent=2) + "\n")
         print(shell(f"uv run train job submit {folder}/job.yaml --cluster aws-usw2 --priority 1", cwd=RESEARCH).strip()[-300:])
-        entry["jobs"].append({"job": f"jonathan-warpx-{token}", "submitted": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds")})
+        entry["jobs"].append({"job": f"jonathan-warpx-{token}", "gpus_per_case": args.gpus_per_case, "submitted": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds")})
         if index == 0:
             entry["cases"] += new
         REGISTRY.write_text(json.dumps(known, indent=1) + "\n")
@@ -243,5 +249,6 @@ if __name__ == "__main__":
             command.add_argument("--question", help="what the campaign is meant to answer")
             command.add_argument("--nodes", type=int, default=1)
             command.add_argument("--timeout", type=int, default=21600, help="seconds allowed per try of a case")
+            command.add_argument("--gpus-per-case", type=int, default=1, help="1, 2, 4 or 8; the nodes added now run every case they take on this many GPUs")
     arguments = parser.parse_args()
     arguments.function(arguments)

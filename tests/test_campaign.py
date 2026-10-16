@@ -29,6 +29,13 @@ done
 exit 0
 """
 
+# Stands in for mpirun: notes how many processes were asked for, then runs the program once.
+MPIRUN = r"""#!/bin/bash
+while [ "$1" != -np ]; do shift; done
+echo "$2 processes on GPUs $CUDA_VISIBLE_DEVICES" > launched.txt; shift 2
+exec "$@"
+"""
+
 
 class WorkerTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -36,15 +43,15 @@ class WorkerTest(unittest.TestCase):
         self.camp = self.shared / "campaigns/t"
         tools = self.shared / "bin"
         tools.mkdir()
-        for name, text in (("warpx", STAND_IN), ("nvidia-smi", "#!/bin/sh\n")):
+        for name, text in (("warpx", STAND_IN), ("nvidia-smi", "#!/bin/sh\n"), ("mpirun", MPIRUN)):
             (tools / name).write_text(text)
             (tools / name).chmod(0o755)
         self.env = {**os.environ, "WARPX": str(tools / "warpx"), "PATH": f"{tools}:{os.environ['PATH']}"}
         campaign.SHARED = str(self.shared)
 
-    def work(self, cases: str) -> None:
+    def work(self, cases: str, gpus: int = 1) -> None:
         """Run one node's worker to the end on campaign t, adding `cases` to its queue."""
-        _, template = campaign.job_spec("t", cases, 60)
+        _, template = campaign.job_spec("t", cases, 60, gpus)
         subprocess.run(["bash", "-c", shlex.split(template["spec"]["entrypoint"])[2]], env=self.env, check=False,
                        start_new_session=True)  # so that a stand-in stopping its node stops only this worker
 
@@ -59,6 +66,13 @@ class WorkerTest(unittest.TestCase):
             self.assertEqual((self.camp / name / "DONE").read_text().strip(), "complete")
             self.assertEqual((self.camp / name / "TRIES").read_text().strip(), "1")
         self.assertEqual(len({line.split()[2] for index in range(19) for line in (self.camp / f"c{index}/attempts.log").read_text().splitlines()}), 8)
+
+    def test_cases_given_four_gpus_each_run_two_at_a_time_with_one_process_per_gpu(self) -> None:
+        self.work("".join(f"c{index} deck\n" for index in range(5)), gpus=4)
+        launched = [(self.camp / f"c{index}/launched.txt").read_text().strip() for index in range(5)]
+        self.assertEqual(set(launched), {"4 processes on GPUs 0,1,2,3", "4 processes on GPUs 4,5,6,7"})
+        for index in range(5):
+            self.assertEqual((self.camp / f"c{index}/DONE").read_text().strip(), "complete")
 
     def test_a_stopped_case_restarts_from_its_last_checkpoint_without_repeated_rows(self) -> None:
         self.work("stopped deck stop_at=25\n")

@@ -31,9 +31,15 @@ python3 campaign.py sync em4      # fetches finished cases into results/em4 and 
 - Each finished case is reduced on the node to `measured.json` by the script `REDUCERS` names for
   its deck.
 
-Checked: a run stopped and restarted from a checkpoint gives the same diagnostics as an
-uninterrupted one to rounding (electromagnetic deck, CPU build). Not yet checked: restart of the
-electrostatic decks with electrodes.
+- `--gpus-per-case 2|4|8` makes the nodes added by that `submit` run each case on several GPUs, one
+  WarpX process per GPU, using a second build with MPI. The case line must split the box into at
+  least that many pieces, e.g. `amr.max_grid_size=128` for a 256³ mesh on 8 GPUs.
+
+Checked: a run killed at step 150 and restarted from its step-100 checkpoint, with the later
+diagnostic rows trimmed as the worker does, gives diagnostics identical in every digit to an
+uninterrupted one (electromagnetic deck, CPU build, one thread; `/home/ubuntu/warpx/restart_check`).
+Not yet checked: the same on the GPU build, restart of the electrostatic decks with electrodes, and
+any run on more than one GPU.
 
 ## pops/
 
