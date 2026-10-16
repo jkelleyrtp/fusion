@@ -6,6 +6,7 @@ A case that stops without finishing (its node was reclaimed) is picked up by ano
 checkpoint. Each finished case is reduced on the node to `measured.json`.
 
   campaign.py submit NAME --cases FILE --question "..." [--nodes N]   start a campaign, or add cases or nodes to one
+  campaign.py add NAME --cases FILE                                    give more cases to the nodes a campaign already has
   campaign.py status NAME                                             what each case is doing
   campaign.py sync NAME                                               fetch finished cases and write table.jsonl
 """
@@ -259,6 +260,27 @@ def on_cluster(command: str) -> str:
     return shell(f"kubectl --context {CONTEXT} exec {pods[0]} -- bash -c {shlex.quote(command)}")
 
 
+def queue_command(name: str, cases: list[str]) -> str:
+    """The shell command that puts these cases on a campaign's queue, as a worker does with its own at its start."""
+    lines = "\n".join(cases)
+    return (f"cd {SHARED}/campaigns/{name} && flock lock bash -c 'while read -r name rest; do grep -q \"^$name \" all_cases.txt || "
+            f"{{ echo \"$name $rest\" >> all_cases.txt; echo \"$name $rest\" >> queue.txt; }}; done' <<< {shlex.quote(lines)}")
+
+
+def add(args: argparse.Namespace) -> None:
+    """Give more cases to the nodes a campaign already holds: a GPU there takes one when it finishes its own."""
+    known = registry()
+    entry = known[args.name]
+    new = [line for line in args.cases.read_text().splitlines() if line.strip()]
+    clash = sorted({line.split()[0] for line in entry["cases"]} & {line.split()[0] for line in new})
+    assert not clash, f"campaign {args.name} already has cases {clash}"
+    assert len({line.split()[0] for line in new}) == len(new), "case names repeat within the file"
+    on_cluster(queue_command(args.name, new))
+    entry["cases"] += new
+    REGISTRY.write_text(json.dumps(known, indent=1) + "\n")
+    print(f"{args.name}: {len(new)} cases added to the queue")
+
+
 def status(args: argparse.Namespace) -> None:
     pods = shell(f"kubectl --context {CONTEXT} get pods --no-headers").splitlines()
     for job in registry()[args.name]["jobs"]:
@@ -301,12 +323,14 @@ def sync(args: argparse.Namespace) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name, function in (("submit", submit), ("status", status), ("sync", sync)):
+    for name, function in (("submit", submit), ("add", add), ("status", status), ("sync", sync)):
         command = commands.add_parser(name)
         command.add_argument("name")
         command.set_defaults(function=function)
         if name == "sync":
             command.add_argument("--reduce", action="store_true", help="reduce every complete case again here, with this checkout's reducers")
+        if name == "add":
+            command.add_argument("--cases", type=Path, required=True, help="lines of: name deck [key=value ...]")
         if name == "submit":
             command.add_argument("--cases", type=Path, help="lines of: name deck [key=value ...]")
             command.add_argument("--question", help="what the campaign is meant to answer")

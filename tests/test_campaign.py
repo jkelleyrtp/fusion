@@ -72,6 +72,14 @@ class WorkerTest(unittest.TestCase):
             self.assertEqual((self.camp / name / "TRIES").read_text().strip(), "1")
         self.assertEqual(len({line.split()[2] for index in range(19) for line in (self.camp / f"c{index}/attempts.log").read_text().splitlines()}), 8)
 
+    def test_cases_added_to_the_queue_are_run_by_a_node_the_campaign_already_has(self) -> None:
+        self.work("a inputs_x\n")
+        subprocess.run(["bash", "-c", campaign.queue_command("t", ["b inputs_x stop_at=0", "a inputs_x"])], check=True)
+        self.assertEqual((self.camp / "queue.txt").read_text(), "b inputs_x stop_at=0\n")
+        self.work("a inputs_x\n")
+        self.assertEqual((self.camp / "b/DONE").read_text().strip(), "complete")
+        self.assertEqual((self.camp / "a/TRIES").read_text().strip(), "1")
+
     def test_cases_given_four_gpus_each_run_two_at_a_time_with_one_process_per_gpu(self) -> None:
         self.work("".join(f"c{index} deck\n" for index in range(5)), gpus=4)
         launched = [(self.camp / f"c{index}/launched.txt").read_text().strip() for index in range(5)]
