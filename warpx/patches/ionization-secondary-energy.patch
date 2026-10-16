@@ -1,0 +1,140 @@
+diff --git a/Docs/source/usage/parameters.rst b/Docs/source/usage/parameters.rst
+index e9a995a..40afcb2 100644
+--- a/Docs/source/usage/parameters.rst
++++ b/Docs/source/usage/parameters.rst
+@@ -3307,6 +3307,18 @@ Details about the collision models can be found in the :ref:`theory section <mul
+     produced species must also be given. For example if argon properties is used
+     for the background gas, a species of argon ions should be specified here.
+ 
++.. pp:param:: <collision_name>.ionization_secondary_energy_scale
++    :type: ``float``
++    :optional:
++
++    Only for ``background_mcc`` with ``ionization``. If positive, the energy :math:`W` of the
++    ejected electron is drawn from :math:`1/(W^2 + \bar{w}^2)` on
++    :math:`[0, (E - E_{ion})/2]`, with :math:`\bar{w}` this value in eV
++    (`Opal et al., J. Chem. Phys. 55, 4100 (1971) <https://doi.org/10.1063/1.1676707>`__),
++    the ejected electron is emitted isotropically, and the incident electron keeps its
++    direction and the remaining energy.
++    By default the two electrons share the energy equally and both are scattered isotropically.
++
+ .. pp:param:: <collision_name>.ionization_target_species
+     :type: ``string``
+ 
+diff --git a/Source/Particles/Collision/BackgroundMCC/BackgroundMCCCollision.H b/Source/Particles/Collision/BackgroundMCC/BackgroundMCCCollision.H
+index 0892622..9235ea3 100644
+--- a/Source/Particles/Collision/BackgroundMCC/BackgroundMCCCollision.H
++++ b/Source/Particles/Collision/BackgroundMCC/BackgroundMCCCollision.H
+@@ -86,6 +86,8 @@ private:
+     amrex::ParticleReal m_total_collision_prob_ioniz = 0;
+     amrex::ParticleReal m_nu_max;
+     amrex::ParticleReal m_nu_max_ioniz;
++    //! Energy scale (eV) of the ejected electron's distribution; 0 selects the equal split
++    amrex::ParticleReal m_ionization_secondary_energy_scale = 0;
+ 
+     amrex::Parser m_background_density_parser;
+     amrex::Parser m_background_temperature_parser;
+diff --git a/Source/Particles/Collision/BackgroundMCC/BackgroundMCCCollision.cpp b/Source/Particles/Collision/BackgroundMCC/BackgroundMCCCollision.cpp
+index 0f7d62d..a24df20 100644
+--- a/Source/Particles/Collision/BackgroundMCC/BackgroundMCCCollision.cpp
++++ b/Source/Particles/Collision/BackgroundMCC/BackgroundMCCCollision.cpp
+@@ -110,6 +110,9 @@ BackgroundMCCCollision::BackgroundMCCCollision (std::string const& collision_nam
+ 
+             std::string secondary_species;
+             pp_collision_name.get("ionization_species", secondary_species);
++            utils::parser::queryWithParser(
++                pp_collision_name, "ionization_secondary_energy_scale",
++                m_ionization_secondary_energy_scale);
+             m_species_names.push_back(secondary_species);
+ 
+             m_ionization_processes.push_back(std::move(process));
+@@ -458,7 +461,8 @@ void BackgroundMCCCollision::doBackgroundIonization
+ 
+         auto Transform = ImpactIonizationTransformFunc(
+                                                        m_ionization_processes[0].getEnergyPenalty(),
+-                                                       m_mass1, sqrt_kb_m, m_background_temperature_func, t
++                                                       m_mass1, sqrt_kb_m, m_background_temperature_func, t,
++                                                       m_ionization_secondary_energy_scale
+                                                        );
+ 
+         const auto num_added = filterCopyTransformParticles<1>(species1, species2,
+diff --git a/Source/Particles/Collision/BackgroundMCC/ImpactIonization.H b/Source/Particles/Collision/BackgroundMCC/ImpactIonization.H
+index 3256e2b..f499ef8 100644
+--- a/Source/Particles/Collision/BackgroundMCC/ImpactIonization.H
++++ b/Source/Particles/Collision/BackgroundMCC/ImpactIonization.H
+@@ -147,12 +147,19 @@ public:
+     * @param[in] T_a_func ParserExecutor<4> function to get the background
+                  temperature in Kelvin as a function of space and time
+     * @param[in] t the current simulation time
++    * @param[in] secondary_energy_scale if positive, the energy scale in eV of the
++                 ejected electron's energy distribution (Opal et al., J. Chem. Phys. 55, 4100
++                 (1971)); the incident electron then keeps its direction and the rest of the
++                 energy. If not positive, the two electrons share the energy equally and both
++                 are scattered isotropically.
+     */
+     ImpactIonizationTransformFunc(
+         amrex::ParticleReal energy_cost, double mass1, amrex::ParticleReal sqrt_kb_m,
+-        amrex::ParserExecutor<4> const& T_a_func, amrex::Real t
++        amrex::ParserExecutor<4> const& T_a_func, amrex::Real t,
++        amrex::ParticleReal secondary_energy_scale
+     ) :  m_energy_cost(energy_cost), m_mass1(mass1),
+-         m_sqrt_kb_m(sqrt_kb_m), m_T_a_func(T_a_func), m_t(t) { }
++         m_sqrt_kb_m(sqrt_kb_m), m_T_a_func(T_a_func), m_t(t),
++         m_secondary_energy_scale(secondary_energy_scale) { }
+ 
+     /**
+     * \brief Functor call. It determines the properties of the generated pair
+@@ -204,18 +211,39 @@ public:
+         constexpr auto eV = PhysConst::q_e;
+         E_coll = Algorithms::KineticEnergy<double>(ux, uy, uz, m_mass1)/eV;
+ 
+-        // each electron gets half the energy (could change this later)
+-        const auto E_out = static_cast<amrex::ParticleReal>((E_coll - m_energy_cost) / 2.0_prt * eV);
+-
+         // precalculate often used value
+         constexpr auto c2 = PhysConst::c2;
+         const auto mc2 = m_mass1*c2;
+ 
+-        const amrex::ParticleReal up = sqrt(E_out * (E_out + 2.0_prt*mc2) / c2) / m_mass1;
++        // energy left for the two electrons, in eV
++        const double E_left = E_coll - m_energy_cost;
++
++        if (m_secondary_energy_scale > 0._prt) {
++            // the ejected electron's energy follows 1/(W^2 + scale^2) on [0, E_left/2];
++            // the incident electron keeps the rest and its direction
++            const double scale = m_secondary_energy_scale;
++            const double E_ejected = scale * std::tan(Random(engine) * std::atan(0.5 * E_left / scale));
++            const auto E_incident = static_cast<amrex::ParticleReal>((E_left - E_ejected) * eV);
++            const auto E_new = static_cast<amrex::ParticleReal>(E_ejected * eV);
++
++            const amrex::ParticleReal up_incident = sqrt(E_incident * (E_incident + 2.0_prt*mc2) / c2) / m_mass1;
++            const amrex::ParticleReal up_new = sqrt(E_new * (E_new + 2.0_prt*mc2) / c2) / m_mass1;
++
++            const amrex::ParticleReal slowing = up_incident / sqrt(ux*ux + uy*uy + uz*uz);
++            ux *= slowing;
++            uy *= slowing;
++            uz *= slowing;
++            ParticleUtils::RandomizeVelocity(e_ux, e_uy, e_uz, up_new, engine);
++        } else {
++            // each electron gets half the energy
++            const auto E_out = static_cast<amrex::ParticleReal>(E_left / 2.0 * eV);
++
++            const amrex::ParticleReal up = sqrt(E_out * (E_out + 2.0_prt*mc2) / c2) / m_mass1;
+ 
+-        // isotropically scatter electrons
+-        ParticleUtils::RandomizeVelocity(ux, uy, uz, up, engine);
+-        ParticleUtils::RandomizeVelocity(e_ux, e_uy, e_uz, up, engine);
++            // isotropically scatter electrons
++            ParticleUtils::RandomizeVelocity(ux, uy, uz, up, engine);
++            ParticleUtils::RandomizeVelocity(e_ux, e_uy, e_uz, up, engine);
++        }
+ 
+         // get velocities for the ion from a Maxwellian distribution
+         i_ux = ion_vel_std * RandomNormal(0_prt, 1.0_prt, engine);
+@@ -229,5 +257,6 @@ private:
+     amrex::ParticleReal m_sqrt_kb_m;
+     amrex::ParserExecutor<4> m_T_a_func;
+     amrex::Real m_t;
++    amrex::ParticleReal m_secondary_energy_scale;
+ };
+ #endif // WARPX_PARTICLES_COLLISION_IMPACT_IONIZATION_H_

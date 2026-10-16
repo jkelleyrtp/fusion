@@ -8,6 +8,8 @@ in cut cells and altered by WarpX's automatic divergence cleaning.
 """
 from pathlib import Path
 
+import numpy as np
+
 AXES = "xyz"
 
 
@@ -257,6 +259,37 @@ def deck() -> str:
     return text.replace("__CONDUCTOR__", CONDUCTOR).replace("__OUTER__", OUTER).replace("__PATCH__", PATCH).replace("__RING_AWAY__", RING_AWAY).replace("__RING_SHELL__", RING_SHELL)
 
 
+GAS = """
+# Hydrogen gas filling the device. Electrons ionise it; each event adds an H2+ ion and a slow electron.
+# Elastic scattering, excitation, dissociation and charge exchange are left out, and the gas is not used up.
+# The last line needs ../patches/ionization-secondary-energy.patch. Stock WarpX gives each of the two
+# electrons half the energy in a random direction, which is wrong for keV electrons.
+my_constants.ngas = 3.e20               # gas density (1/m^3)
+my_constants.mass_amu = 2.016
+collisions.collision_names = gas
+gas.type = background_mcc
+gas.species = electrons
+gas.background_density = ngas
+gas.background_temperature = 300.
+gas.background_mass = mi
+gas.scattering_processes = ionization
+gas.ionization_energy = 15.43
+gas.ionization_cross_section = ../h2_ionization.dat
+gas.ionization_species = ions
+gas.ionization_secondary_energy_scale = 8.3    # eV, H2 (Opal, Peterson and Beaty 1971)
+"""
+
+
+def h2_ionization() -> str:
+    """Electron-impact ionisation cross-section of H2 (eV, m^2) from the binary-encounter-Bethe formula of Kim and Rudd (1994)."""
+    binding, orbital_ke, rydberg, bohr = 15.43, 15.98, 13.6057, 5.29177e-11
+    energy = np.concatenate([[binding], np.geomspace(15.6, 1.0e5, 240)])
+    t, u = energy / binding, orbital_ke / binding
+    s = 4 * np.pi * bohr**2 * 2 * (rydberg / binding) ** 2
+    sigma = s / (t + u + 1) * (0.5 * np.log(t) * (1 - 1 / t**2) + 1 - 1 / t - np.log(t) / (t + 1))
+    return "".join(f"{e:.6e} {max(x, 0.0):.6e}\n" for e, x in zip(energy, sigma))
+
+
 ORBIT = """
 # One 10 keV electron in the coil field alone, for comparison with an independent orbit integration.
 # WarpX fails to parse the electrode voltage when both voltages are exactly zero, hence the nanovolt.
@@ -282,3 +315,5 @@ if __name__ == "__main__":
     here.with_name("inputs_3d_cusp_cage").write_text(deck())
     # Later assignments override earlier ones, so the check reuses the full deck.
     here.with_name("inputs_3d_orbit_check").write_text(deck() + ORBIT)
+    here.with_name("inputs_3d_cusp_cage_gas").write_text(deck() + GAS)
+    here.with_name("h2_ionization.dat").write_text(h2_ionization())

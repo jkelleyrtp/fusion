@@ -27,6 +27,9 @@ def constants(run: Path) -> dict[str, float]:
     # Decks older than the emitter switch have no toff; their emitters never switch off.
     found = re.search(r"^my_constants\.toff = (\S+)", text, re.M)
     out["toff"] = float(found.group(1)) if found else 1.0
+    # Only the gas deck has a gas density.
+    found = re.search(r"^my_constants\.ngas = (\S+)", text, re.M)
+    out["ngas"] = float(found.group(1)) if found else 0.0
     gun_r = re.search(r"^my_constants\.gun_r = (\S+)", text, re.M).group(1)
     out["gun_r"] = out["a"] * 0.15 if "a" in gun_r else float(gun_r)
     return out
@@ -93,7 +96,7 @@ def shell_currents(run: Path, time: np.ndarray, electrons: np.ndarray) -> dict:
 def reduce(run: Path) -> dict:
     c = constants(run)
     number = np.loadtxt(run / "diags/reducedfiles/number.txt", skiprows=1, ndmin=2)
-    time, electrons = number[:, 1], number[:, 6]
+    time, electrons, ions = number[:, 1], number[:, 6], number[:, 7]
     if time[-1] < 1.0e-9:
         raise ValueError(f"{run.name} has only run {time[-1]:.2e} s; the early rates need 1 ns")
     # The wall source delivers a few percent less than the nominal current because the emitter patches
@@ -117,6 +120,8 @@ def reduce(run: Path) -> dict:
     hist_steps, radial = histogram(run, "erad")
     bins = (np.arange(radial.shape[1]) + 0.5) * 2.4 * c["a"] / radial.shape[1]
     tail = radial[hist_steps >= 0.8 * hist_steps[-1]].mean(axis=0)
+    _, ion_radial = histogram(run, "irad")
+    ion_tail = ion_radial[-1]
     _, core_energy = histogram(run, "eke")
     energy_bins = (np.arange(core_energy.shape[1]) + 0.5) * 1.2 * c["vgrid"] / core_energy.shape[1]
     core = core_energy[-1]
@@ -135,6 +140,10 @@ def reduce(run: Path) -> dict:
         "emitted_A": round(rate * Q_E, 4),
         "kept_early": round(float(kept_early), 3),
         "electrons": float(electrons[-1]),
+        "gas_per_m3": c["ngas"],
+        "ions": float(ions[-1]),
+        "ions_inside_half_a": round(float(ion_tail[bins < 0.5 * c["a"]].sum() / max(ion_tail.sum(), 1e-300)), 4),
+        "ions_inside_cage": round(float(ion_tail[bins < 1.3 * c["a"]].sum() / max(ion_tail.sum(), 1e-300)), 4),
         "dwell_ns": round(electrons[-1] / rate * 1e9, 3),
         "filling": round(float(growth), 3),
         "centre_V_empty": round(centre[steps[0]], 1),

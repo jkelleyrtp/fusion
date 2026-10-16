@@ -1,6 +1,7 @@
 """Prepare (not submit) a one-node WarpX job: build WarpX for CUDA once on shared storage, each GPU runs its share of the cases in turn."""
 import argparse
 import base64
+import hashlib
 import io
 import json
 import shlex
@@ -10,7 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SHARED = "/public/jonathan/cusp"
-BUILD = f"{SHARED}/warpx-26.10-cuda"
+PATCHES = sorted((ROOT / "patches").glob("*.patch"))
+# The build directory is named after the patches applied to WarpX 26.10, so a changed patch gets a fresh build.
+BUILD = f"{SHARED}/warpx-26.10-cuda-" + hashlib.sha256(b"".join(patch.read_bytes() for patch in PATCHES)).hexdigest()[:8]
 
 RUNNER = r"""
 set -uo pipefail
@@ -22,7 +25,8 @@ if [ ! -x __BUILD__/build/bin/warpx.3d ]; then
   mkdir -p __BUILD__ && cd __BUILD__
   python3 -m pip install -q --target __BUILD__/tools cmake ninja
   export PATH=__BUILD__/tools/bin:$PATH PYTHONPATH=__BUILD__/tools
-  [ -d src ] || git clone -q --depth 1 --branch 26.10 https://github.com/BLAST-WarpX/warpx.git src
+  [ -d src ] || { git clone -q --depth 1 --branch 26.10 https://github.com/BLAST-WarpX/warpx.git src \
+    && for patch in "$out"/*.patch; do git -C src apply "$patch" || { echo patch > "$out/JOB_FAILED"; exit 0; }; done; }
   cmake -S src -B build -G Ninja -DWarpX_DIMS=3 -DWarpX_COMPUTE=CUDA -DWarpX_MPI=OFF -DWarpX_EB=ON \
     -DWarpX_OPENPMD=OFF -DWarpX_FFT=OFF -DWarpX_QED=OFF -DWarpX_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release > configure.log 2>&1 \
     && cmake --build build -j 32 > build.log 2>&1 || { tail -30 configure.log build.log; echo build > "$out/JOB_FAILED"; exit 0; }
@@ -53,7 +57,7 @@ def main() -> None:
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
         archive.add(args.cases, "cases.txt")
-        for deck in sorted([*(ROOT / "pops").glob("inputs_*"), *(ROOT / "cusp").glob("inputs_*"), *(ROOT / "cusp").glob("*.dat")]):
+        for deck in sorted([*(ROOT / "pops").glob("inputs_*"), *(ROOT / "cusp").glob("inputs_*"), *(ROOT / "cusp").glob("*.dat"), *PATCHES]):
             archive.add(deck, deck.name)
     runner = (RUNNER.replace("__OUT__", f"{SHARED}/runs/warpx-{token}").replace("__BUILD__", BUILD)
               .replace("__TIMEOUT__", str(args.timeout))
