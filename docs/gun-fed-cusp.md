@@ -29,7 +29,8 @@ disc at the centre (`fed3`).
 
 - Plasma fired from outside gets in and is held 45 to 65% as long as plasma born at the centre.
 - At 32 and 128 kA-turns the amount inside was still rising when the guns stopped, so those two are lower bounds.
-- A second seed at 32 kA-turns gives 4.85 ns against 4.86.
+- A second seed at 32 kA-turns gives 4.85 ns against 4.86. With 192 cells across the box instead of 128
+  (`p_32k_n192`) it is 5.09 ns, 5% more, with 28% left against 26%.
 - The streams leaving through the coil openings are 2.3 to 2.8 mm in half-width with the coils on, while the
   electron orbit there goes from 1.2 mm to 0.08 mm. As in the centre-fed runs, the width does not follow the orbit.
 
@@ -85,11 +86,11 @@ the end of the run, which is 20 ns later unless a longer time is given.
   size over sound speed. Against the coils-off runs at the same mass the gain from the field is 4.0 at 57
   electron masses and 3.3 at 229.
 - A hundred times the firing rate costs 15% of the held time at 32 kA-turns and 28% at 128.
-- Still running: 512 kA-turns, ions of 918 electron masses, and the 192-cell repeat.
+- Still running: 512 kA-turns and ions of 918 electron masses.
 
 ## Limits
 
-- Light ions (up to 229 electron masses so far) and one device size. No mesh repeat has finished yet.
+- Light ions (up to 229 electron masses so far) and one device size. One mesh repeat, which moves the held time by 5%.
 - The coil field is fixed and there are no electrodes, gas or collisions.
 - The pressure at the coil openings is far below the magnetic pressure in all of these, so they say nothing
   about plugging.
