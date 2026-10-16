@@ -8,8 +8,9 @@ import numpy as np
 
 CUSP = Path(__file__).resolve().parents[1] / "warpx/cusp"
 sys.path.insert(0, str(CUSP))
-import analyze_beta
 import make_deck
+
+import analyze_beta
 
 CONSTANTS = {"a": 0.01, "coil_at": 32000.0, "zg": 0.019, "vj": 0.0, "rf": 0.003, "feed": 1e22, "toff": 6e-9}
 
