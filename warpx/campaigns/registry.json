@@ -250,5 +250,54 @@
     "submitted": "2026-10-16T08:44:21+00:00"
    }
   ]
+ },
+ "jet3": {
+  "question": "With each fired electron started on top of an ion, so the guns leave no charge behind: how much plasma fired from two guns outside the six-coil cusp gets in and how long does it stay, against coil field, jet speed, temperature and firing rate?",
+  "cases": [
+   "p_off inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=0.",
+   "p_8k inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=8000.",
+   "p_32k inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000.",
+   "p_128k inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=128000.",
+   "p_off_stock inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=0. electrons.up.flux_paired=0 electrons.down.flux_paired=0 ions.up.flux_paired=0 ions.down.flux_paired=0",
+   "p_32k_stock inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. electrons.up.flux_paired=0 electrons.down.flux_paired=0 ions.up.flux_paired=0 ions.down.flux_paired=0",
+   "p_32k_v1e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.vj=1.e7",
+   "p_32k_v2e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.vj=2.e7",
+   "p_off_v1e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=0. my_constants.vj=1.e7",
+   "p_128k_v1e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=128000. my_constants.vj=1.e7",
+   "p_32k_te1e3 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.te=1.e3",
+   "p_off_te1e3 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=0. my_constants.te=1.e3",
+   "p_32k_te1e3_v1e7 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.te=1.e3 my_constants.vj=1.e7",
+   "p_32k_f1e21 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.feed=1.e21",
+   "p_32k_f1e23 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.feed=1.e23",
+   "p_32k_seed2 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. warpx.random_seed=7",
+   "p_32k_n192 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.ncell=192 my_constants.dt=3.3e-13"
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-3369b7099d19",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T09:32:03+00:00"
+   }
+  ]
+ },
+ "fed3": {
+  "question": "Do the centre-fed holding times change when each fed electron starts on top of an ion?",
+  "cases": [
+   "p_f1e22_off inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 particles.B_ext_particle_on_grid=1 my_constants.feed=1.e22 my_constants.coil_at=0.",
+   "p_f1e22_8k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 particles.B_ext_particle_on_grid=1 my_constants.feed=1.e22 my_constants.coil_at=8000.",
+   "p_f1e22_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 particles.B_ext_particle_on_grid=1 my_constants.feed=1.e22 my_constants.coil_at=32000.",
+   "p_f1e22_128k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 particles.B_ext_particle_on_grid=1 my_constants.feed=1.e22 my_constants.coil_at=128000.",
+   "p_f1e23_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 particles.B_ext_particle_on_grid=1 my_constants.feed=1.e23 my_constants.coil_at=32000.",
+   "p_f3e23_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 particles.B_ext_particle_on_grid=1 my_constants.feed=3.e23 my_constants.coil_at=32000.",
+   "u_f1e22_off inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 particles.B_ext_particle_on_grid=1 my_constants.feed=1.e22 my_constants.coil_at=0. electrons.up.flux_paired=0 electrons.down.flux_paired=0 ions.up.flux_paired=0 ions.down.flux_paired=0",
+   "u_f1e22_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 particles.B_ext_particle_on_grid=1 my_constants.feed=1.e22 my_constants.coil_at=32000. electrons.up.flux_paired=0 electrons.down.flux_paired=0 ions.up.flux_paired=0 ions.down.flux_paired=0"
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-564756327c0b",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T09:32:08+00:00"
+   }
+  ]
  }
 }
