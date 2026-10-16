@@ -112,6 +112,9 @@ def jets(run: Path, c: dict) -> dict:
         # Near 0 the amount inside has settled; near 1 everything fired is still accumulating.
         out[f"{species}_inside_growth_over_fired"] = round(float(growth / c["feed"]), 3)
         out[f"{species}_fired_held_ns"] = round(float(inside[late].mean() / c["feed"] * 1e9), 3)
+        # Well above 1 means less gets in as the firing goes on, which no steady gun should show.
+        early = (time >= 0.2 * stop) & (time <= 0.4 * stop)
+        out[f"{species}_inside_early_over_late_in_firing"] = round(float(inside[early].mean() / max(inside[late].mean(), 1e-300)), 2)
         if c["toff"] < time[-1]:
             out["guns_stop_ns"] = round(c["toff"] * 1e9, 2)
             after = time >= c["toff"] + 0.5 * (time[-1] - c["toff"])
@@ -122,6 +125,11 @@ def jets(run: Path, c: dict) -> dict:
             first = (time >= c["toff"]) & (time <= c["toff"] + 0.25 * (time[-1] - c["toff"]))
             rate = -np.polyfit(time[first], inside[first], 1)[0] if first.sum() >= 4 else 0.0
             out[f"{species}_inside_loss_time_just_after_stop_ns"] = round(float(inside[first].mean() / rate * 1e9), 1) if rate > 0 else None
+            # Plasma still sitting at the gun mouths long after they stop is held there by charge the injection
+            # left behind (docs/flux-injection-charge.md), not by anything physical.
+            data, radius = table(run, name), bin_centres(run, name)
+            at_mouths = data[-1, 2:][np.abs(radius - c["zg"]) < 0.15 * c["a"]].sum()
+            out[f"{species}_at_gun_mouths_at_end_over_fired"] = round(float(at_mouths / (c["feed"] * c["toff"])), 4)
     return out
 
 

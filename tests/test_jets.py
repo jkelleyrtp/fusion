@@ -73,6 +73,9 @@ class JetsTest(unittest.TestCase):
             self.assertAlmostEqual(out[f"{species}_inside_growth_over_fired"], 0.0, places=3)
             self.assertAlmostEqual(out[f"{species}_inside_at_end_over_at_stop"], 0.25, places=3)
             self.assertAlmostEqual(out[f"{species}_inside_loss_time_just_after_stop_ns"], 4.85, delta=0.06)
+            self.assertEqual(out[f"{species}_inside_early_over_late_in_firing"], 1.0)
+            # The 4e13 placed at 2.01 a is within 0.15 a of the mouths, out of 6e13 fired.
+            self.assertAlmostEqual(out[f"{species}_at_gun_mouths_at_end_over_fired"], 0.6667, places=4)
 
 
 if __name__ == "__main__":
