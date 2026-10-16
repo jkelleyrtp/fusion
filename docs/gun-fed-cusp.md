@@ -52,10 +52,44 @@ Other settings at 32 kA-turns unless said:
 - Colder plasma is held longer, as in the centre-fed runs (time goes with size over sound speed).
 - Ten times the firing rate holds a third less per particle.
 
+## Second set: longer firing, gun position and size, heavier ions, temperature, firing rate
+
+At 32 kA-turns unless said. "Left" is the share of what was inside when the guns stopped that is still inside at
+the end of the run, which is 20 ns later unless a longer time is given.
+
+| Case | Change | Held (ns) | Left | Loss time after stop (ns) |
+|---|---|---|---|---|
+| `q_32k_long` | guns fire for 150 ns | 4.87, level | 6% after 50 ns | 23.6 |
+| `q_128k_long` | 128 kA-turns, fire for 180 ns | 9.63, nearly level | 20% after 60 ns | 45.7 |
+| `q_32k_near` | mouths at 1.6 coil radii, not 1.9 | 7.23 | 22% | 14.9 |
+| `q_32k_far` | mouths at 2.2 coil radii | 2.37 | 29% | 15.2 |
+| `q_32k_narrow` | mouth radius 0.15, not 0.3 | 3.49 | 21% | 13.3 |
+| `q_32k_wide` | mouth radius 0.6 | 3.61 | 30% | 17.2 |
+| `q_32k_one_gun` | only one gun fires | 4.51 | 26% | 15.6 |
+| `q_32k_m229` | ions four times heavier, fire for 180 ns | 7.81, level | 11% after 60 ns | 35.3 |
+| `q_off_m229` | the same, coils off | 2.39 | 2% after 40 ns | 16.0 |
+| `q_32k_te2500` | 2.5 keV electrons, fire for 120 ns | 10.37 | 23% after 40 ns | 29.8 |
+| `q_32k_te40k` | 40 keV electrons | 2.13 | 8% | 10.0 |
+| `q_32k_f1e24` | 100 times the firing rate | 4.14 | 10% | 8.5 |
+| `q_128k_f1e23` | 128 kA-turns, 10 times the rate, fire for 120 ns | 9.10 | 26% after 40 ns | 32.9 |
+| `q_128k_f1e24` | 128 kA-turns, 100 times the rate | 6.90 | 2% after 40 ns | 9.6 |
+
+(`q_32k_one_gun`: the reducer divides by the rate of both guns and reports 2.26; 4.51 is per electron fired.)
+
+- The held time settles: firing two and a half times longer at 32 kA-turns gives the same 4.9 ns. At 128
+  kA-turns the settled value is 9.6 ns, not the 7.0 read at 60 ns.
+- Where the mouths are matters most. At 1.6 coil radii the held time equals that of plasma born at the centre
+  (7.6 ns); at 2.2 it is a third of that.
+- One gun holds as much per electron fired as two (4.5 against 4.9 ns), so the two jets do not need each other.
+- Held time goes as about mass^0.34 and temperature^-0.57, close to the centre-fed runs (0.35 and -0.5): it tracks
+  size over sound speed. Against the coils-off runs at the same mass the gain from the field is 4.0 at 57
+  electron masses and 3.3 at 229.
+- A hundred times the firing rate costs 15% of the held time at 32 kA-turns and 28% at 128.
+- Still running: 512 kA-turns, ions of 918 electron masses, and the 192-cell repeat.
+
 ## Limits
 
-- Light ions, one device size, one gun position and mouth size. Heavier ions, longer firing, gun position and size,
-  higher firing rates and a 192-cell repeat are running (second half of `jet3`).
+- Light ions (up to 229 electron masses so far) and one device size. No mesh repeat has finished yet.
 - The coil field is fixed and there are no electrodes, gas or collisions.
 - The pressure at the coil openings is far below the magnetic pressure in all of these, so they say nothing
   about plugging.
