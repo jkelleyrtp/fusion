@@ -1,7 +1,7 @@
 # Patches to WarpX 26.10
 
 The cluster build applies every file in `warpx/patches/` to the WarpX 26.10 tag. Each changes what the particles
-feel, so each has its check recorded here. Both are off unless a deck asks for them.
+feel, so each has its check recorded here. All are off unless a deck asks for them.
 
 ## `ionization-secondary-energy.patch`
 
@@ -56,3 +56,13 @@ usable comparison.
 
 **Not checked.** Runs on more than one GPU, the cylindrical build, meshes coarser than 128 cells across the
 device, and restart from a checkpoint with the option on.
+
+## `flux-paired.patch`
+
+**What it changes.** With `<species>.<source>.flux_paired = 1`, particles made by `NFluxPerCell` start on the
+source plane at places fixed by the cell and the step, so that electrons and ions fed through the same plane
+start on top of each other. Without it, electromagnetic runs leave a growing layer of charge on the plane that
+the fields can never remove. The fault, the evidence and the checks are in `flux-injection-charge.md`.
+
+**Status.** Not reviewed. Gauss's law at the source goes from an error of a quarter of the charge density to
+round-off in 3D and in 2D. Checks on full runs are on the cluster (`jet3`, `fed3`).
