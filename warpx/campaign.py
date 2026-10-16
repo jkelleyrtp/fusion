@@ -10,6 +10,7 @@ checkpoint. Each finished case is reduced on the node to `measured.json`.
   campaign.py status NAME                                             what each case is doing
   campaign.py sync NAME                                               fetch finished cases and write table.jsonl
   campaign.py reduce NAME [--only PREFIX]                             reduce finished cases again on the node, with the reducers here
+  campaign.py local NAME --cases FILE [--only PREFIX]                 run cases on this machine's CPUs instead, when they are small enough
 """
 import argparse
 import base64
@@ -17,7 +18,9 @@ import datetime
 import hashlib
 import io
 import json
+import os
 import shlex
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -31,6 +34,8 @@ CONTEXT = "cog-usw2-b200-ml-dev-devin"
 REGISTRY = ROOT / "campaigns/registry.json"
 RESULTS = Path("/home/ubuntu/warpx/results")
 JOBS = Path("/home/ubuntu/warpx/jobs")
+# WarpX 26.10 built here for CPUs with the same patches, for `local`.
+LOCAL = {"inputs_rz_": Path("/home/ubuntu/warpx/warpx/build-rz/bin/warpx.rz.NOMPI.OMP.DP.PDP"), "inputs_3d_": Path("/home/ubuntu/warpx/warpx/build/bin/warpx.3d.NOMPI.OMP.DP.PDP")}
 MAX_NODES = 6  # most nodes this script will hold at once, across all campaigns
 PATCHES = sorted((ROOT / "patches").glob("*.patch"))
 # The build directory is named after the patches applied to WarpX 26.10, so a changed patch gets a fresh build.
@@ -337,25 +342,70 @@ def sync(args: argparse.Namespace) -> None:
                         "$(ls */measured.json */diags/reducedfiles/on_coil_plane.txt 2>/dev/null) 2>/dev/null | base64 -w0")
     with tarfile.open(fileobj=io.BytesIO(base64.b64decode(packed)), mode="r:gz") as archive:
         archive.extractall(target, filter="data")
-    decks = {line.split()[0]: line.split()[1] for line in registry()[args.name]["cases"]}
+    table(args.name, args.reduce)
+
+
+def table(name: str, again: bool = False) -> None:
+    """Write one line per complete case of a campaign to its table.jsonl, reducing each again here if asked."""
+    target = RESULTS / name
+    decks = {line.split()[0]: line.split()[1] for line in registry()[name]["cases"]}
     rows = []
     for done in sorted(target.glob("*/DONE")):
         measured = done.parent / "measured.json"
-        if args.reduce and done.read_text().strip() == "complete" and decks[done.parent.name] in REDUCERS:
+        if again and done.read_text().strip() == "complete" and decks[done.parent.name] in REDUCERS:
             # The reducer in this checkout may be newer than the one the node ran.
             measured.write_text(shell(f"{sys.executable} {ROOT / 'cusp' / REDUCERS[decks[done.parent.name]]} {done.parent}"))
         if done.read_text().strip() == "complete" and measured.exists() and measured.read_text().strip():
             rows.append(json.dumps({"case": done.parent.name, **json.loads(measured.read_text())}))
     (target / "table.jsonl").write_text("\n".join(rows) + "\n")
     states = [done.read_text().strip() for done in target.glob("*/DONE")]
-    print(f"{args.name}: {states.count('complete')} complete, {len(states) - states.count('complete')} failed, "
-          f"{len(registry()[args.name]['cases']) - len(states)} to go; {len(rows)} rows in {target}/table.jsonl")
+    print(f"{name}: {states.count('complete')} complete, {len(states) - states.count('complete')} failed, "
+          f"{len(registry()[name]['cases']) - len(states)} to go; {len(rows)} rows in {target}/table.jsonl")
+
+
+def local(args: argparse.Namespace) -> None:
+    """Run cases on this machine's CPUs, one after another, with WarpX built here from the same patches. The
+    rule is the nodes': a case is complete when WarpX ran to its end and exited cleanly, and is then reduced.
+    A case another call has started is left alone, so calls with different --only run side by side."""
+    for patch in PATCHES:
+        shell(f"git apply --reverse --check {patch}", cwd="/home/ubuntu/warpx/warpx")
+    known = registry()
+    entry = known.get(args.name)
+    if entry is None:
+        assert args.question, "a new campaign needs --question"
+        entry = known[args.name] = {"question": args.question, "cases": [], "jobs": []}
+    lines = [line for line in args.cases.read_text().splitlines() if line.strip()]
+    held = {line.split()[0]: line for line in entry["cases"]}
+    changed = sorted(line.split()[0] for line in lines if held.get(line.split()[0], line) != line)
+    assert not changed, f"campaign {args.name} already has cases {changed} with other settings"
+    entry["cases"] += [line for line in lines if line.split()[0] not in held]
+    REGISTRY.write_text(json.dumps(known, indent=1) + "\n")
+    for line in lines:
+        case, deck, *settings = line.split()
+        folder = RESULTS / args.name / case
+        if not case.startswith(args.only) or folder.exists():
+            continue
+        folder.mkdir(parents=True)
+        (folder / "attempts.log").write_text(f"local cpu {args.threads} threads fresh\n")
+        exe = next(path for prefix, path in LOCAL.items() if deck.startswith(prefix))
+        start = datetime.datetime.now(datetime.UTC)
+        with (folder / "run.log").open("w") as log:
+            code = subprocess.run([exe, ROOT / "cusp" / deck, *settings], cwd=folder, stdout=log, stderr=subprocess.STDOUT,
+                                  env={**os.environ, "OMP_NUM_THREADS": str(args.threads)}, check=False).returncode
+        (folder / "WALL_S").write_text(f"{(datetime.datetime.now(datetime.UTC) - start).seconds}\n")
+        (folder / "DONE").write_text("complete\n" if code == 0 else f"failed: exit code {code}\n")
+        if code == 0 and deck in REDUCERS:
+            (folder / "measured.json").write_text(shell(f"{sys.executable} {ROOT / 'cusp' / REDUCERS[deck]} {folder}"))
+        for checkpoint in (folder / "diags").glob("chk[0-9]*"):
+            shutil.rmtree(checkpoint)
+        print(f"{case}: {(folder / 'DONE').read_text().strip()}", flush=True)
+    table(args.name)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name, function in (("submit", submit), ("add", add), ("status", status), ("sync", sync), ("reduce", reduce)):
+    for name, function in (("submit", submit), ("add", add), ("status", status), ("sync", sync), ("reduce", reduce), ("local", local)):
         command = commands.add_parser(name)
         command.add_argument("name")
         command.set_defaults(function=function)
@@ -363,6 +413,11 @@ if __name__ == "__main__":
             command.add_argument("--reduce", action="store_true", help="reduce every complete case again here, with this checkout's reducers")
         if name == "reduce":
             command.add_argument("--only", default="", help="reduce only the cases whose names start with this")
+        if name == "local":
+            command.add_argument("--cases", type=Path, required=True, help="lines of: name deck [key=value ...]")
+            command.add_argument("--question", help="what the campaign is meant to answer, if it is new")
+            command.add_argument("--only", default="", help="run only the cases whose names start with this")
+            command.add_argument("--threads", type=int, default=4)
         if name == "add":
             command.add_argument("--cases", type=Path, required=True, help="lines of: name deck [key=value ...]")
         if name == "submit":

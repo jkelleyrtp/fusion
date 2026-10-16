@@ -1,4 +1,5 @@
 """The campaign worker script, run locally with a stand-in for WarpX."""
+import argparse
 import os
 import shlex
 import subprocess
@@ -7,6 +8,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "warpx"))
 import campaign
@@ -144,6 +146,41 @@ class WorkerTest(unittest.TestCase):
         self.assertIn("amr.restart=diags/chk000010", (self.camp / "far/attempts.log").read_text())
         self.assertEqual(self.rows("far"), [str(step) for step in range(1, 31)])
         self.assertEqual((self.camp / "nowhere/DONE").read_text().strip(), "failed: time limit")
+
+
+class LocalTest(unittest.TestCase):
+    """`campaign.py local`, with the stand-in in place of the CPU builds of WarpX."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        stand_in = self.root / "warpx"
+        stand_in.write_text(STAND_IN)
+        stand_in.chmod(0o755)
+        patched = mock.patch.multiple(campaign, LOCAL={"inputs_rz_": stand_in}, RESULTS=self.root / "results",
+                                      REGISTRY=self.root / "registry.json", PATCHES=[])
+        patched.start()
+        self.addCleanup(patched.stop)
+        self.cases = self.root / "cases.txt"
+
+    def run_local(self, cases: str, only: str = "") -> None:
+        self.cases.write_text(cases)
+        campaign.local(argparse.Namespace(name="t", cases=self.cases, question="q", only=only, threads=1))
+
+    def test_cases_run_to_the_end_are_complete_and_others_failed_and_none_runs_twice(self) -> None:
+        self.run_local("good inputs_rz_x\nbad inputs_rz_x crash=1\nlater inputs_rz_x\n", only="g")
+        self.run_local("good inputs_rz_x\nbad inputs_rz_x crash=1\nlater inputs_rz_x\n")
+        folder = campaign.RESULTS / "t"
+        self.assertEqual((folder / "good/DONE").read_text().strip(), "complete")
+        self.assertEqual((folder / "later/DONE").read_text().strip(), "complete")
+        self.assertEqual((folder / "bad/DONE").read_text().strip(), "failed: exit code 134")
+        self.assertEqual((folder / "good/run.log").read_text().count("STEP 1 ends"), 1)
+        self.assertEqual(list((folder / "good/diags").glob("chk*")), [])
+        self.assertEqual(len(campaign.registry()["t"]["cases"]), 3)
+
+    def test_a_case_given_again_with_other_settings_is_refused(self) -> None:
+        self.run_local("good inputs_rz_x\n")
+        with self.assertRaises(AssertionError):
+            self.run_local("good inputs_rz_x crash=1\n")
 
 
 if __name__ == "__main__":
