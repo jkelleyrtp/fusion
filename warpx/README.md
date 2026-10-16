@@ -94,7 +94,7 @@ Checked on the CPU build only:
 - One electron followed for 150 ps ends 87 nm from an independent calculation at 128 cells across,
   against 85 nm with the formula evaluated per particle. At 64 cells it is 1.7 µm.
 - A 600-step plasma-ball run at 64 cells differs from the per-particle run by less than a second
-  random seed does, in every diagnostic, and takes 173 s against 778 s.
+  random seed does, in every diagnostic, and takes 173 s against 784 s (8 threads each).
 
 Not yet checked: the GPU build, its speed there, and decks with electrodes.
 
