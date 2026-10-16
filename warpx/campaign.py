@@ -195,9 +195,11 @@ def submit(args: argparse.Namespace) -> None:
     held, free = len(my_pods()), free_nodes()
     assert held + args.nodes <= MAX_NODES, f"holding {held} nodes; {args.nodes} more would pass the cap of {MAX_NODES}"
     assert free >= args.nodes, f"only {free} nodes are free"
+    # Every job carries all of the campaign's cases, old and new. Its worker queues the ones the campaign's folder
+    # has not seen, so a job added later still has work if an earlier one was stopped before its worker started.
+    carried = "\n".join(entry["cases"] + new) + "\n"
     for index in range(args.nodes):
-        # Every job carries all the new cases; the first to start queues them and the rest find them queued.
-        token, template = job_spec(args.name, "\n".join(new) + "\n", args.timeout, args.gpus_per_case)
+        token, template = job_spec(args.name, carried, args.timeout, args.gpus_per_case)
         folder = JOBS / f"{args.name}-{token}"
         folder.mkdir(parents=True)
         (folder / "job.yaml").write_text(json.dumps(template, indent=2) + "\n")
