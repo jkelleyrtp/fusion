@@ -34,5 +34,41 @@
     "submitted": "2026-10-16T03:40:26+00:00"
    }
   ]
+ },
+ "fed1": {
+  "question": "With hot plasma fed at the centre so the pressure is held up, does the amount held rise faster than the feed once the plasma pressure passes the magnetic pressure at the coil openings (feed 1e21 to 3e23 per second, 16 to 64 kA-turns)?",
+  "cases": [
+   "f1e21_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e21 my_constants.coil_at=32000.",
+   "f3e21_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e21 my_constants.coil_at=32000.",
+   "f1e22_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=32000.",
+   "f3e22_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e22 my_constants.coil_at=32000.",
+   "f1e23_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e23 my_constants.coil_at=32000.",
+   "f3e23_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e23 my_constants.coil_at=32000.",
+   "f1e21_16k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e21 my_constants.coil_at=16000.",
+   "f1e21_64k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e21 my_constants.coil_at=64000.",
+   "f3e21_16k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e21 my_constants.coil_at=16000.",
+   "f3e21_64k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e21 my_constants.coil_at=64000.",
+   "f1e22_16k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=16000.",
+   "f1e22_64k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=64000.",
+   "f3e22_16k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e22 my_constants.coil_at=16000.",
+   "f3e22_64k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e22 my_constants.coil_at=64000.",
+   "f1e23_16k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e23 my_constants.coil_at=16000.",
+   "f1e23_64k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e23 my_constants.coil_at=64000.",
+   "f3e23_16k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e23 my_constants.coil_at=16000.",
+   "f3e23_64k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e23 my_constants.coil_at=64000.",
+   "f1e22_32k_es inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=32000. warpx.do_electrostatic=labframe warpx.self_fields_required_precision=1.e-6 warpx.eb_potential(x,y,z,t)=0.",
+   "f1e23_32k_es inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e23 my_constants.coil_at=32000. warpx.do_electrostatic=labframe warpx.self_fields_required_precision=1.e-6 warpx.eb_potential(x,y,z,t)=0.",
+   "f3e23_32k_es inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e23 my_constants.coil_at=32000. warpx.do_electrostatic=labframe warpx.self_fields_required_precision=1.e-6 warpx.eb_potential(x,y,z,t)=0.",
+   "f1e23_32k_n192 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e23 my_constants.coil_at=32000. my_constants.ncell=192 my_constants.dt=3.125e-13",
+   "f3e23_32k_n192 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e23 my_constants.coil_at=32000. my_constants.ncell=192 my_constants.dt=3.125e-13",
+   "f1e23_32k_seed2 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e23 my_constants.coil_at=32000. warpx.random_seed=7"
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-e1cfe6427d85",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T04:07:27+00:00"
+   }
+  ]
  }
 }

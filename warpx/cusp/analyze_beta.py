@@ -165,7 +165,9 @@ def reduce(run: Path) -> dict:
         out["feed_stops_ns"] = round(c["toff"] * 1e9, 2) if c["toff"] < time[-1] else None
         for name, count in (("electrons", electrons), ("ions", ions)):
             out[f"{name}_held_late_in_feed"] = float(f"{count[late].mean():.4g}")
-            leaving = c["feed"] - np.polyfit(time[late], count[late], 1)[0]
+            # Fitted in nanoseconds from the window centre, which keeps the fit well conditioned.
+            growth = np.polyfit((time[late] - time[late].mean()) * 1e9, count[late], 1)[0] * 1e9
+            leaving = c["feed"] - growth
             out[f"{name}_holding_time_in_feed_ns"] = round(float(count[late].mean() / leaving * 1e9), 2) if leaving > 0 else None
     for line in ("axis", "edge", "corner") if c["coil_at"] else ():
         out.update({f"{line}_{key}": value for key, value in field_change(run, c, line).items()})
