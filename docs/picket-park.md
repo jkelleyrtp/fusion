@@ -26,7 +26,7 @@ Uses two unreviewed WarpX patches: paired injection and the coil field on the me
 
 ## What was run
 
-`warpx/cusp/inputs_rz_picket_fed`, cases in `warpx/campaigns/picket_pf1.txt`, reduced by
+`warpx/cusp/inputs_rz_picket_fed`, cases in `warpx/campaigns/picket/pf1.txt`, reduced by
 `warpx/cusp/analyze_picket.py`.
 
 - 2D axisymmetric, periodic along the axis, a row of 25 alternating ring coils of which the mesh holds one period, absorbing

@@ -219,7 +219,7 @@ def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 18
               .replace("__PAUSE__", str(pause)).replace("__LOOK__", str(look))
               .replace("__MPI__", "OFF" if gpus == 1 else "ON").replace("__LAUNCH__", launch).replace("__GPUS__", str(gpus))
               .replace("__PAYLOAD__", payload({"cases.txt": cases})))
-    template = json.loads((ROOT.parent / "jobs/poisson-server-template.json").read_text())
+    template = json.loads((ROOT / "job-template.json").read_text())
     template["metadata"]["name"] = f"jonathan-warpx-{token}"
     spec = template["spec"]
     spec["entrypoint"] = (f"bash -c {shlex.quote(worker)} -- --actor-num-nodes 1 "

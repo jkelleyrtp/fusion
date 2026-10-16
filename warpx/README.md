@@ -16,7 +16,7 @@ cmake --build build -j 8
 Runs named sets of cases on GPU nodes through the job broker at priority 1.
 
 ```bash
-python3 campaign.py submit em4 --cases campaigns/cusp_em4_pressure.txt --nodes 2 --question "..."
+python3 campaign.py submit em4 --cases campaigns/cusp/em4_pressure.txt --nodes 2 --question "..."
 python3 campaign.py status em4
 python3 campaign.py sync em4      # fetches finished cases into results/em4 and writes table.jsonl
 ```
