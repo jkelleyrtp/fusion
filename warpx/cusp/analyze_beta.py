@@ -76,6 +76,12 @@ def loss_time_ns(time: np.ndarray, count: np.ndarray) -> float | None:
     return round(float(count[late].mean() / rate * 1e9), 1) if rate > 0 else None
 
 
+def inside_cage(run: Path, c: dict, name: str) -> tuple[np.ndarray, np.ndarray]:
+    """Times, and the number of particles within the distance of the coil planes from the centre at each."""
+    data, radius = table(run, name), bin_centres(run, name)
+    return data[:, 1], data[:, 2:][:, radius < 1.3 * c["a"]].sum(axis=1)
+
+
 def jets(run: Path, c: dict) -> dict:
     """Where the guns are and how they are aimed, and how much of what they fire is inside the cage, counted
     within the distance of the coil planes from the centre. `fired_held_ns` is the amount inside over the firing
@@ -97,8 +103,7 @@ def jets(run: Path, c: dict) -> dict:
         out["angle_of_aim_to_coil_field_deg"] = round(float(np.degrees(np.arccos(min(cosine, 1.0)))), 2)
         out["coil_field_at_opening_over_at_mouth"] = round(float(np.linalg.norm(at_opening) / np.linalg.norm(at_mouth)), 3)
     for name, species in (("erad", "electrons"), ("irad", "ions")):
-        data, radius = table(run, name), bin_centres(run, name)
-        time, inside = data[:, 1], data[:, 2:][:, radius < 1.3 * c["a"]].sum(axis=1)
+        time, inside = inside_cage(run, c, name)
         stop = min(time[-1], c["toff"])
         late = (time >= 0.8 * stop) & (time <= stop)
         assert late.sum() >= 4, "under four histograms in the last fifth of the firing"
@@ -112,6 +117,11 @@ def jets(run: Path, c: dict) -> dict:
             after = time >= c["toff"] + 0.5 * (time[-1] - c["toff"])
             out[f"{species}_inside_at_end_over_at_stop"] = round(float(inside[-1] / max(np.interp(c["toff"], time, inside), 1e-300)), 4)
             out[f"{species}_inside_loss_time_after_stop_ns"] = loss_time_ns(time[after], inside[after]) if after.sum() >= 4 else None
+            # The first quarter of the time after the guns stop, when the plasma is closest to its firing state.
+            # What was still in flight arrives during it, so this reads long.
+            first = (time >= c["toff"]) & (time <= c["toff"] + 0.25 * (time[-1] - c["toff"]))
+            rate = -np.polyfit(time[first], inside[first], 1)[0] if first.sum() >= 4 else 0.0
+            out[f"{species}_inside_loss_time_just_after_stop_ns"] = round(float(inside[first].mean() / rate * 1e9), 1) if rate > 0 else None
     return out
 
 
@@ -218,6 +228,12 @@ def reduce(run: Path) -> dict:
             # difference of two large numbers.
             out[f"{name}_leaving_over_feed"] = round(float(leaving / c["feed"]), 3)
             out[f"{name}_holding_time_in_feed_ns"] = round(float(count[late].mean() / leaving * 1e9), 2) if leaving > 0 else None
+        # The same measure the jet runs report as `fired_held_ns`, so the two ways of feeding can be compared.
+        for name, species in (("erad", "electrons"), ("irad", "ions")):
+            when, inside = inside_cage(run, c, name)
+            window = (when >= 0.8 * min(when[-1], c["toff"])) & (when <= c["toff"])
+            assert window.sum() >= 4, "under four histograms in the last fifth of the feed"
+            out[f"{species}_inside_cage_over_feed_ns"] = round(float(inside[window].mean() / c["feed"] * 1e9), 3)
     for line in ("axis", "edge", "corner") if c["coil_at"] else ():
         out.update({f"{line}_{key}": value for key, value in field_change(run, c, line).items()})
     if c["coil_at"]:

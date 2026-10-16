@@ -59,6 +59,7 @@ class JetsTest(unittest.TestCase):
             self.assertAlmostEqual(out[f"{species}_fired_held_ns"], 4.0, places=3)
             self.assertAlmostEqual(out[f"{species}_inside_growth_over_fired"], 0.0, places=3)
             self.assertAlmostEqual(out[f"{species}_inside_at_end_over_at_stop"], 0.25, places=3)
+            self.assertAlmostEqual(out[f"{species}_inside_loss_time_just_after_stop_ns"], 4.8, places=1)
 
 
 if __name__ == "__main__":

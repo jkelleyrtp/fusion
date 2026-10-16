@@ -17,6 +17,7 @@ import io
 import json
 import shlex
 import subprocess
+import sys
 import tarfile
 import uuid
 from pathlib import Path
@@ -245,9 +246,13 @@ def sync(args: argparse.Namespace) -> None:
                         "$(ls */measured.json 2>/dev/null) 2>/dev/null | base64 -w0")
     with tarfile.open(fileobj=io.BytesIO(base64.b64decode(packed)), mode="r:gz") as archive:
         archive.extractall(target, filter="data")
+    decks = {line.split()[0]: line.split()[1] for line in registry()[args.name]["cases"]}
     rows = []
     for done in sorted(target.glob("*/DONE")):
         measured = done.parent / "measured.json"
+        if args.reduce and done.read_text().strip() == "complete" and decks[done.parent.name] in REDUCERS:
+            # The reducer in this checkout may be newer than the one the node ran.
+            measured.write_text(shell(f"{sys.executable} {ROOT / 'cusp' / REDUCERS[decks[done.parent.name]]} {done.parent}"))
         if done.read_text().strip() == "complete" and measured.exists() and measured.read_text().strip():
             rows.append(json.dumps({"case": done.parent.name, **json.loads(measured.read_text())}))
     (target / "table.jsonl").write_text("\n".join(rows) + "\n")
@@ -263,6 +268,8 @@ if __name__ == "__main__":
         command = commands.add_parser(name)
         command.add_argument("name")
         command.set_defaults(function=function)
+        if name == "sync":
+            command.add_argument("--reduce", action="store_true", help="reduce every complete case again here, with this checkout's reducers")
         if name == "submit":
             command.add_argument("--cases", type=Path, help="lines of: name deck [key=value ...]")
             command.add_argument("--question", help="what the campaign is meant to answer")
