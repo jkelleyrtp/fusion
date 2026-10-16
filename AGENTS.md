@@ -21,9 +21,10 @@ Binding rules for agents working in this repository. Explanations and how-tos li
 
 ## Science
 
-- Confinement claims must come from electrons injected by an external gun that crosses field
-  lines, with the gun position and aim recorded in the run. Inside-born particles are numerical
-  controls only.
+- Claims about filling a trap (capture, the current or power needed to sustain it) must come from
+  particles injected from outside: an external gun that crosses field lines, with its position and
+  aim recorded in the run, or gas ionised in place. Runs whose plasma is created inside count as
+  evidence only about how an already-filled trap holds and leaks, and must be labelled inside-born.
 - A prescribed charge sphere (`--space-charge`) is a fixed proxy field, not a self-consistent well.
   Say which one a claim rests on.
 - FP64 is the reference. Do not change `CUDA_SRC`/`CPP_SRC`, integrator arithmetic or injection

@@ -93,6 +93,11 @@
     "job": "jonathan-warpx-5b03dfcef0dd",
     "gpus_per_case": 1,
     "submitted": "2026-10-16T06:30:08+00:00"
+   },
+   {
+    "job": "jonathan-warpx-9ac77461ed9e",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T06:48:40+00:00"
    }
   ]
  },
@@ -142,6 +147,40 @@
     "job": "jonathan-warpx-a124ff804349",
     "gpus_per_case": 8,
     "submitted": "2026-10-16T06:19:59+00:00"
+   }
+  ]
+ },
+ "fed2": {
+  "question": "In the six-coil cusp fed with neutral plasma, how does the holding time scale with coil field, ion mass, temperature and device size, and does it rise once the plasma pressure at the coil openings passes the magnetic pressure?",
+  "cases": [
+   "g_f1e22_off inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=0. particles.B_ext_particle_on_grid=1",
+   "g_f1e22_4k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=4000. particles.B_ext_particle_on_grid=1",
+   "g_f1e22_8k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=8000. particles.B_ext_particle_on_grid=1",
+   "g_f1e22_128k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=128000. particles.B_ext_particle_on_grid=1",
+   "g_m229 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.1259 my_constants.tmax=8.e-8 my_constants.toff=5.e-8 my_constants.feed=1.e22 my_constants.coil_at=32000. particles.B_ext_particle_on_grid=1",
+   "g_m918 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.5036 my_constants.tmax=1.6e-7 my_constants.toff=1.e-7 my_constants.feed=1.e22 my_constants.coil_at=32000. my_constants.hist_every=1000 my_constants.probe_every=2000 particles.B_ext_particle_on_grid=1",
+   "g_mD inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=2.014 my_constants.tmax=3.2e-7 my_constants.toff=2.e-7 my_constants.feed=1.e22 my_constants.coil_at=32000. my_constants.hist_every=2000 my_constants.probe_every=4000 particles.B_ext_particle_on_grid=1",
+   "g_te2500 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=5.e-8 my_constants.feed=1.e22 my_constants.coil_at=32000. my_constants.te=2.5e3 particles.B_ext_particle_on_grid=1",
+   "g_te40k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=32000. my_constants.te=4.e4 particles.B_ext_particle_on_grid=1",
+   "g_ti10k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=32000. my_constants.ti=1.e4 particles.B_ext_particle_on_grid=1",
+   "g_half_16k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=2.e-8 my_constants.toff=1.25e-8 my_constants.feed=2.5e21 my_constants.coil_at=16000. my_constants.a=0.005 my_constants.ncell=64 particles.B_ext_particle_on_grid=1",
+   "g_half_16k_n128 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=2.e-8 my_constants.toff=1.25e-8 my_constants.feed=2.5e21 my_constants.coil_at=16000. my_constants.a=0.005 my_constants.ncell=128 my_constants.dt=2.5e-13 particles.B_ext_particle_on_grid=1",
+   "g_double_64k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=5.e-8 my_constants.feed=4.e22 my_constants.coil_at=64000. my_constants.a=0.02 my_constants.ncell=256 particles.B_ext_particle_on_grid=1",
+   "g_double_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=5.e-8 my_constants.feed=4.e22 my_constants.coil_at=32000. my_constants.a=0.02 my_constants.ncell=256 particles.B_ext_particle_on_grid=1",
+   "g_double_128k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=5.e-8 my_constants.feed=4.e22 my_constants.coil_at=128000. my_constants.a=0.02 my_constants.ncell=256 particles.B_ext_particle_on_grid=1",
+   "g_f1e24_16k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e24 my_constants.coil_at=16000. particles.B_ext_particle_on_grid=1",
+   "g_f3e23_8k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e23 my_constants.coil_at=8000. particles.B_ext_particle_on_grid=1",
+   "g_f1e24_8k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e24 my_constants.coil_at=8000. particles.B_ext_particle_on_grid=1",
+   "g_f3e23_32k_halfdt inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e23 my_constants.coil_at=32000. my_constants.dt=2.5e-13 particles.B_ext_particle_on_grid=1",
+   "g_f3e23_32k inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=3.e23 my_constants.coil_at=32000. particles.B_ext_particle_on_grid=1",
+   "g_rf0.15 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=32000. my_constants.rf=0.0015 particles.B_ext_particle_on_grid=1",
+   "g_rf0.6 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.mass_amu=0.03147 my_constants.tmax=4.e-8 my_constants.toff=2.5e-8 my_constants.feed=1.e22 my_constants.coil_at=32000. my_constants.rf=0.006 particles.B_ext_particle_on_grid=1"
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-88e33e692d90",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T07:20:56+00:00"
    }
   ]
  }
