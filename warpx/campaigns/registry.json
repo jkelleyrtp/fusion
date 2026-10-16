@@ -90,5 +90,54 @@
     "submitted": "2026-10-16T05:25:58+00:00"
    }
   ]
+ },
+ "sp1": {
+  "question": "In a two-coil spindle cusp fed with hot plasma at the centre, fine enough to resolve an electron orbit, does the plasma push the coil field out once its pressure passes the magnetic pressure, and do the leaks through the coils and the gap then narrow to an electron orbit?",
+  "cases": [
+   "sp_16k_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23",
+   "sp_32k_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=32000. my_constants.feed=1.e23",
+   "sp_64k_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=64000. my_constants.feed=1.e23",
+   "sp_8k_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=8000. my_constants.feed=1.e23",
+   "sp_off_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=0. my_constants.feed=1.e23",
+   "sp_16k_f1e22 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e22",
+   "sp_16k_f1e24 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e24",
+   "sp_16k_f1e23_nr256 inputs_rz_spindle_fed my_constants.nr=256 my_constants.ppc_feed=0.5 my_constants.ppd=2 my_constants.hist_every=500 my_constants.plot_every=32000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23",
+   "sp_16k_f1e21 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e21",
+   "sp_32k_f1e22 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=32000. my_constants.feed=1.e22",
+   "sp_32k_f1e24 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=32000. my_constants.feed=1.e24",
+   "sp_64k_f1e24 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=64000. my_constants.feed=1.e24",
+   "sp_16k_f1e23_seed2 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23 warpx.random_seed=2",
+   "sp_16k_f1e23_ppc4 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=1. my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23",
+   "sp_16k_f1e23_stop inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=4.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23 my_constants.toff=2.e-8",
+   "sp_16k_f1e23_m229 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=4.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23 my_constants.mass_amu=0.12562",
+   "sp_16k_f1e23_m918 inputs_rz_spindle_fed my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.ppd=2 my_constants.hist_every=1000 my_constants.plot_every=64000 my_constants.chk_every=100000 my_constants.tmax=6.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23 my_constants.mass_amu=0.5036",
+   "sp_16k_f1e23_nr1024 inputs_rz_spindle_fed my_constants.nr=1024 my_constants.ppc_feed=0.125 my_constants.ppd=2 my_constants.hist_every=2000 my_constants.plot_every=128000 my_constants.chk_every=200000 my_constants.tmax=3.e-8 my_constants.coil_at=16000. my_constants.feed=1.e23"
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-d76fb9c83a89",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T06:08:46+00:00"
+   }
+  ]
+ },
+ "mg1": {
+  "question": "Does WarpX built with MPI run one cusp case across a node's 8 GPUs, how much faster is it at 256 cells than on 1, 2 and 4, and do 384 and 512 cells fit?",
+  "cases": [
+   "mg_256_np8 inputs_3d_cusp_beta np=8 my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.coil_at=64000. max_step=2000 my_constants.chk_every=100000 my_constants.a=0.02 my_constants.ncell=256 amr.max_grid_size=128",
+   "mg_256_np4 inputs_3d_cusp_beta np=4 my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.coil_at=64000. max_step=2000 my_constants.chk_every=100000 my_constants.a=0.02 my_constants.ncell=256 amr.max_grid_size=128",
+   "mg_256_np2 inputs_3d_cusp_beta np=2 my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.coil_at=64000. max_step=2000 my_constants.chk_every=100000 my_constants.a=0.02 my_constants.ncell=256 amr.max_grid_size=128",
+   "mg_256_np1 inputs_3d_cusp_beta np=1 my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.coil_at=64000. max_step=2000 my_constants.chk_every=100000 my_constants.a=0.02 my_constants.ncell=256 amr.max_grid_size=128",
+   "mg_384_np8 inputs_3d_cusp_beta np=8 my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.coil_at=64000. max_step=2000 my_constants.chk_every=100000 my_constants.a=0.03 my_constants.ncell=384 amr.max_grid_size=192",
+   "mg_512_np8 inputs_3d_cusp_beta np=8 my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.coil_at=64000. max_step=2000 my_constants.chk_every=100000 my_constants.a=0.04 my_constants.ncell=512 amr.max_grid_size=256",
+   "mg_256_np8_grid64 inputs_3d_cusp_beta np=8 my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.coil_at=64000. max_step=2000 my_constants.chk_every=100000 my_constants.a=0.02 my_constants.ncell=256 amr.max_grid_size=64"
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-a124ff804349",
+    "gpus_per_case": 8,
+    "submitted": "2026-10-16T06:19:59+00:00"
+   }
+  ]
  }
 }

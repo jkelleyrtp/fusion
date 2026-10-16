@@ -74,6 +74,11 @@ class WorkerTest(unittest.TestCase):
         for index in range(5):
             self.assertEqual((self.camp / f"c{index}/DONE").read_text().strip(), "complete")
 
+    def test_a_case_can_ask_for_fewer_processes_than_its_gpus(self) -> None:
+        self.work("two deck np=2 some=setting\nall deck\n", gpus=8)
+        self.assertEqual((self.camp / "two/launched.txt").read_text().strip(), "2 processes on GPUs 0,1,2,3,4,5,6,7")
+        self.assertEqual((self.camp / "all/launched.txt").read_text().strip(), "8 processes on GPUs 0,1,2,3,4,5,6,7")
+
     def test_a_stopped_case_restarts_from_its_last_checkpoint_without_repeated_rows(self) -> None:
         self.work("stopped deck stop_at=25\n")
         self.assertFalse((self.camp / "stopped/DONE").exists())

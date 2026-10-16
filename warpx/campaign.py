@@ -87,6 +87,8 @@ next_case() {
 
 run_case() {
   local gpu=$1 name=$2 deck=$3; shift 3
+  # A case whose first setting is np=K runs as K processes rather than one per GPU it was given, to compare speeds.
+  local np=__GPUS__; [[ ${1:-} == np=* ]] && { np=${1#np=}; shift; }
   cd "$camp/$name"; local start=$(date +%s)
   # While the case runs, keep its claim fresh and keep only the two newest checkpoints.
   ( while sleep 60; do touch CLAIM; ls -d diags/chk[0-9]* 2>/dev/null | sort | head -n -2 | xargs -r rm -rf; done ) &
@@ -149,7 +151,7 @@ def job_spec(name: str, cases: str, timeout: int, gpus: int = 1) -> tuple[str, d
     """The broker job for one node working on campaign `name`, carrying `cases` to add to its queue. Each case
     runs on `gpus` GPUs; more than one needs the WarpX build with MPI, which is kept beside the one without."""
     assert gpus in (1, 2, 4, 8), "a node's 8 GPUs must divide evenly between cases"
-    build, launch = (BUILD, "") if gpus == 1 else (BUILD + "-mpi", f"mpirun --allow-run-as-root --bind-to none -np {gpus}")
+    build, launch = (BUILD, "") if gpus == 1 else (BUILD + "-mpi", "mpirun --allow-run-as-root --bind-to none -np $np")
     token = uuid.uuid4().hex[:12]
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
@@ -225,7 +227,7 @@ def status(args: argparse.Namespace) -> None:
         # job holds its GPU node without working.
         states = {("node" if "-head-" in line else "worker"): line.split()[2] for line in pods if line.startswith(job["job"])}
         print(f"{job['job']}: " + (", ".join(f"{role} {state}" for role, state in sorted(states.items())) or "gone"))
-    print(on_cluster(f"""cd {SHARED}/campaigns/{args.name} 2>/dev/null || {{ echo "no worker has started yet"; exit 0; }}
+    print(on_cluster(f"""cd {SHARED}/campaigns/{args.name} 2>/dev/null && [ -f queue.txt ] || {{ echo "no worker has started its cases yet (WarpX may be building)"; exit 0; }}
       echo "queued: $(wc -l < queue.txt)"; while read -r name rest; do
       if [ -f $name/DONE ]; then echo "$name: $(cat $name/DONE) ($(cat $name/WALL_S) s)"
       elif [ -d $name ]; then echo "$name: running, try $(cat $name/TRIES), $(grep 'ends. TIME' $name/run.log | tail -n 1 | cut -c1-40)"
