@@ -13,7 +13,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-
 from analyze_cage import M_E, MU0, Q_E, coil_field
 
 
@@ -22,8 +21,8 @@ def constants(run: Path) -> dict:
     text = (run / "warpx_used_inputs").read_text()
     names = ("a", "coil_at", "n0", "r0", "te", "ti", "mass_amu", "dt", "ncell", "ppd")
     # WarpX echoes each constant followed by a comment holding its evaluated value.
-    out = {name: float(re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.M).group(1)) for name in names}
-    out["charge_only"] = bool(re.search(r"^warpx\.do_electrostatic = labframe", text, re.M))
+    out = {name: float(re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE).group(1)) for name in names}
+    out["charge_only"] = bool(re.search(r"^warpx\.do_electrostatic = labframe", text, re.MULTILINE))
     return out
 
 
@@ -92,6 +91,37 @@ def field_change(run: Path, c: dict, line: str) -> dict:
     }
 
 
+def pressure_history(run: Path, c: dict) -> dict:
+    """Plasma pressure over the coil field's magnetic pressure, through the run, at the start and at a quarter,
+    half and the end of it. The density is the average over a shell of radius r, from the radial histograms.
+    The temperature is two thirds of the mean kinetic energy of all particles of that species still in the box,
+    so it counts the outward flow as heat and reads high once the ball is expanding. The magnetic pressure uses
+    the coil field's root-mean-square over the same shell. `balance_radius` is the largest radius at which the
+    ratio is still above 1: inside it the plasma out-pushes the coil field."""
+    number, energy = table(run, "number"), table(run, "energy")
+    radius = bin_centres(run, "erad")
+    volume = 4 * np.pi * radius**2 * (radius[1] - radius[0])
+    # 200 directions spread evenly over the sphere
+    k = np.arange(200) + 0.5
+    polar, turn = np.arccos(1 - 2 * k / 200), np.pi * (1 + 5**0.5) * k
+    directions = np.stack([np.sin(polar) * np.cos(turn), np.sin(polar) * np.sin(turn), np.cos(polar)], axis=1)
+    magnetic = np.array([(coil_field(r * directions, c["coil_at"], c["a"]) ** 2).sum(axis=1).mean() for r in radius]) / (2 * MU0)
+    pressure = 0
+    for name, count, joules in (("erad", number[:, 6], energy[:, 3]), ("irad", number[:, 7], energy[:, 4])):
+        data = table(run, name)
+        each = np.interp(data[:, 1], energy[:, 1], joules) / np.maximum(np.interp(data[:, 1], number[:, 1], count), 1e-300)
+        pressure = pressure + data[:, 2:] / volume * (2 / 3 * each)[:, None]
+    times = table(run, "erad")[:, 1]
+    out = {"balance_radius_over_a": [], "pressure_ratio_at_a": [], "pressure_ratio_at_coil_opening_now": []}
+    for fraction in (0, 0.25, 0.5, 1):
+        ratio = pressure[np.argmin(np.abs(times - fraction * times[-1]))] / magnetic
+        above = np.nonzero(ratio > 1)[0]
+        out["balance_radius_over_a"].append(round(float(radius[above[-1]] / c["a"]), 2) if len(above) else 0.0)
+        out["pressure_ratio_at_a"].append(float(f"{np.interp(c['a'], radius, ratio):.3g}"))
+        out["pressure_ratio_at_coil_opening_now"].append(float(f"{np.interp(1.3 * c['a'], radius, ratio):.3g}"))
+    return out
+
+
 def reduce(run: Path) -> dict:
     c = constants(run)
     number, energy, fields = table(run, "number"), table(run, "energy"), table(run, "fields")
@@ -126,6 +156,8 @@ def reduce(run: Path) -> dict:
     }
     for line in ("axis", "edge", "corner") if c["coil_at"] else ():
         out.update({f"{line}_{key}": value for key, value in field_change(run, c, line).items()})
+    if c["coil_at"]:
+        out.update(pressure_history(run, c))
     for name, species in (("eout", "electrons"), ("iout", "ions")):
         out.update({f"{species}_outside_{key}": value for key, value in outside_shares(run, name, 0.6 * time[-1]).items()})
     for name, species in (("erad", "electron"), ("irad", "ion")):

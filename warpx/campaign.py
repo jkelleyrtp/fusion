@@ -197,7 +197,14 @@ def on_cluster(command: str) -> str:
 
 
 def status(args: argparse.Namespace) -> None:
-    print(on_cluster(f"""cd {SHARED}/campaigns/{args.name} && echo "queued: $(wc -l < queue.txt)" && while read -r name rest; do
+    pods = shell(f"kubectl --context {CONTEXT} get pods --no-headers").splitlines()
+    for job in registry()[args.name]["jobs"]:
+        # A job's entrypoint is started by a small submitter pod on a CPU node; until that pod is placed the
+        # job holds its GPU node without working.
+        states = {("node" if "-head-" in line else "worker"): line.split()[2] for line in pods if line.startswith(job["job"])}
+        print(f"{job['job']}: " + (", ".join(f"{role} {state}" for role, state in sorted(states.items())) or "gone"))
+    print(on_cluster(f"""cd {SHARED}/campaigns/{args.name} 2>/dev/null || {{ echo "no worker has started yet"; exit 0; }}
+      echo "queued: $(wc -l < queue.txt)"; while read -r name rest; do
       if [ -f $name/DONE ]; then echo "$name: $(cat $name/DONE) ($(cat $name/WALL_S) s)"
       elif [ -d $name ]; then echo "$name: running, try $(cat $name/TRIES), $(grep 'ends. TIME' $name/run.log | tail -n 1 | cut -c1-40)"
       fi; done < all_cases.txt"""))

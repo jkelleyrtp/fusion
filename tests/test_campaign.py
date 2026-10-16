@@ -13,6 +13,8 @@ import campaign
 
 # Stands in for WarpX: runs to step 30 with a checkpoint every 10 steps, from the checkpoint named by amr.restart.
 # A case given `stop_at=N` is stopped at step N as if its node had been taken away, unless it is restarting.
+# It stops the worker's shells in one signal before itself (`timeout` gives it a process group of its own), so
+# that no shell outlives it long enough to claim the case again.
 STAND_IN = r"""#!/bin/bash
 start=0; stop=0; crash=0
 for arg in "$@"; do case $arg in amr.restart=*) start=$((10#${arg##*chk}));; stop_at=*) stop=${arg#*=};; crash=*) crash=1;; esac; done
@@ -22,7 +24,7 @@ mkdir -p diags/reducedfiles
 for step in $(seq $((start + 1)) 30); do
   echo "STEP $step ends"; echo "$step" >> diags/reducedfiles/number.txt
   [ $((step % 10)) -eq 0 ] && mkdir -p diags/chk$(printf %06d $step)
-  [ $start -eq 0 ] && [ $step -eq $stop ] && pkill -9 -s $(ps -o sid= -p $$ | tr -d ' ')
+  [ $start -eq 0 ] && [ $step -eq $stop ] && { kill -9 -- -$(ps -o sid= -p $$ | tr -d ' '); kill -9 0; }
 done
 exit 0
 """
