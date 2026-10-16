@@ -1,8 +1,8 @@
 # Charge left behind by WarpX flux injection in electromagnetic runs
 
 Status: found 2026-10-16. The fix below is written (`warpx/patches/flux-paired.patch`) and on in the three fed
-decks. It has passed the Gauss's-law check; the checks on full runs are on the cluster. It has not been reviewed,
-so results that use it must say so. Affects every deck that feeds plasma with `NFluxPerCell` while Maxwell's
+decks. It has passed the Gauss's-law check and the checks on full runs below. It has not been reviewed, so results that
+use it must say so. Affects every deck that feeds plasma with `NFluxPerCell` while Maxwell's
 equations are solved: `inputs_3d_cusp_jets`, `inputs_3d_cusp_fed`, `inputs_rz_spindle_fed`.
 
 ## What goes wrong
@@ -46,11 +46,11 @@ fired. Real plasma is then trapped on it until it cancels it: electrons on the i
 
 - `jet1`, `jet2`: the capture and holding numbers are not usable. The layer sits in the path of the jet and
   grows through the run.
-- `fed1`, `fed2` (3D): holding times while the feed is on stand to a few percent by count. What is left after the
-  feed stops with the coils off is mostly the layer.
+- `fed1`, `fed2` (3D): holding times while the feed is on stand: repeats with the fix agree within 1% (below).
+  What is left after the feed stops with the coils off is mostly the layer.
 - `sp1` (2D): 3% of what is held with the coils on and 11% with them off is the layer.
-- The count is not the whole effect: the layer also sits in the middle of the plasma. Repeats with the fix
-  (`fed3`, `sp2`) are the test of that.
+- The count is not the whole effect: the layer also sits in the middle of the plasma. `fed3` shows it does not
+  matter in 3D; `sp2` is the same test for the 2D runs and is still running.
 
 ## The fix (not yet reviewed)
 
@@ -81,12 +81,22 @@ Done, CPU build, 50 to 100 steps, same deck with the option on and off:
 With the option on, what error remains in the 3D box is next to the walls and coil rings, where absorbed
 particles leave their charge on the conductor, and is the same with the option off.
 
-Still to come, from the cluster:
+Full runs on the cluster (GPU build `9e4eb929`, option on against option off on the same build):
 
-- `jet3/p_off` against `jet3/p_off_stock`: coils off, guns stop at 60 ns; nothing should be left at the mouths
-  at 80 ns with the option on.
-- `jet3/p_32k` against `jet3/p_32k_stock`: the number inside the cage should stop falling while the guns fire.
-- `fed3`: six centre-fed cases repeated with the option on, two with it off on the same build.
+| Check | Option off | Option on |
+|---|---|---|
+| Guns, coils off: share of what was fired still at the mouths 20 ns after they stop (`jet3/p_off_stock`, `p_off`) | 3.4% | 0.1% |
+| Guns, 32 kA-turns: same (`p_32k_stock`, `p_32k`) | 4.5% | 0.2% |
+| Guns, 32 kA-turns: amount inside the cage early in the firing over late | 3.1 (falling) | 0.69 (still filling) |
+| Guns, 32 kA-turns: time an average fired electron spends inside | 0.38 ns | 4.86 ns |
+| Centre-fed, coils off: holding time while fed (`fed3/u_f1e22_off`, `p_f1e22_off`) | 3.97 ns | 3.98 ns |
+| Centre-fed, 32 kA-turns: same (`u_f1e22_32k`, `p_f1e22_32k`) | 10.96 ns | 10.98 ns |
+| Centre-fed, coils off: ions in the layer on the feed disc 15 ns after the feed stops | 4.9e11 | none above the background |
+
+The other centre-fed repeats with the option on agree with the earlier runs within 1%: 7.35 against 7.28 ns at
+8 kA-turns, 19.46 against 19.38 at 128, 10.66 against 10.59 and 10.47 against 10.42 at ten and thirty times the
+feed. So the 3D centre-fed holding times and their scalings stand, and the gun-fed numbers before `jet3` do not.
+The one centre-fed number that moves is the loss time after the feed stops with the coils off (16.7 to 12.4 ns).
 
 ## A separate fault on the axis of the 2D runs
 

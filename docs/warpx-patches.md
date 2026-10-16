@@ -65,4 +65,5 @@ start on top of each other. Without it, electromagnetic runs leave a growing lay
 the fields can never remove. The fault, the evidence and the checks are in `flux-injection-charge.md`.
 
 **Status.** Not reviewed. Gauss's law at the source goes from an error of a quarter of the charge density to
-round-off in 3D and in 2D. Checks on full runs are on the cluster (`jet3`, `fed3`).
+round-off in 3D and in 2D. On full GPU runs the plasma stuck at the gun mouths goes from 3.4% of what was fired
+to 0.1%, and centre-fed holding times are unchanged within 1%.
