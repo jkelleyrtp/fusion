@@ -310,6 +310,129 @@ ext.species = test
 ext.intervals = 1
 """
 
+THROAT = "(abs(max(abs(x),max(abs(y),abs(z)))-dc)<0.05*a)"
+OFF_AXIS = "sqrt(max(0.,x*x+y*y+z*z-max(abs(x),max(abs(y),abs(z)))**2))"
+
+BETA = """# A ball of neutral plasma released at the centre of the six-coil cusp, electromagnetic.
+# The coil field is still a fixed formula on the particles, but the fields the plasma's own currents and
+# charges make are now solved on the mesh (Maxwell's equations), so the plasma can push the field aside.
+# There are no electrodes and no emitters: this deck tests what the field does, not how the plasma gets in.
+# Written by make_deck.py; edit that, not this file. Override any my_constants value on the command line.
+my_constants.a = 0.01                 # length unit (m)
+my_constants.dc = 1.3*a               # distance of each coil centre from the origin (m)
+my_constants.rc = 1.0*a               # coil radius (m)
+my_constants.rm = 0.12*a              # radius of the conducting ring around each coil (m)
+my_constants.rw = 2.4*a               # radius of the conducting outer wall (m)
+my_constants.coil_at = 16000.         # ampere-turns in each coil
+my_constants.n0 = 1.e19               # starting density of electrons and of ions (1/m^3)
+my_constants.r0 = 0.6*a               # radius of the starting ball (m)
+my_constants.te = 1.e4                # starting electron temperature (eV)
+my_constants.ti = 1.e3                # starting ion temperature (eV)
+my_constants.mass_amu = 2.014
+my_constants.tmax = 5.0e-9
+my_constants.dt = 5.0e-13             # must stay below 0.577 * cell size / speed of light
+my_constants.ncell = 128
+my_constants.ppd = 4                  # particles per cell per direction, per species
+my_constants.probe_every = 500
+my_constants.hist_every = 250
+my_constants.plot_every = 0
+my_constants.mi = mass_amu*m_u
+
+max_step = tmax/dt
+warpx.const_dt = dt
+amr.n_cell = ncell ncell ncell
+amr.max_level = 0
+amr.blocking_factor = 8
+amr.max_grid_size = 256
+geometry.dims = 3
+geometry.prob_lo = -2.5*a -2.5*a -2.5*a
+geometry.prob_hi =  2.5*a  2.5*a  2.5*a
+boundary.field_lo = pec pec pec
+boundary.field_hi = pec pec pec
+boundary.particle_lo = absorbing absorbing absorbing
+boundary.particle_hi = absorbing absorbing absorbing
+algo.maxwell_solver = yee
+algo.particle_shape = 2
+warpx.eb_implicit_function = "__CONDUCTOR__"
+warpx.serialize_initial_conditions = 1
+
+particles.species_names = electrons ions
+electrons.charge = -q_e
+electrons.mass = m_e
+electrons.ux_th = sqrt(te*q_e/(m_e*clight**2))
+electrons.uy_th = sqrt(te*q_e/(m_e*clight**2))
+electrons.uz_th = sqrt(te*q_e/(m_e*clight**2))
+ions.charge = q_e
+ions.mass = mi
+ions.ux_th = sqrt(ti*q_e/(mi*clight**2))
+ions.uy_th = sqrt(ti*q_e/(mi*clight**2))
+ions.uz_th = sqrt(ti*q_e/(mi*clight**2))
+
+warpx.reduced_diags_names = number energy fields axis edge corner erad irad eout iout ethroat ithroat eke
+number.type = ParticleNumber
+number.intervals = 20
+energy.type = ParticleEnergy
+energy.intervals = 20
+fields.type = FieldEnergy
+fields.intervals = 20
+# where particles outside the cage are: 1 on a coil axis, 0.707 toward a cube edge, 0.577 toward a cube corner
+eout.species = electrons
+iout.species = ions
+# distance from the coil axis (m) of particles passing through the plane of a coil: the width of the leak
+ethroat.species = electrons
+ithroat.species = ions
+eke.type = ParticleHistogram
+eke.species = electrons
+eke.intervals = hist_every
+eke.histogram_function(t,x,y,z,ux,uy,uz) = "0.5*m_e*clight**2/q_e*(ux*ux+uy*uy+uz*uz)"
+eke.bin_number = 120
+eke.bin_min = 0.
+eke.bin_max = 12.*te
+axis.x1_probe = rw
+axis.y1_probe = 0.
+axis.z1_probe = 0.
+edge.x1_probe = rw/sqrt(2)
+edge.y1_probe = rw/sqrt(2)
+edge.z1_probe = 0.
+corner.x1_probe = rw/sqrt(3)
+corner.y1_probe = rw/sqrt(3)
+corner.z1_probe = rw/sqrt(3)
+diagnostics.diags_names = diag1
+diag1.intervals = plot_every
+diag1.diag_type = Full
+diag1.fields_to_plot = Bx By Bz rho_electrons rho_ions
+"""
+
+
+def beta_deck() -> str:
+    text = BETA + "particles.B_ext_particle_init_style = parse_B_ext_particle_function\n"
+    for component in AXES:
+        text += f'particles.B{component}_external_particle_function(x,y,z,t) = "{field(component)}"\n'
+    for name in ("electrons", "ions"):
+        # Both species start on the same regular lattice, so the plasma is exactly neutral at the start.
+        text += (f"{name}.injection_style = NUniformPerCell\n{name}.num_particles_per_cell_each_dim = ppd ppd ppd\n"
+                 f"{name}.profile = parse_density_function\n"
+                 f'{name}.density_function(x,y,z) = "n0*(x*x+y*y+z*z<r0*r0)"\n'
+                 f"{name}.momentum_distribution_type = gaussian\n")
+    histograms = {
+        "erad": ("sqrt(x*x+y*y+z*z)", "1", "0.", "rw", 96), "irad": ("sqrt(x*x+y*y+z*z)", "1", "0.", "rw", 96),
+        "eout": ("max(abs(x),max(abs(y),abs(z)))/sqrt(x*x+y*y+z*z)", "x*x+y*y+z*z>(1.9*a)**2", "0.55", "1.", 45),
+        "iout": ("max(abs(x),max(abs(y),abs(z)))/sqrt(x*x+y*y+z*z)", "x*x+y*y+z*z>(1.9*a)**2", "0.55", "1.", 45),
+        "ethroat": (OFF_AXIS, THROAT, "0.", "rc", 100), "ithroat": (OFF_AXIS, THROAT, "0.", "rc", 100),
+    }
+    for name, (value, keep, low, high, bins) in histograms.items():
+        text += (f"{name}.type = ParticleHistogram\n{name}.intervals = hist_every\n"
+                 f'{name}.histogram_function(t,x,y,z,ux,uy,uz) = "{value}"\n'
+                 f'{name}.filter_function(t,x,y,z,ux,uy,uz) = "{keep}"\n'
+                 f"{name}.bin_number = {bins}\n{name}.bin_min = {low}\n{name}.bin_max = {high}\n")
+    text = text.replace("erad.type", "erad.species = electrons\nerad.type").replace("irad.type", "irad.species = ions\nirad.type")
+    for name in ("axis", "edge", "corner"):
+        text += (f"{name}.type = FieldProbe\n{name}.probe_geometry = Line\n"
+                 f"{name}.x_probe = 0.\n{name}.y_probe = 0.\n{name}.z_probe = 0.\n"
+                 f"{name}.resolution = 193\n{name}.intervals = probe_every\n")
+    return text.replace("__CONDUCTOR__", CONDUCTOR)
+
+
 if __name__ == "__main__":
     here = Path(__file__)
     here.with_name("inputs_3d_cusp_cage").write_text(deck())
@@ -317,3 +440,4 @@ if __name__ == "__main__":
     here.with_name("inputs_3d_orbit_check").write_text(deck() + ORBIT)
     here.with_name("inputs_3d_cusp_cage_gas").write_text(deck() + GAS)
     here.with_name("h2_ionization.dat").write_text(h2_ionization())
+    here.with_name("inputs_3d_cusp_beta").write_text(beta_deck())

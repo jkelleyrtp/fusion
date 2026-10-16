@@ -52,3 +52,9 @@ Without the option WarpX behaves as before.
 100 eV, 1 keV and 8 keV and checks the ion count against density x cross-section x speed, the
 energy removed per ionisation, and the ejected-electron spectrum. WarpX uses gamma times the speed
 in the rate, which makes it 1.6% high at 8 keV; the check expects that.
+
+`inputs_3d_cusp_beta` is the electromagnetic deck: a neutral ball of electrons and ions released at
+the centre of the coils, with the fields of the plasma's own charges and currents solved on the mesh
+by Maxwell's equations. The coil field is still a fixed formula added at the particles, so the total
+field a particle feels is the coil field plus whatever the plasma makes. No electrodes, no emitters.
+The time step must stay below 0.577 x cell size / speed of light.
