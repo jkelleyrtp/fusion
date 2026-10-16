@@ -93,6 +93,53 @@ def shell_currents(run: Path, time: np.ndarray, electrons: np.ndarray) -> dict:
     return out
 
 
+MU0, EPS0, M_E = 4e-7 * np.pi, 8.8541878128e-12, 9.1093837015e-31
+
+
+def axis_field_peak(coil_at: float, a: float) -> float:
+    """Largest field (T) on a coil axis out to the wall, summed over the six loops by Biot-Savart. It peaks
+    near the coil plane, the point cusp an electron has to get through."""
+    angle = np.linspace(0, 2 * np.pi, 721)[:-1]
+    ring = a * np.stack([np.zeros_like(angle), np.cos(angle), np.sin(angle)], axis=1)
+    step = np.roll(ring, -1, axis=0) - ring
+    middle = ring + 0.5 * step
+    points = np.zeros((400, 3))
+    points[:, 0] = np.linspace(0, 2.4 * a, 400)
+    total = np.zeros_like(points)
+    for axis in range(3):
+        for sign in (1, -1):
+            # The loop template lies in the y-z plane; roll its coordinates so its normal is `axis`.
+            centre = np.roll(middle + [sign * 1.3 * a, 0, 0], axis, axis=1)
+            element = np.roll(step, axis, axis=1) * -sign
+            gap = points[:, None, :] - centre[None, :, :]
+            total += (np.cross(element[None, :, :], gap) / np.linalg.norm(gap, axis=2, keepdims=True) ** 3).sum(axis=1)
+    return float(np.linalg.norm(total, axis=1).max() * MU0 * coil_at / (4 * np.pi))
+
+
+def scales(c: dict, electrons: float, core_share: float, core_mean_ev: float, drive_ev: float) -> dict:
+    """Ratios that say which regime a run is in. All are rough: one density, one energy, one field.
+
+    The density is the mean inside half the coil distance. The energy is the mean inside 2 mm, with
+    pressure taken as two thirds of the energy density. The field is the peak on a coil axis.
+    """
+    density = electrons * core_share / (4 / 3 * np.pi * (0.5 * c["a"]) ** 3)
+    out = {"core_density_per_m3": float(f"{density:.3e}"), "wall_over_ring_voltage": round(-c["wall_v"] / c["vgrid"], 3)}
+    if density > 0 and core_mean_ev > 0:
+        debye = np.sqrt(EPS0 * (2 / 3 * core_mean_ev) / (density * Q_E))
+        out["debye_over_cell"] = round(float(debye / (5.0 * c["a"] / c["ncell"])), 2)
+    # Planar Child-Langmuir limit across the gap from the wall to the coil plane, for six emitter patches.
+    gap = 2.4 * c["a"] - 1.3 * c["a"]
+    limit = 4 / 9 * EPS0 * np.sqrt(2 * Q_E / M_E) * (c["vgrid"] - c["wall_v"]) ** 1.5 / gap**2 * 6 * np.pi * c["gun_r"] ** 2
+    out["current_over_space_charge_limit"] = round(float(c["current"] / limit), 2)
+    if c["coil_at"] > 0:
+        peak = axis_field_peak(c["coil_at"], c["a"])
+        momentum = np.sqrt(2 * M_E * drive_ev * Q_E * (1 + drive_ev / (2 * 510998.95)))
+        out["axis_field_peak_T"] = round(peak, 4)
+        out["a_over_gyroradius"] = round(float(c["a"] * Q_E * peak / momentum), 1)
+        out["pressure_over_magnetic"] = float(f"{density * 2 / 3 * core_mean_ev * Q_E * 2 * MU0 / peak**2:.2e}")
+    return out
+
+
 def reduce(run: Path) -> dict:
     c = constants(run)
     number = np.loadtxt(run / "diags/reducedfiles/number.txt", skiprows=1, ndmin=2)
@@ -130,6 +177,10 @@ def reduce(run: Path) -> dict:
     # Runs are read while still writing, so each histogram is indexed by its own steps.
     out = outside[out_steps >= 0.8 * out_steps[-1]].mean(axis=0)
     at = lambda line, radius: float(np.interp(radius, line[0], line[1]))
+    core_share = float(tail[bins < 0.5 * c["a"]].sum() / max(tail.sum(), 1e-300))
+    core_mean_ev = float((core * energy_bins).sum() / max(core.sum(), 1e-300))
+    # What an electron leaving the wall has when it reaches the centre of the empty device.
+    drive_ev = centre[steps[0]] - c["wall_v"] + c["eb0"]
     return {
         "run": run.name,
         # Only a run whose DONE file reads "complete" counts as a result.
@@ -153,11 +204,12 @@ def reduce(run: Path) -> dict:
         "axis_V_at_half_a_and_a": [round(at((r, final), x), 1) for x in (0.5 * c["a"], c["a"])],
         "edge_V_at_half_a_and_a": [round(at(edge, x), 1) for x in (0.5 * c["a"], c["a"])],
         "corner_V_at_half_a_and_a": [round(at(corner, x), 1) for x in (0.5 * c["a"], c["a"])],
-        "inside_half_a": round(float(tail[bins < 0.5 * c["a"]].sum() / max(tail.sum(), 1e-300)), 4),
+        "inside_half_a": round(core_share, 4),
         "inside_cage": round(float(tail[bins < 1.3 * c["a"]].sum() / max(tail.sum(), 1e-300)), 4),
-        "core_mean_eV": round(float((core * energy_bins).sum() / max(core.sum(), 1e-300)), 1),
+        "core_mean_eV": round(core_mean_ev, 1),
         "outside_on_axis": round(float(out[cosine > 0.95].sum() / max(out.sum(), 1e-300)), 3),
         "outside_share": round(float(out.sum() / max(tail.sum(), 1e-300)), 4),
+        **scales(c, float(electrons[-1]), core_share, core_mean_ev, drive_ev),
         **shell_currents(run, time, electrons),
     }
 
