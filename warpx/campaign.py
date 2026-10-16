@@ -187,6 +187,11 @@ def submit(args: argparse.Namespace) -> None:
     assert not clash, f"campaign {args.name} already has cases {clash}"
     assert len({line.split()[0] for line in new}) == len(new), "case names repeat within the file"
     assert new or entry["cases"], "no cases to run: give --cases"
+    # A job's entrypoint is started by a small launcher pod on one of a few CPU nodes. While one of ours waits for
+    # a place there, its GPU node is held idle, and another job would only join the wait.
+    waiting = [line.split()[0] for line in shell(f"kubectl --context {CONTEXT} get pods --no-headers").splitlines()
+               if line.startswith("jonathan-warpx-") and "-head-" not in line and line.split()[2] == "Pending"]
+    assert not waiting, f"{waiting} is still waiting for a launcher slot; submit after it starts"
     held, free = len(my_pods()), free_nodes()
     assert held + args.nodes <= MAX_NODES, f"holding {held} nodes; {args.nodes} more would pass the cap of {MAX_NODES}"
     assert free >= args.nodes, f"only {free} nodes are free"
