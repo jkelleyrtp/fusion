@@ -8,7 +8,7 @@ The POPS work ended on one awkward fact. The electron cloud that makes the volta
 
 The oldest idea for doing that is the Polywell. Put six ring-shaped coils on the faces of a cube, each pushing its field toward the centre. The fields cancel in the middle and get strong near the coils, so an electron in the middle sees a magnetic wall in every direction. The wall has holes: one through the middle of each coil, and weaker spots along the edges and corners between coils. Electrons leak through the holes. The whole question is how fast.
 
-There is a hopeful theory about that. If the trapped plasma gets dense enough that its pressure matches the magnetic pressure, it should push the field outward and squeeze the holes down to the width of one electron orbit. That would be thousands of times better than holes one ion orbit wide. One experiment in 2015 saw signs of it. Nobody has simulated it in 3D with real electron mass. That is the target.
+There is a hopeful theory about that. If the trapped plasma gets dense enough that its pressure matches the magnetic pressure, it should push the field outward and squeeze the holes down to the width of one electron orbit. That would be thousands of times better than holes one ion orbit wide. One experiment in 2015 saw signs of it. I have not found a 3D simulation of it with real electron mass. That is the target.
 
 ## The device we built
 
@@ -53,7 +53,7 @@ The emitters turned out to be the fussy part. Weak ones (50 eV) choke on their o
 
 The cleanest test of a trap is to stop feeding it. With coils off, 1% of the electrons are left after 10 ns. At 16 kA-turns, 78% are still there after 25 ns, and the loss rate at the end would take about 760 ns to empty the device, and was still slowing.
 
-An electron crosses the device in about a third of a nanosecond. So these electrons are making thousands of passes.
+An electron crosses the device in under a nanosecond, so the ones that stay make dozens of passes within the run.
 
 ## The wall we hit: electrons alone cannot reach the interesting regime
 
