@@ -11,6 +11,30 @@ cmake -S . -B build -G Ninja -DWarpX_DIMS="3;RSPHERE" -DWarpX_COMPUTE=OMP -DWarp
 cmake --build build -j 8
 ```
 
+## campaign.py
+
+Runs named sets of cases on GPU nodes through the job broker at priority 1.
+
+```bash
+python3 campaign.py submit em4 --cases campaigns/cusp_em4_pressure.txt --nodes 2 --question "..."
+python3 campaign.py status em4
+python3 campaign.py sync em4      # fetches finished cases into results/em4 and writes table.jsonl
+```
+
+- A campaign is one directory on shared storage with one queue. Every node given to it takes cases
+  from that queue, one per GPU. `submit` on an existing name adds cases, nodes, or both.
+- Names cannot be reused: `campaigns/registry.json` records each campaign's question, cases and jobs.
+- `submit` refuses if it would hold more than `MAX_NODES` nodes or if too few nodes are free.
+- A case whose node is taken away is restarted from its last checkpoint by another GPU, once its
+  `CLAIM` file has gone five minutes without being touched. A case that stops three times is failed.
+  The decks checkpoint every `chk_every` steps.
+- Each finished case is reduced on the node to `measured.json` by the script `REDUCERS` names for
+  its deck.
+
+Checked: a run stopped and restarted from a checkpoint gives the same diagnostics as an
+uninterrupted one to rounding (electromagnetic deck, CPU build). Not yet checked: restart of the
+electrostatic decks with electrodes.
+
 ## pops/
 
 `inputs_3d_ideal_well` puts deuterons in a prescribed harmonic well inside a grounded sphere and
@@ -39,7 +63,7 @@ dissociation, charge exchange, recombination, and depletion of the gas.
 
 ## patches/
 
-`prepare_job.py` applies these to WarpX 26.10 before building. For the local build:
+`campaign.py` applies these to WarpX 26.10 before building. For the local build:
 `git apply <this directory>/*.patch` in the WarpX checkout.
 
 `ionization-secondary-energy.patch` adds `<collision>.ionization_secondary_energy_scale`. Stock

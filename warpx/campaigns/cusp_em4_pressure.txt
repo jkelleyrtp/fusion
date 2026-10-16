@@ -1,0 +1,21 @@
+D_sameB_64k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=64000. my_constants.a=0.02 my_constants.ncell=256
+D_sameI_32k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. my_constants.a=0.02 my_constants.ncell=256
+n1e21_32k_n192 inputs_3d_cusp_beta my_constants.n0=1.e21 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. my_constants.ncell=192 my_constants.dt=3.125e-13
+n3e20_32k_n192 inputs_3d_cusp_beta my_constants.n0=3.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. my_constants.ncell=192 my_constants.dt=3.125e-13
+n1e20_16k inputs_3d_cusp_beta my_constants.n0=1.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=16000.
+n1e20_32k inputs_3d_cusp_beta my_constants.n0=1.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000.
+n1e20_64k inputs_3d_cusp_beta my_constants.n0=1.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=64000.
+n3e20_16k inputs_3d_cusp_beta my_constants.n0=3.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=16000.
+n3e20_32k inputs_3d_cusp_beta my_constants.n0=3.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000.
+n3e20_64k inputs_3d_cusp_beta my_constants.n0=3.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=64000.
+n1e21_16k inputs_3d_cusp_beta my_constants.n0=1.e21 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=16000.
+n1e21_32k inputs_3d_cusp_beta my_constants.n0=1.e21 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000.
+n1e21_64k inputs_3d_cusp_beta my_constants.n0=1.e21 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=64000.
+n1e21_32k_es inputs_3d_cusp_beta my_constants.n0=1.e21 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. warpx.do_electrostatic=labframe warpx.self_fields_required_precision=1.e-6 warpx.eb_potential(x,y,z,t)=0.
+n1e21_64k_es inputs_3d_cusp_beta my_constants.n0=1.e21 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=64000. warpx.do_electrostatic=labframe warpx.self_fields_required_precision=1.e-6 warpx.eb_potential(x,y,z,t)=0.
+n3e20_32k_seed2 inputs_3d_cusp_beta my_constants.n0=3.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. warpx.random_seed=7
+n3e20_32k_seed3 inputs_3d_cusp_beta my_constants.n0=3.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. warpx.random_seed=11
+n3e19_32k_r0.9 inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. my_constants.r0=0.9*a
+n3e19_32k_r1.1 inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. my_constants.r0=1.1*a
+n1e20_32k_r0.9 inputs_3d_cusp_beta my_constants.n0=1.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. my_constants.r0=0.9*a
+n1e20_32k_r1.1 inputs_3d_cusp_beta my_constants.n0=1.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. my_constants.r0=1.1*a
