@@ -287,7 +287,15 @@
    "q_32k_one_gun inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. electrons.down.flux_function(x,y,z,t)=0. ions.down.flux_function(x,y,z,t)=0.",
    "q_32k_te2500 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=1.6e-7 my_constants.toff=1.2e-7 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.te=2.5e3",
    "q_32k_te40k inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.te=4.e4",
-   "q_32k_n192 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.ncell=192 my_constants.dt=3.3e-13"
+   "q_32k_n192 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=32000. my_constants.ncell=192 my_constants.dt=3.3e-13",
+   "r_off_near inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.zg=1.6*a my_constants.coil_at=0.",
+   "r_8k_near inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.zg=1.6*a my_constants.coil_at=8000.",
+   "r_128k_near inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=2.4e-7 my_constants.toff=1.8e-7 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.zg=1.6*a my_constants.coil_at=128000.",
+   "r_32k_near_long inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=2.e-7 my_constants.toff=1.5e-7 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.zg=1.6*a my_constants.coil_at=32000.",
+   "r_32k_near_m229 inputs_3d_cusp_jets my_constants.mass_amu=0.1259 my_constants.tmax=2.4e-7 my_constants.toff=1.8e-7 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.zg=1.6*a my_constants.coil_at=32000.",
+   "r_32k_near_f1e24 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.zg=1.6*a my_constants.coil_at=32000. my_constants.feed=1.e24",
+   "r_32k_near_n192 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.zg=1.6*a my_constants.coil_at=32000. my_constants.ncell=192 my_constants.dt=3.3e-13",
+   "r_32k_at_1.4 inputs_3d_cusp_jets my_constants.mass_amu=0.03147 my_constants.tmax=8.e-8 my_constants.toff=6.e-8 my_constants.hist_every=1000 my_constants.probe_every=4000 my_constants.chk_every=40000 particles.B_ext_particle_on_grid=1 my_constants.zg=1.4*a my_constants.coil_at=32000."
   ],
   "jobs": [
    {
@@ -299,6 +307,11 @@
     "job": "jonathan-warpx-a6509ccf2610",
     "gpus_per_case": 1,
     "submitted": "2026-10-16T10:57:19+00:00"
+   },
+   {
+    "job": "jonathan-warpx-9565b30fe666",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-16T13:59:04+00:00"
    }
   ]
  },
