@@ -412,8 +412,20 @@ diag1.fields_to_plot = Bx By Bz rho_electrons rho_ions
 """
 
 
-def beta_deck() -> str:
+FEED = """
+# Fresh plasma at the starting temperatures is born on a disc at the centre, leaving both faces, so the pressure
+# can be held up against the losses instead of falling as the first ball spreads and cools.
+my_constants.feed = 1.e22             # electrons, and ions, born per second
+my_constants.rf = 0.3*a               # radius of the disc they are born on (m)
+my_constants.toff = 1.                # time the feed stops (s)
+my_constants.ppc_feed = 0.5           # particles made per cell of the disc, per face, per species, per step
+"""
+
+
+def beta_deck(fed: bool = False) -> str:
     text = BETA + "particles.B_ext_particle_init_style = parse_B_ext_particle_function\n"
+    if fed:
+        text = text.replace("# A ball of neutral plasma released", "# A ball of neutral plasma released, and then fed,") + FEED
     for component in AXES:
         text += f'particles.B{component}_external_particle_function(x,y,z,t) = "{field(component)}"\n'
     for name in ("electrons", "ions"):
@@ -422,6 +434,18 @@ def beta_deck() -> str:
                  f"{name}.profile = parse_density_function\n"
                  f'{name}.density_function(x,y,z) = "n0*(x*x+y*y+z*z<r0*r0)"\n'
                  f"{name}.momentum_distribution_type = gaussian\n")
+        if fed:
+            text = text.replace(f"{name}.injection_style", f"{name}.injection_sources = ball up down\n{name}.ball.injection_style")
+            for prefix in (f"{name}.num_particles_per_cell_each_dim", f"{name}.profile", f"{name}.density_function",
+                           f"{name}.momentum_distribution_type"):
+                text = text.replace(prefix, prefix.replace(f"{name}.", f"{name}.ball.", 1))
+            for source, direction in (("up", "+1"), ("down", "-1")):
+                text += (f"{name}.{source}.injection_style = NFluxPerCell\n{name}.{source}.surface_flux_pos = 0.\n"
+                         f"{name}.{source}.flux_normal_axis = z\n{name}.{source}.flux_direction = {direction}\n"
+                         f"{name}.{source}.num_particles_per_cell = ppc_feed\n"
+                         f"{name}.{source}.flux_profile = parse_flux_function\n"
+                         f'{name}.{source}.flux_function(x,y,z,t) = "0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*(t<toff)"\n'
+                         f"{name}.{source}.momentum_distribution_type = gaussianflux\n")
     histograms = {
         "erad": ("sqrt(x*x+y*y+z*z)", "1", "0.", "rw", 96), "irad": ("sqrt(x*x+y*y+z*z)", "1", "0.", "rw", 96),
         "eout": ("max(abs(x),max(abs(y),abs(z)))/sqrt(x*x+y*y+z*z)", "x*x+y*y+z*z>(1.9*a)**2", "0.55", "1.", 45),
@@ -449,3 +473,4 @@ if __name__ == "__main__":
     here.with_name("inputs_3d_cusp_cage_gas").write_text(deck() + GAS)
     here.with_name("h2_ionization.dat").write_text(h2_ionization())
     here.with_name("inputs_3d_cusp_beta").write_text(beta_deck())
+    here.with_name("inputs_3d_cusp_fed").write_text(beta_deck(fed=True))

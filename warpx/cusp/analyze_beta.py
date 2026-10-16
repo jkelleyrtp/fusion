@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reduce plasma-ball runs of inputs_3d_cusp_beta to one JSON line each.
+"""Reduce plasma-ball runs of inputs_3d_cusp_beta and inputs_3d_cusp_fed to one JSON line each.
 
     python3 analyze_beta.py RUN_DIR [RUN_DIR ...]
 
@@ -22,6 +22,10 @@ def constants(run: Path) -> dict:
     names = ("a", "coil_at", "n0", "r0", "te", "ti", "mass_amu", "dt", "ncell", "ppd")
     # WarpX echoes each constant followed by a comment holding its evaluated value.
     out = {name: float(re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE).group(1)) for name in names}
+    # Only the fed deck has a feed; the plain ball is a feed of zero.
+    for name in ("feed", "toff"):
+        found = re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE)
+        out[name] = float(found.group(1)) if found else 0.0
     out["charge_only"] = bool(re.search(r"^warpx\.do_electrostatic = labframe", text, re.MULTILINE))
     return out
 
@@ -154,6 +158,15 @@ def reduce(run: Path) -> dict:
         "ion_stream_half_width_mm": round(stream_half_width(run, "ithroat", 0.7 * time[-1]) * 1e3, 3),
         "electron_orbit_at_coil_opening_mm": round(float(gyroradius * 1e3), 3) if c["coil_at"] else None,
     }
+    if c["feed"]:
+        # While the feed is on, what leaves per second is the feed minus the growth of what is held.
+        late = (time >= 0.8 * min(time[-1], c["toff"])) & (time <= c["toff"])
+        out["feed_per_s"] = c["feed"]
+        out["feed_stops_ns"] = round(c["toff"] * 1e9, 2) if c["toff"] < time[-1] else None
+        for name, count in (("electrons", electrons), ("ions", ions)):
+            out[f"{name}_held_late_in_feed"] = float(f"{count[late].mean():.4g}")
+            leaving = c["feed"] - np.polyfit(time[late], count[late], 1)[0]
+            out[f"{name}_holding_time_in_feed_ns"] = round(float(count[late].mean() / leaving * 1e9), 2) if leaving > 0 else None
     for line in ("axis", "edge", "corner") if c["coil_at"] else ():
         out.update({f"{line}_{key}": value for key, value in field_change(run, c, line).items()})
     if c["coil_at"]:

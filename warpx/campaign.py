@@ -33,7 +33,7 @@ PATCHES = sorted((ROOT / "patches").glob("*.patch"))
 # The build directory is named after the patches applied to WarpX 26.10, so a changed patch gets a fresh build.
 BUILD = f"{SHARED}/warpx-26.10-cuda-" + hashlib.sha256(b"".join(patch.read_bytes() for patch in PATCHES)).hexdigest()[:8]
 # Which script reduces a finished case, by the deck it ran.
-REDUCERS = {"inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
+REDUCERS = {"inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
             "inputs_3d_cusp_cage_gas": "analyze_cage.py"}
 
 BUILD_STEPS = r"""if [ ! -x "$warpx" ]; then
