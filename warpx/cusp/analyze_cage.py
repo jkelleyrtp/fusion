@@ -23,7 +23,13 @@ def constants(run: Path) -> dict[str, float]:
     """The my_constants values this run used, from the inputs WarpX echoes into the run directory."""
     text = (run / "warpx_used_inputs").read_text()
     names = ("a", "coil_at", "vgrid", "wall_v", "current", "eb0", "dt", "ncell", "gun_off", "nions")
-    return {name: float(re.search(rf"^my_constants\.{name} = (\S+)", text, re.M).group(1)) for name in names}
+    out = {name: float(re.search(rf"^my_constants\.{name} = (\S+)", text, re.M).group(1)) for name in names}
+    # Decks older than the emitter switch have no toff; their emitters never switch off.
+    found = re.search(r"^my_constants\.toff = (\S+)", text, re.M)
+    out["toff"] = float(found.group(1)) if found else 1.0
+    gun_r = re.search(r"^my_constants\.gun_r = (\S+)", text, re.M).group(1)
+    out["gun_r"] = out["a"] * 0.15 if "a" in gun_r else float(gun_r)
+    return out
 
 
 def line_potential(run: Path, name: str, end_voltage: float):
@@ -121,7 +127,10 @@ def reduce(run: Path) -> dict:
     at = lambda line, radius: float(np.interp(radius, line[0], line[1]))
     return {
         "run": run.name,
+        # Only a run whose DONE file reads "complete" counts as a result.
+        "status": (run / "DONE").read_text().strip() if (run / "DONE").exists() else "running",
         "coil_at": c["coil_at"], "current_A": c["current"], "vgrid_V": c["vgrid"], "ncell": c["ncell"],
+        "a_m": c["a"], "wall_V": c["wall_v"], "emitter_eV": c["eb0"], "emitter_radius_m": c["gun_r"], "toff_ns": 1e9 * c["toff"],
         "end_ns": round(time[-1] * 1e9, 2),
         "emitted_A": round(rate * Q_E, 4),
         "kept_early": round(float(kept_early), 3),
@@ -132,11 +141,11 @@ def reduce(run: Path) -> dict:
         "centre_V": round(centre[steps[-1]], 1),
         "centre_V_min": round(min(centre.values()), 1),
         "well_V": round(centre[steps[0]] - centre[steps[-1]], 1),
-        "axis_V_at_5mm_10mm": [round(at((r, final), x), 1) for x in (0.005, 0.01)],
-        "edge_V_at_5mm_10mm": [round(at(edge, x), 1) for x in (0.005, 0.01)],
-        "corner_V_at_5mm_10mm": [round(at(corner, x), 1) for x in (0.005, 0.01)],
-        "inside_5mm": round(float(tail[bins < 0.005].sum() / max(tail.sum(), 1e-300)), 4),
-        "inside_cage": round(float(tail[bins < 0.013].sum() / max(tail.sum(), 1e-300)), 4),
+        "axis_V_at_half_a_and_a": [round(at((r, final), x), 1) for x in (0.5 * c["a"], c["a"])],
+        "edge_V_at_half_a_and_a": [round(at(edge, x), 1) for x in (0.5 * c["a"], c["a"])],
+        "corner_V_at_half_a_and_a": [round(at(corner, x), 1) for x in (0.5 * c["a"], c["a"])],
+        "inside_half_a": round(float(tail[bins < 0.5 * c["a"]].sum() / max(tail.sum(), 1e-300)), 4),
+        "inside_cage": round(float(tail[bins < 1.3 * c["a"]].sum() / max(tail.sum(), 1e-300)), 4),
         "core_mean_eV": round(float((core * energy_bins).sum() / max(core.sum(), 1e-300)), 1),
         "outside_on_axis": round(float(out[cosine > 0.95].sum() / max(out.sum(), 1e-300)), 3),
         "outside_share": round(float(out.sum() / max(tail.sum(), 1e-300)), 4),
