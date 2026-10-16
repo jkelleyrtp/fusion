@@ -83,6 +83,21 @@ Without the option WarpX behaves as before.
 energy removed per ionisation, and the ejected-electron spectrum. WarpX uses gamma times the speed
 in the rate, which makes it 1.6% high at 8 keV; the check expects that.
 
+`coil-field-on-grid.patch` adds `particles.B_ext_particle_on_grid`, for use with
+`particles.B_ext_particle_init_style = parse_B_ext_particle_function`. Stock WarpX evaluates the
+coil-field formula for every particle on every step, which is most of the run time. With the option
+set, the formula is evaluated once on the mesh and particles interpolate it along with the plasma's
+own field. The formula must not depend on time. The field-energy and field-probe diagnostics still
+report the plasma's field alone. Without the option WarpX behaves as before.
+
+Checked on the CPU build only:
+- One electron followed for 150 ps ends 87 nm from an independent calculation at 128 cells across,
+  against 85 nm with the formula evaluated per particle. At 64 cells it is 1.7 µm.
+- A 600-step plasma-ball run at 64 cells differs from the per-particle run by less than a second
+  random seed does, in every diagnostic, and takes 173 s against 778 s.
+
+Not yet checked: the GPU build, its speed there, and decks with electrodes.
+
 `inputs_3d_cusp_beta` is the electromagnetic deck: a neutral ball of electrons and ions released at
 the centre of the coils, with the fields of the plasma's own charges and currents solved on the mesh
 by Maxwell's equations. The coil field is still a fixed formula added at the particles, so the total
