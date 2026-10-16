@@ -178,6 +178,7 @@ def submit(args: argparse.Namespace) -> None:
     clash = sorted(names & {line.split()[0] for line in new})
     assert not clash, f"campaign {args.name} already has cases {clash}"
     assert len({line.split()[0] for line in new}) == len(new), "case names repeat within the file"
+    assert new or entry["cases"], "no cases to run: give --cases"
     held, free = len(my_pods()), free_nodes()
     assert held + args.nodes <= MAX_NODES, f"holding {held} nodes; {args.nodes} more would pass the cap of {MAX_NODES}"
     assert free >= args.nodes, f"only {free} nodes are free"
