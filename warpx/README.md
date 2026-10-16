@@ -37,6 +37,8 @@ python3 campaign.py sync em4      # fetches finished cases into results/em4 and 
 - A case whose node is taken away is restarted from its last checkpoint by another GPU, once its
   `CLAIM` file has gone five minutes without being touched. A case is failed when WarpX itself ends badly
   three times from the same point; losing its node does not count.
+  A worker that finds another worker's name in the `CLAIM` of a case it is running stops that run at once:
+  two runs in one directory mix their output, and the reducers refuse tables whose steps repeat.
   The decks checkpoint every `chk_every` steps.
 - Each finished case is reduced on the node to `measured.json` by the script `REDUCERS` names for
   its deck.

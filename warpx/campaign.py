@@ -118,7 +118,7 @@ run_case() {
   # CRASHES counts the tries from this same point that WarpX itself ended badly; three and the case is failed. A try
   # that ended because its node was taken away is not counted, however many there are, nor is one that got
   # as far as a later checkpoint. TRIES counts every try, for `status`.
-  [ "$(tail -n 1 attempts.log 2>/dev/null | awk '{print $NF}')" = "${restart:-fresh}" ] || echo 0 > CRASHES
+  [ "$(grep -v 'lost its claim$' attempts.log 2>/dev/null | tail -n 1 | awk '{print $NF}')" = "${restart:-fresh}" ] || echo 0 > CRASHES
   if [ "$(cat CRASHES 2>/dev/null || echo 0)" -ge 3 ]; then echo "failed after 3 tries" > DONE; return; fi
   echo "$job gpu $gpu ${restart:-fresh}" >> attempts.log
   local exe=$warpx; [[ $deck == inputs_rz_* ]] && exe=$warpx_rz
@@ -126,12 +126,16 @@ run_case() {
   local run=$!
   # While the case runs, keep its claim fresh, keep only the two newest checkpoints, and stop it if its log has
   # not grown for __STALL__ seconds: a hung case would otherwise hold its GPU until the time limit.
+  # If the claim is no longer this worker's, another worker has taken the case and is writing to this directory:
+  # stop at once and leave everything to it.
   ( while sleep $(( __STALL__ < 60 ? __STALL__ : 60 )); do
+      [ "$(cat CLAIM 2>/dev/null)" = "$me" ] || { touch "$files/lost.$gpu"; kill $run; break; }
       touch CLAIM; ls -d diags/chk[0-9]* 2>/dev/null | sort | head -n -2 | xargs -r rm -rf
       [ $(( $(date +%s) - $(stat -c %Y run.log) )) -gt __STALL__ ] && { touch STALLED; kill $run; }; done ) &
   local beat=$!
   wait $run; local code=$?
   kill $beat 2>/dev/null
+  if [ -f "$files/lost.$gpu" ] || [ "$(cat CLAIM 2>/dev/null)" != "$me" ]; then rm -f "$files/lost.$gpu"; echo "$job gpu $gpu lost its claim" >> attempts.log; return; fi
   echo $(( $(cat WALL_S 2>/dev/null || echo 0) + $(date +%s) - start )) > WALL_S
   if [ $code -eq 0 ]; then
     local reducer; reducer=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' "$files/reducers.json" "$deck")

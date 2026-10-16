@@ -32,7 +32,10 @@ def constants(run: Path) -> dict:
 
 
 def table(run: Path, name: str) -> np.ndarray:
-    return np.loadtxt(run / f"diags/reducedfiles/{name}.txt", skiprows=1, ndmin=2)
+    rows = np.loadtxt(run / f"diags/reducedfiles/{name}.txt", skiprows=1, ndmin=2)
+    # Two runs writing to one directory, or a restart that repeated steps, leave rows out of order.
+    assert (np.diff(rows[:, 0]) > 0).all(), f"{name}.txt: steps repeat or go backwards, so this is not one run's output"
+    return rows
 
 
 def bin_centres(run: Path, name: str) -> np.ndarray:

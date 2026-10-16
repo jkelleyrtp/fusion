@@ -8,6 +8,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -114,6 +115,18 @@ class WorkerTest(unittest.TestCase):
         self.work("stopped deck stop_at=25\n", starts=2)  # the claim is seconds old when the job starts again
         self.assertEqual((self.camp / "stopped/DONE").read_text().strip(), "complete")
         self.assertIn("amr.restart=diags/chk000020", (self.camp / "stopped/attempts.log").read_text())
+
+    def test_a_worker_whose_case_another_worker_has_claimed_stops_and_leaves_the_case_alone(self) -> None:
+        worker = threading.Thread(target=self.work, args=("taken deck slow_after=5\n",), kwargs={"stall": 3})
+        worker.start()
+        time.sleep(1.5)
+        (self.camp / "taken/CLAIM").write_text("another job\n")
+        worker.join(timeout=30)
+        self.assertFalse(worker.is_alive())
+        self.assertFalse((self.camp / "taken/DONE").exists())
+        self.assertFalse((self.camp / "taken/STALLED").exists())
+        self.assertEqual((self.camp / "taken/CLAIM").read_text(), "another job\n")
+        self.assertIn("lost its claim", (self.camp / "taken/attempts.log").read_text())
 
     def test_crashes_before_a_later_checkpoint_was_reached_do_not_count_towards_the_three(self) -> None:
         self.work("stopped deck stop_at=25\n")
