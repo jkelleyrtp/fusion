@@ -33,24 +33,31 @@ PATCHES = sorted((ROOT / "patches").glob("*.patch"))
 # The build directory is named after the patches applied to WarpX 26.10, so a changed patch gets a fresh build.
 BUILD = f"{SHARED}/warpx-26.10-cuda-" + hashlib.sha256(b"".join(patch.read_bytes() for patch in PATCHES)).hexdigest()[:8]
 # Which script reduces a finished case, by the deck it ran.
-REDUCERS = {"inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
+REDUCERS = {"inputs_rz_spindle_fed": "analyze_spindle.py", "inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
             "inputs_3d_cusp_cage_gas": "analyze_cage.py"}
 
-BUILD_STEPS = r"""if [ ! -x "$warpx" ]; then
+# Two executables are built from one source tree: the 3D one with conducting boundaries inside the box, and the
+# cylindrical (r, z) one, which WarpX's electromagnetic solver does not support them in.
+BUILD_STEPS = r"""if [ ! -x "$warpx" ] || [ ! -x "$warpx_rz" ]; then
   mkdir -p __BUILD__ && cd __BUILD__ || exit 1
   python3 -m pip install -q --target __BUILD__/tools cmake ninja
   export PATH=__BUILD__/tools/bin:$PATH PYTHONPATH=__BUILD__/tools
   [ -d src ] || { git clone -q --depth 1 --branch 26.10 https://github.com/BLAST-WarpX/warpx.git src \
     && for patch in "$files"/*.patch; do git -C src apply "$patch" || { echo patch-failed; exit 0; }; done; }
-  cmake -S src -B build -G Ninja -DWarpX_DIMS=3 -DWarpX_COMPUTE=CUDA -DWarpX_MPI=__MPI__ -DWarpX_EB=ON \
-    -DWarpX_OPENPMD=OFF -DWarpX_FFT=OFF -DWarpX_QED=OFF -DWarpX_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release > configure.log 2>&1 \
-    && cmake --build build -j 32 > build.log 2>&1 || { tail -30 configure.log build.log; echo build-failed; exit 0; }
+  for kind in "3 ON build $warpx" "RZ OFF build-rz $warpx_rz"; do
+    read -r dims eb dir exe <<< "$kind"
+    [ -x "$exe" ] && continue
+    cmake -S src -B $dir -G Ninja -DWarpX_DIMS=$dims -DWarpX_COMPUTE=CUDA -DWarpX_MPI=__MPI__ -DWarpX_EB=$eb \
+      -DWarpX_OPENPMD=OFF -DWarpX_FFT=OFF -DWarpX_QED=OFF -DWarpX_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release > configure-$dir.log 2>&1 \
+      && cmake --build $dir -j 32 > $dir.log 2>&1 || { tail -30 configure-$dir.log $dir.log; echo build-failed; exit 0; }
+  done
   cd "$camp"
 fi"""
 
 WORKER = r"""
 set -uo pipefail
 export camp=__CAMP__; job=__JOB__; files=$camp/files-$job; warpx=${WARPX:-__BUILD__/build/bin/warpx.3d}
+warpx_rz=${WARPX:-__BUILD__/build-rz/bin/warpx.rz}
 mkdir -p "$files" "$camp/logs"; cd "$camp"
 exec >> "$camp/logs/$job.log" 2>&1
 echo "__PAYLOAD__" | base64 -d | tar -xzf - -C "$files"
@@ -94,7 +101,8 @@ run_case() {
     for file in diags/reducedfiles/*.txt; do awk -v last=$step 'NR == 1 || $1 <= last' "$file" > trim.tmp && mv trim.tmp "$file"; done
   fi
   echo "$job gpu $gpu ${restart:-fresh}" >> attempts.log
-  CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __LAUNCH__ "$warpx" "$files/$deck" "$@" $restart >> run.log 2>&1; local code=$?
+  local exe=$warpx; [[ $deck == inputs_rz_* ]] && exe=$warpx_rz
+  CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __LAUNCH__ "$exe" "$files/$deck" "$@" $restart >> run.log 2>&1; local code=$?
   kill $beat 2>/dev/null
   echo $(( $(cat WALL_S 2>/dev/null || echo 0) + $(date +%s) - start )) > WALL_S
   if [ $code -eq 0 ]; then

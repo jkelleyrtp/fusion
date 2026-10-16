@@ -67,6 +67,20 @@ particles; the plasma cannot change it. `analyze_cage.py` reduces runs to one JS
 adds an H2+ ion at gas temperature and an electron. Left out: elastic scattering, excitation,
 dissociation, charge exchange, recombination, and depletion of the gas.
 
+`inputs_rz_spindle_fed` is two coils on one axis with opposing currents (a spindle cusp) in
+cylindrical (r, z) geometry, with neutral plasma born on a disc at the centre at `feed` per second
+and the plasma's own fields solved by Maxwell's equations. It has no electrodes, emitters or coil
+casings. Being two-dimensional it affords cells of 0.04 mm in a 1 cm device, against 0.4 mm in the
+six-coil runs, which is what it takes to resolve an electron orbit at the leaks. `analyze_spindle.py`
+reduces it: what is held, the rate of leaving through the coils and through the gap between them,
+the width of each leak next to an electron orbit there, and how far the field has been pushed out.
+`campaign.py` runs any deck named `inputs_rz_*` with a second, cylindrical WarpX build.
+
+Limits of that deck: the plasma is born inside, so it is a control and not evidence about capture
+from a gun. Nothing can vary around the axis, which rules out any instability that needs to. The
+coil field is still a fixed formula. The reducer's coil field is checked against the deck's formula
+in `tests/test_spindle.py`; no run of this deck on a GPU has been checked yet.
+
 ## patches/
 
 `campaign.py` applies these to WarpX 26.10 before building. For the local build:

@@ -465,6 +465,127 @@ def beta_deck(fed: bool = False) -> str:
     return text.replace("__CONDUCTOR__", CONDUCTOR)
 
 
+SPINDLE = """# Two coils on one axis with opposing currents (a spindle cusp), with neutral plasma fed at the centre, in
+# cylindrical (r, z) geometry. The plasma leaves along the axis through each coil and through the ring-shaped gap
+# between the coils. Being two-dimensional, this affords a mesh several times finer than the six-coil runs, enough
+# to resolve an electron orbit at the leaks. The coil field is a fixed formula on the particles; the plasma's own
+# fields are solved on the mesh (Maxwell's equations). There are no electrodes, no emitters and no coil casings.
+# Written by make_deck.py; edit that, not this file. Override any my_constants value on the command line.
+my_constants.a = 0.01                 # length unit (m)
+my_constants.dc = 1.0*a               # distance of each coil centre from the origin, along the axis (m)
+my_constants.rc = 1.0*a               # coil radius (m)
+my_constants.rw = 2.0*a               # radius of the conducting can around the device (m)
+my_constants.zw = 2.0*a               # half the length of the can (m)
+my_constants.coil_at = 16000.         # ampere-turns in each coil
+my_constants.n0 = 1.e18               # starting density of electrons and of ions (1/m^3)
+my_constants.r0 = 0.3*a               # radius of the starting ball (m)
+my_constants.te = 1.e4                # electron temperature at birth (eV)
+my_constants.ti = 1.e3                # ion temperature at birth (eV)
+my_constants.mass_amu = 0.03147       # 57 electron masses, to shorten the run; deuterium is 2.014
+my_constants.feed = 1.e22             # electrons, and ions, born per second on a disc at the centre
+my_constants.rf = 0.3*a               # radius of that disc (m)
+my_constants.toff = 1.                # time the feed stops (s)
+my_constants.ppc_feed = 2.            # particles made per cell of the disc, per face, per species, per step
+my_constants.tmax = 2.0e-8
+my_constants.nr = 256                 # cells across the radius; there are nr*zw/rw along each half of the axis
+my_constants.dt = 0.6*rw/nr/clight    # must stay below 0.67 * cell size / speed of light
+my_constants.ppd = 4                  # particles per cell per direction, per species, in the starting ball
+my_constants.hist_every = 250
+my_constants.plot_every = 0
+my_constants.chk_every = 50000        # steps between checkpoints, which a stopped run restarts from
+my_constants.mi = mass_amu*m_u
+my_constants.shell = 0.1*a            # thickness of the shells the leaving particles are counted in (m)
+
+stop_time = tmax
+warpx.const_dt = dt
+amr.n_cell = nr 2*nr*zw/rw
+amr.max_level = 0
+amr.blocking_factor = 8
+amr.max_grid_size = 4096
+geometry.dims = RZ
+geometry.prob_lo = 0. -zw
+geometry.prob_hi = rw zw
+warpx.n_rz_azimuthal_modes = 1
+boundary.field_lo = none pec
+boundary.field_hi = pec pec
+boundary.particle_lo = none absorbing
+boundary.particle_hi = absorbing absorbing
+algo.maxwell_solver = yee
+algo.particle_shape = 2
+warpx.filter_npass_each_dir = 0 1    # WarpX cannot smooth along the radius in this geometry
+warpx.serialize_initial_conditions = 1
+
+particles.species_names = electrons ions
+electrons.charge = -q_e
+electrons.mass = m_e
+electrons.ux_th = sqrt(te*q_e/(m_e*clight**2))
+electrons.uy_th = sqrt(te*q_e/(m_e*clight**2))
+electrons.uz_th = sqrt(te*q_e/(m_e*clight**2))
+ions.charge = q_e
+ions.mass = mi
+ions.ux_th = sqrt(ti*q_e/(mi*clight**2))
+ions.uy_th = sqrt(ti*q_e/(mi*clight**2))
+ions.uz_th = sqrt(ti*q_e/(mi*clight**2))
+
+warpx.reduced_diags_names = number energy fields __HISTOGRAMS__
+number.type = ParticleNumber
+number.intervals = 20
+energy.type = ParticleEnergy
+energy.intervals = 20
+fields.type = FieldEnergy
+fields.intervals = 20
+diagnostics.diags_names = diag1 chk
+chk.format = checkpoint
+chk.diag_type = Full
+chk.intervals = chk_every
+diag1.intervals = plot_every
+diag1.diag_type = Full
+diag1.fields_to_plot = Br Bt Bz Er Ez jt rho_electrons rho_ions
+particles.B_ext_particle_init_style = parse_B_ext_particle_function
+"""
+
+
+def spindle_deck() -> str:
+    text = SPINDLE
+    for component in AXES:
+        text += (f'particles.B{component}_external_particle_function(x,y,z,t) = "'
+                 + "+".join(loop("z", sign)[component] for sign in (1, -1)) + '"\n')
+    for name in ("electrons", "ions"):
+        # Both species start on the same regular lattice, so the plasma is exactly neutral at the start.
+        text += (f"{name}.injection_sources = ball up down\n{name}.ball.injection_style = NUniformPerCell\n"
+                 f"{name}.ball.num_particles_per_cell_each_dim = ppd 1 ppd\n{name}.ball.profile = parse_density_function\n"
+                 f'{name}.ball.density_function(x,y,z) = "n0*(x*x+y*y+z*z<r0*r0)"\n'
+                 f"{name}.ball.momentum_distribution_type = gaussian\n")
+        for source, direction in (("up", "+1"), ("down", "-1")):
+            text += (f"{name}.{source}.injection_style = NFluxPerCell\n{name}.{source}.surface_flux_pos = 0.\n"
+                     f"{name}.{source}.flux_normal_axis = z\n{name}.{source}.flux_direction = {direction}\n"
+                     f"{name}.{source}.num_particles_per_cell = ppc_feed\n"
+                     f"{name}.{source}.flux_profile = parse_flux_function\n"
+                     f'{name}.{source}.flux_function(x,y,z,t) = "0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*(t<toff)"\n'
+                     f"{name}.{source}.momentum_distribution_type = gaussianflux\n")
+    radius, speed = "sqrt(x*x+y*y)", "/sqrt(1+ux*ux+uy*uy+uz*uz)"
+    # name: (what is binned, which particles, lowest bin, highest bin, bins). The two "through" histograms hold
+    # the velocity (in units of c) out through a shell near the can; weight * velocity / shell thickness, summed
+    # over the bins, is the number leaving per second by that route.
+    histograms = {
+        "rad": ("sqrt(x*x+y*y+z*z)", "1", "0.", "sqrt(rw*rw+zw*zw)", 120),
+        "in_coil": (radius, "abs(abs(z)-dc)<0.02*a", "0.", "rc", 400),
+        "in_gap": ("abs(z)", f"abs({radius}-rc)<0.02*a", "0.", "dc", 400),
+        "through_coils": (f"uz*(2*(z>0)-1){speed}", "(abs(z)>zw-2*shell)*(abs(z)<zw-shell)", "-1.", "1.", 200),
+        "through_gap": (f"(ux*x+uy*y)/{radius}{speed}", f"({radius}>rw-2*shell)*({radius}<rw-shell)", "-1.", "1.", 200),
+        "energy": ("{mass}*clight**2/q_e*(sqrt(1+ux*ux+uy*uy+uz*uz)-1)", "1", "0.", "12.*te", 120),
+    }
+    names = []
+    for species, mass in (("electrons", "m_e"), ("ions", "mi")):
+        for name, (value, keep, low, high, bins) in histograms.items():
+            names.append(f"{species[0]}_{name}")
+            text += (f"{names[-1]}.type = ParticleHistogram\n{names[-1]}.species = {species}\n{names[-1]}.intervals = hist_every\n"
+                     f'{names[-1]}.histogram_function(t,x,y,z,ux,uy,uz) = "{value.format(mass=mass)}"\n'
+                     f'{names[-1]}.filter_function(t,x,y,z,ux,uy,uz) = "{keep}"\n'
+                     f"{names[-1]}.bin_number = {bins}\n{names[-1]}.bin_min = {low}\n{names[-1]}.bin_max = {high}\n")
+    return text.replace("__HISTOGRAMS__", " ".join(names))
+
+
 if __name__ == "__main__":
     here = Path(__file__)
     here.with_name("inputs_3d_cusp_cage").write_text(deck())
@@ -474,3 +595,4 @@ if __name__ == "__main__":
     here.with_name("h2_ionization.dat").write_text(h2_ionization())
     here.with_name("inputs_3d_cusp_beta").write_text(beta_deck())
     here.with_name("inputs_3d_cusp_fed").write_text(beta_deck(fed=True))
+    here.with_name("inputs_rz_spindle_fed").write_text(spindle_deck())

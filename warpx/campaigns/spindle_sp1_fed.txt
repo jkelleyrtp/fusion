@@ -1,0 +1,16 @@
+sp_16k_f1e21 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=16000. my_constants.feed=1.e21
+sp_16k_f1e22 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=16000. my_constants.feed=1.e22
+sp_16k_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=16000. my_constants.feed=1.e23
+sp_16k_f1e24 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=16000. my_constants.feed=1.e24
+sp_8k_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=8000. my_constants.feed=1.e23
+sp_32k_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=32000. my_constants.feed=1.e23
+sp_64k_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=64000. my_constants.feed=1.e23
+sp_32k_f1e22 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=32000. my_constants.feed=1.e22
+sp_32k_f1e24 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=32000. my_constants.feed=1.e24
+sp_64k_f1e24 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=64000. my_constants.feed=1.e24
+sp_off_f1e23 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=0. my_constants.feed=1.e23
+sp_16k_f1e23_nr256 inputs_rz_spindle_fed my_constants.nr=256 my_constants.hist_every=500 my_constants.coil_at=16000. my_constants.feed=1.e23
+sp_16k_f1e23_nr1024 inputs_rz_spindle_fed my_constants.nr=1024 my_constants.hist_every=2000 my_constants.coil_at=16000. my_constants.feed=1.e23 my_constants.chk_every=100000
+sp_16k_f1e23_ppc4 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=16000. my_constants.feed=1.e23 my_constants.ppc_feed=8.
+sp_16k_f1e23_seed2 inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=16000. my_constants.feed=1.e23 warpx.random_seed=2
+sp_16k_f1e23_stop inputs_rz_spindle_fed my_constants.nr=512 my_constants.hist_every=1000 my_constants.coil_at=16000. my_constants.feed=1.e23 my_constants.toff=1.e-8

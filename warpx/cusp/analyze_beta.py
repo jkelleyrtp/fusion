@@ -163,11 +163,16 @@ def reduce(run: Path) -> dict:
         late = (time >= 0.8 * min(time[-1], c["toff"])) & (time <= c["toff"])
         out["feed_per_s"] = c["feed"]
         out["feed_stops_ns"] = round(c["toff"] * 1e9, 2) if c["toff"] < time[-1] else None
+        # The holding times below are measured over this window, the last fifth of the feed.
+        out["feed_window_ns"] = [round(float(time[late][0] * 1e9), 2), round(float(time[late][-1] * 1e9), 2)]
         for name, count in (("electrons", electrons), ("ions", ions)):
             out[f"{name}_held_late_in_feed"] = float(f"{count[late].mean():.4g}")
             # Fitted in nanoseconds from the window centre, which keeps the fit well conditioned.
             growth = np.polyfit((time[late] - time[late].mean()) * 1e9, count[late], 1)[0] * 1e9
             leaving = c["feed"] - growth
+            # Near 1 the amount held has settled. Near 0 it is still filling and the holding time is a small
+            # difference of two large numbers.
+            out[f"{name}_leaving_over_feed"] = round(float(leaving / c["feed"]), 3)
             out[f"{name}_holding_time_in_feed_ns"] = round(float(count[late].mean() / leaving * 1e9), 2) if leaving > 0 else None
     for line in ("axis", "edge", "corner") if c["coil_at"] else ():
         out.update({f"{line}_{key}": value for key, value in field_change(run, c, line).items()})
