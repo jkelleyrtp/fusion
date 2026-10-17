@@ -234,6 +234,24 @@ from the field snapshots at the end of three complete cases:
   current is still growing when the run stops at 200 crossings. Electrons end at 71, 70, 66, 64 and 54 keV
   down the table, against 38 to 44 keV in every mirrored case, so the rows differ in how much the current
   has heated them. The table is the best the repeating deck gives, not a like-for-like scan.
+- **Three more complete cases (23:30 UTC, 17 October).**
+
+  | Case | Ends | Holding time (electron crossings) | Electrons held change over the last fifth | Current along the axis at the end ÷ coil current | Electric field crowding on the axis at the end |
+  |---|---|---|---|---|---|
+  | `pw_s0.25_h1.0_long_ppc8` (one period, from before) | repeat | 34.2 | +0.8% | 0.22 | 1.9 |
+  | `pw_s0.25_h1.0_long_ppc8_two` (two periods) | repeat | 34.4 | +0.7% | 0.15 | 1.1 |
+  | `pw_s0.25_h1.0_long_ppc8_two_mirror` (two periods) | mirrors | 38.1 | −0.6% | 0.02 | 180 |
+  | `pw_s0.375_h1.0_ppc5.33` (from before) | repeat | 45.2 | +1.4% | 0.24 | 1.2 |
+  | `pw_s0.375_h1.0_ppc21.33` (4× the particles of the row above) | repeat | 49.7 | +3.7% | 0.22 | 1.4 |
+
+  - At 0.25× the repeating run does not depend on how many periods the mesh holds: 34.4 against 34.2 crossings,
+    and 9.375 against 2 × 4.666 ×10^14 electrons held (0.5% apart). So the length of the repeat is not what sets
+    the 0.25× answer.
+  - The two-period mirrored case has the charge pile on the axis (crowding 180) and is spoiled like the others.
+  - **0.375× is 45 to 50, not "45, solid".** Four times the particles gives 49.7 and is still gaining 3.7% per
+    fifth of the run, at the same net current. This is the same direction as 0.5×, where sixteen times the
+    particles gave 58 and 67.5 against 52 to 54 at four times.
+
 - **Mirrored runs pile charge up on the axis (23:05 UTC, 17 October). None of them is a clean result.**
   The 0.25× mirrored case at twice the length (`pw_s0.25_h1.0_long2_ppc8_mirror`, complete) agrees with the
   66 ns case to 72 ns, then loses plasma (5.82 → 4.96 ×10^14 electrons by 128 ns) while its electrons heat from
