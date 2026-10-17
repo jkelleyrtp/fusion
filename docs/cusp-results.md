@@ -151,36 +151,49 @@ What limits this:
   - Outcome so far (17 October, 10:40 UTC). One of the three is complete and holds:
     `pw_s0.5_h1.0_half_dt_ppc0.5` gives 71.2 crossings (`N_c` about 500). Halving the time step at a fixed
     particle count changes nothing, so the 55.9 of `pw_s0.5_h1.0_half_dt` came from its extra particles.
-  - The other two are unfinished, so what follows is a reading of runs in progress and not a result.
-    Electrons held (×10^15) at the same times:
+  - The 16-times-particle prediction failed (complete 17 October, 13:20 UTC): `pw_s0.5_h1.0_ppc16` gives 58.2
+    crossings, not 46 to 48, so the straight line in `1/N_c` and its 45 crossings are wrong. The runs with four
+    or more times the baseline's particles, all complete:
 
-    | Case | 10 ns | 20 ns | 25 ns | 35 ns |
-    |---|---|---|---|---|
-    | `pw_s0.5_h1.0` | 1.375 | 1.356 | 1.439 | 1.562 |
-    | `pw_s0.5_h1.0_ppc2` | 1.353 | 1.325 | 1.334 | 1.328 |
-    | `pw_s0.5_h1.0_ppc4` | 1.347 | 1.243 | 1.230 | 1.235 |
-    | `pw_s0.5_h1.0_nr384_ppc2` (running) | 1.375 | 1.255 | 1.241 | |
-    | `pw_s0.5_h1.0_ppc16` (running) | 1.389 | 1.286 | 1.273 | 1.270 |
+    | Case | `N_c` | Holding time (electron crossings) | Electrons held at 30 → 65 ns (10^15) | Change over the last fifth | Current layer (orbits) | Gap stream, electrons / ions (orbits) |
+    |---|---|---|---|---|---|---|
+    | `pw_s0.5_h1.0_ppc4` | 1871 | 52.5 | 1.232 → 1.270 | +1.0% | 1.83 | 0.79 / 2.23 |
+    | `pw_s0.5_h1.0_ppc4_seed2` | 1888 | 54.7 | 1.248 → 1.325 | +2.4% | 1.93 | 0.78 / 2.21 |
+    | `pw_s0.5_h1.0_ppc4_smooth4` (four smoothing passes) | 1956 | 52.8 | 1.168 → 1.274 | +3.5% | 1.96 | 0.63 / 2.55 |
+    | `pw_s0.5_h1.0_ppc16` | 8446 | 58.2 | 1.270 → 1.390 | +4.9% | 2.02 | 0.87 / 2.28 |
 
-    `ppc16` sits 3% above `ppc4`, not below it. If that lasts to the end it gives about 54 crossings, the 46 to 48
-    predicted above is wrong, and the straight line in `1/N_c` with it: the holding time stops changing near
-    `N_c` of 2000 at about 53 crossings instead of falling to 45.
-  - The same comparison at 1×, also in progress: `pw_s1_h1.0_ppc2` (four times the particles of `pw_s1_h1.0`)
-    holds 0.78, 0.78 and 0.80 of its amount at 10 crossings when it reaches 50, 75 and 100 crossings; `pw_s1_h1.0`
-    holds 0.89, 0.92 and 0.95 and is at 1.18 by 300 (`pw_s1_h1.0_long`). The 1× holding time of 142 crossings is
-    too high by more than the 0.5× one is.
+    - The holding time at 0.5× with enough particles is 52 to 58 crossings, against 71 to 73 at the baseline
+      count. Two seeds at four times the particles differ by 4%.
+    - None of these is flat. They gain 1 to 5% over the last fifth, the most in the run with the most
+      particles. So part of the slow gain is not noise, and "more particles stop it" (said of `ppc4` alone) was
+      wrong: more particles cut it from 26% between 20 and 65 ns to 2 to 9%.
+    - Four smoothing passes on top of four times the particles leaves the holding time where it was (52.8
+      against 52.5 and 54.7) and thins the electron gap stream (0.63 against 0.78 to 0.79 orbits).
+    - `pw_s0.5_h1.0_nr384_ppc2` is still running.
+  - At 1×, in progress: `pw_s1_h1.0_ppc2` (four times the particles of `pw_s1_h1.0`) holds 5.96, 6.10, 6.38 and
+    6.67×10^15 electrons at 20, 30, 40 and 50 ns against 7.11, 7.37, 7.66 and 8.04, and `pw_s1_h1.0_smooth4`
+    holds 6.03, 6.17, 6.30 and 6.36. All three are rising.
   - It does not explain 0.25×, where `N_c` of 610, 2591 and 10561 gives 33.9, 34.2 and 35.4 crossings. The 0.25×
     runs last half as many plasma oscillations as 0.5× and a quarter as many per holding time; whether that is
     enough to remove the effect is not shown.
   - By the same count, the 1× cases (`N_c` 330 to 450, 2.4 times the plasma oscillations of 0.5×) should be
     affected more than 0.5×, which would make the measured growth of holding time with size too steep.
-  - Direct test, running: `pw_s0.5_h1.0_ppc4_clog1e6`, `_clog4e6` and `_clog1.6e7` add WarpX's Coulomb collisions
-    with a chosen logarithm (deck `inputs_rz_picket_fed_collisions`) to the four-times-particle case. If
-    scattering is the cause, a known amount of it should move that case toward the baseline.
-    In progress at 12.5 ns: electrons held are 1.305×10^15 without collisions and 1.174, 1.041 and 0.809×10^15
-    with logarithms of 1e6, 4e6 and 1.6e7. Collisions lower the amount held; too few particles raises it. So
-    whatever too few particles does, it is not what pair collisions do, and "scattering between simulation
-    particles" is the wrong description of the cause even though `N_c` orders the runs.
+  - Adding real collisions does not reproduce the baseline (complete 17 October). `pw_s0.5_h1.0_ppc4_clog1e6`,
+    `_clog4e6` and `_clog1.6e7` add WarpX's Coulomb collisions with a chosen logarithm (deck
+    `inputs_rz_picket_fed_collisions`) to the four-times-particle case:
+
+    | Coulomb logarithm | Holding time (electron crossings) | Pressure inside ÷ magnetic pressure outside | Current layer (orbits) | Mean energy, electrons / ions (keV) | Change over the last fifth |
+    |---|---|---|---|---|---|
+    | none (`pw_s0.5_h1.0_ppc4`) | 52.5 | 0.69 | 1.83 | 66 / 120 | +1.0% |
+    | 1e6 | 45.3 | 0.32 | 2.72 | 77 / 139 | 0.0% |
+    | 4e6 | 76.1 | 0.26 | 5.65 | 172 / 110 | +15.5% |
+    | 1.6e7 | 54.1 | 0.03 | 8.32 | 153 / 143 | +13.3% |
+
+    The weakest setting lowers the holding time and spreads the boundary. The two stronger ones dissolve the
+    boundary (pressure ratio 0.26 and 0.03, a layer of 6 to 8 orbits), heat the electrons to 150 to 170 keV
+    from a 100 keV feed and have not settled, so they are a different plasma and their holding times do not
+    compare. None of them looks like the baseline, which keeps a 2.4-orbit layer and 73 keV electrons. So
+    whatever too few particles does, it is not what pair collisions do, even though `N_c` orders the runs.
   - No run before 17 October 10:40 UTC smoothed its currents. WarpX turns smoothing off in this geometry unless
     `warpx.use_filter=1` is given, and the deck's `warpx.filter_npass_each_dir = 0 1` did nothing without it
     (checked locally: 1, 4 and 16 passes give identical output without the switch, different output with it).
@@ -208,15 +221,12 @@ What limits this:
     - At 0.25×, where the answer does not depend on the particle count, four passes lowers it from 33.9 to 34.2
       down to 32.8 (3 to 4%), narrows the electron gap stream (0.90 against 1.01 to 1.07 orbits) and widens the
       ion one. So smoothing changes the answer by itself, by a few percent at four passes.
-    - What survives: lowering the field noise by either route stops the slow gain of plasma (change over the last
-      fifth of about 1% in `ppc4`, `smooth4` and `smooth16` against a number held that climbs 26% between 20 and
-      65 ns in the baseline). Why noisy fields make the run hold more is not known.
+    - What survives: lowering the field noise by either route cuts the slow gain of plasma several times over
+      (2 to 9% between 20 and 65 ns in the many-particle runs above against 26% in the baseline). It does not
+      remove it. Why noisy fields make the run hold more is not known.
     - The electron gap stream is 0.6 to 1.2 cells in every run on this mesh (1.95 cells and 0.75 orbits on the
       mesh twice as fine), so it is the least resolved number in the table, and smoothing along z thins it.
-    - Running: `pw_s0.5_h1.0_ppc4_smooth4` (does four passes change a run that already has enough particles;
-      at 30 ns it holds 1.168×10^15 against 1.232 without smoothing, a reading of a run in progress),
-      `pw_s0.5_h1.0_ppc4_seed2` (how much two seeds differ at four times the particles),
-      `pw_s1_h1.0_smooth4` and `pw_s2_h1.0_smooth4`.
+    - Running: `pw_s1_h1.0_smooth4` and `pw_s2_h1.0_smooth4`.
     - Cost at 0.5×: 2,763 s for `smooth4` against 5,588 s for `ppc4`.
   - The 1× case run twice as long does not settle (complete 17 October): `pw_s1_h1.0_long` holds for 153.9
     crossings measured at 800, against 141.8 at 400 in `pw_s1_h1.0`, and its number held is still rising 6.1%
