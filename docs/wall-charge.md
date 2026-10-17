@@ -71,11 +71,19 @@ the edge:**
 | 0.5× | 0.7 | 400 | 102.8 → 69.0 | 0.75 → 0.46 | 2.19 → 2.41 |
 | 0.5× | 1.0 | 400 | 100.6 → 71.3 | 1.20 → 0.66 | 2.18 → 2.42 |
 | 0.5× | 1.4 | 400 | 97.8 → 74.8 | 1.42 → 0.96 | 2.64 → 2.31 |
+| 1× | 1.0 | 400 | 122.9 → 141.8 | 0.59 → 0.79 | 3.19 → 2.84 |
+| 1× | 1.4 | 400 | 100.9 → 129.6 | 0.98 → 1.55 | 3.40 → 2.88 |
 
-Holding times fall by 24 to 43%, gap streams narrow by 28 to 45%, and the current layer stays at 2.0 to 2.4
-orbits. The
-corrected runs settle: the 400-crossing case holds within 7% of the 200-crossing one, where the old pair kept
-growing.
+At 0.25× and 0.5× holding times fall by 24 to 43%, gap streams narrow by 28 to 45%, and the current layer
+stays at 2.0 to 2.4 orbits. The corrected runs settle: the 400-crossing case holds within 7% of the
+200-crossing one, where the old pair kept growing.
+
+At 1× the sign reverses: the corrected runs hold 15 to 28% longer. The uncorrected 1× runs reach about 140
+crossings by 50 to 100 crossings and then fall to 95–125 as the wall layer grows (its field energy reaches
+several times the plasma energy); the corrected ones rise slowly from about 85 at 50 crossings to 120–140 at
+400 and are still rising. So the fault raises a short run's holding time and lowers a long one's, and its
+effect on a size scan has no fixed sign. The corrected three-size table is section 3 of
+[cusp-results.md](cusp-results.md).
 
 **Two-coil cusp, the hot-electron cases `z…` of `sp2`, holding time in ns and pressure ratio in the gap:**
 
@@ -99,9 +107,9 @@ section 1 of [cusp-results.md](cusp-results.md) has not been repeated.
 ## The 3D six-coil runs are a different case
 
 The two settings do nothing in `inputs_3d_cusp_fed`, because its outer wall is not the edge of the mesh but a
-conducting sphere cut into it (`warpx.eb_implicit_function`), and plasma is absorbed there first. The repeat of
-`h_78k_f2.4e23` with the settings (`hw_78k_f2.4e23`, 14.7 of 18 ns when read, so not a result) follows the
-original to 0.4% in electrons held and in every energy.
+conducting sphere cut into it (`warpx.eb_implicit_function`), and plasma is absorbed there first. The repeats of
+`h_78k_f2.4e23` and `h_39k_f3e22` with the settings (`hw_…` in campaign `hw1`, both complete) follow the
+originals: holding time in the feed 2.02 ns against 2.01, electrons held within 0.4%, stream widths within 1%.
 
 Two short local runs of that deck at 96 cells (0.52 mm; diagnostic only), one of them with the conducting rings
 around the coils removed (`my_constants.rm=0`), compared the charge the field implies inside a sphere three
@@ -137,9 +145,11 @@ A real device holds its casings at a chosen voltage. `hr_78k_f2.4e23` in campaig
   with them the size of the rise of holding time with pressure.
 - **Stands:** the current-layer width of 2 to 2.5 electron orbits; the widening of the leak streams with
   pressure; two-coil numbers at the lowest pressure ratios, within a few percent.
-- **Not yet known:** the corrected size scan beyond 0.5× (1×, 2×, 4× running in `pw1`); how much the floating rings change the 3D
-  six-coil holding times at full resolution (`hr_78k_f2.4e23` queued); whether the published-case check in
-  [picket-park.md](picket-park.md) still agrees.
+- **Not yet known:** the corrected size scan beyond 1× (2× and 4× running in `pw1`); how much the floating
+  rings change the 3D six-coil holding times at full resolution (`hr_78k_f2.4e23` running).
+- **Published-case check:** see [picket-park.md](picket-park.md). Measured at 40 to 50 crossings the corrected
+  holding time is 85 crossings against the paper's 135; run to 400 crossings it reaches 120 to 140. The paper's
+  run is shorter than either, so the difference stands unexplained.
 
 Runs from now on use the two settings. Campaigns finished before this date have not been rerun except where
 listed above.

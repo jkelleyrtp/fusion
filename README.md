@@ -12,8 +12,8 @@ measures leak width against device size at fixed pressure ratio with a sustained
 ## Where it stands (2026-10-16)
 
 **2026-10-17:** every run counted below left charge at the conducting walls, and repeats without that fault
-give holding times 14 to 43% lower at high pressure. The size scan is being rerun and its earlier exponents are
-withdrawn. See [docs/wall-charge.md](docs/wall-charge.md).
+give holding times 14 to 43% lower at high pressure in the smaller cases. The size scan's earlier exponents are
+withdrawn; its rerun has three of five sizes. See [docs/wall-charge.md](docs/wall-charge.md).
 
 Only finished runs are counted. Every result below uses WarpX patches that no one but their author has reviewed
 ([warpx/patches](warpx/patches/README.md)).
@@ -24,7 +24,7 @@ Only finished runs are counted. Every result below uses WarpX patches that no on
 | Pressure scan, 2D two-coil cusp | Raising the pressure ratio from 0.1 to 37 widens the leak streams (0.6 to 7.7 mm in the gap) instead of narrowing them. Holding time rises until a ratio of about 8, then falls | not written up yet; data in `warpx/results/sp2.jsonl` |
 | Scalings, 3D six-coil cusp at low pressure | Holding time goes as field^0.3, temperature^−0.5, ion mass^0.35, size^1.3 to 1.45: plasma leaves at about the ion sound speed, slowed 2 to 3× by the field | [cusp-blog.md](docs/cusp-blog.md), `warpx/results/fed2.jsonl` |
 | Plasma fired in from outside, 3D six-coil | It gets in and is held about as well as plasma born at the centre if the guns sit close to the coils | [gun-fed-cusp.md](docs/gun-fed-cusp.md) |
-| Size scan at fixed pressure ratio, 2D picket fence | **In progress.** 0.25× to 2× the published size done, 4× and the controls running. No conclusion yet | `warpx/campaigns/picket/` |
+| Size scan, 2D picket fence, with the wall correction | **In progress.** 0.25×, 0.5× and 1× the published size done (50 to 230 electron orbits): holding time rises about in proportion to size and the gap stream stays under 1.6 electron orbits. Pressure ratio not matched (0.63 to 0.90); 2× and 4× running | `warpx/campaigns/picket/` |
 | Electron wells and ion focusing in a sphere (POPS), no magnetic field | Earlier study, finished | [pops-writeup.md](docs/pops-writeup.md), [pops-results.md](docs/pops-results.md) |
 
 What these runs are not: the 3D runs have cells about as large as an electron orbit except at the weakest

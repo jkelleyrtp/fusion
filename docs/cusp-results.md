@@ -1,14 +1,14 @@
 # Cusp results so far
 
-Status 2026-10-16. Tables here are read from the reduced tables in `warpx/results/`; the case names are the
+Status 2026-10-17. Tables here are read from the reduced tables in `warpx/results/`; the case names are the
 `case` field there. Only finished cases appear. All runs: plasma born inside, fixed coil field, light ions, and
 WarpX patches reviewed by no one but their author ([warpx-patches.md](warpx-patches.md)).
 
-> **2026-10-17: read [wall-charge.md](wall-charge.md) first.** Every run in this file left charge at the
-> conducting walls, a fault of the deposition settings we used. Repeats without it give holding times 14 to 43%
-> lower wherever the plasma pressure is near or above the magnetic pressure. The size-scan exponents in
-> section 3 are withdrawn. The widths of the current layer and the widening of the leaks with pressure hold up
-> in the cases repeated so far. Corrected tables will replace these as the repeats finish.
+> **2026-10-17: read [wall-charge.md](wall-charge.md) first.** Every run in sections 1, 2 and 4 left charge at
+> the conducting walls, a fault of the deposition settings we used. Repeats without it give holding times 14 to
+> 43% lower in the smaller cases wherever the plasma pressure is near or above the magnetic pressure. Section 3
+> is the size scan rerun without the fault; the exponents of the earlier scan (section 4) are withdrawn. The
+> widths of the current layer and the widening of the leaks with pressure hold up in the cases repeated so far.
 
 ## 1. Raising the pressure widens the leaks (2D two-coil cusp)
 
@@ -53,9 +53,50 @@ coil openings is a few percent of the magnetic pressure or less.
   kA-turns; their holding times fall (7.3 → 5.8 → 2.8 ns at 8 kA-turns). A half-time-step repeat (32 kA-turns,
   3e23 per second) gives 11.1 against 10.4 ns.
 
-## 3. Size scan (2D picket fence): 51 to 761 electron orbits, pressure ratio not yet matched
+## 3. Size scan with the wall correction (2D picket fence): three sizes so far
 
-Deck `inputs_rz_picket_fed`, the geometry checked against Park et al. 2019 in [picket-park.md](picket-park.md),
+Campaign `pw1`, deck `inputs_rz_picket_fed` with `particles.crop_on_PEC_boundary=1` and
+`algo.current_deposition=villasenor`. 100 keV electrons fed, ions of 64 electron masses, 0.25, 0.5 and 1 times
+the size of Park et al. 2019, each at three fills (`h0.7`, `h1.0`, `h1.4`) and with a sustaining feed chosen per
+size. Runs last 400 electron crossings except `pw_s0.25_h0.7` (200). The 2× and 4× sizes are running and are
+not in the table.
+
+| Case | Coil radius in electron orbits at the edge | Pressure inside ÷ magnetic pressure outside | Holding time (electron crossings) | Change in number held over the last fifth | Current layer width (orbits at the fed temperature) | Electron gap stream half-height (electron orbits at the edge) | Ion gap stream half-height (same unit) | Mean electron energy (keV) | Cells across the current layer |
+|---|---|---|---|---|---|---|---|---|---|
+| `pw_s0.25_h0.7` | 50 | 0.65 | 37 | −0.011 | 2.11 | 0.77 | 2.33 | 74 | 5.8 |
+| `pw_s0.5_h0.7` | 85 | 0.63 | 69 | +0.014 | 2.41 | 0.46 | 1.53 | 77 | 7.3 |
+| `pw_s1_h0.7` | 158 | 0.90 | 120 | +0.024 | 2.66 | 0.61 | 0.64 | 59 | 8.8 |
+| `pw_s0.25_h1.0_long` | 56 | 0.63 | 34 | −0.007 | 2.10 | 1.01 | 2.75 | 71 | 5.2 |
+| `pw_s0.5_h1.0` | 100 | 0.65 | 71 | +0.017 | 2.42 | 0.66 | 1.53 | 73 | 6.3 |
+| `pw_s1_h1.0` | 191 | 0.87 | 142 | +0.063 | 2.84 | 0.79 | 0.90 | 73 | 7.5 |
+| `pw_s0.25_h1.4_long` | 64 | 0.64 | 34 | −0.014 | 2.03 | 1.29 | 2.86 | 70 | 4.5 |
+| `pw_s0.5_h1.4` | 118 | 0.67 | 75 | +0.021 | 2.31 | 0.96 | 1.63 | 69 | 5.7 |
+| `pw_s1_h1.4` | 227 | 0.89 | 130 | +0.046 | 2.88 | 1.55 | 1.17 | 64 | 6.6 |
+
+What the three sizes show:
+- **Holding time in electron crossings rises about in proportion to the radius in electron orbits.** A fit of
+  holding time against radius in orbits gives exponents of 1.01, 1.16 and 1.05 at the three fills (0.93, 1.17
+  and 1.02 if the crossing time is taken at the measured electron energy instead of the fed temperature).
+  Proportional to size is what a leak of fixed width in orbits would give. The uncorrected scan gave about 0.7.
+- **The electron gap stream does not grow in electron orbits:** 1.0, 0.7, 0.8 orbits at fill 1.0, and no trend
+  at the other fills. The ion stream, in the same unit, narrows from 2.3–2.9 to 0.6–1.2.
+- **The current layer thickens slowly,** 2.1, 2.4, 2.8 fed-temperature orbits, about radius^0.2 to 0.3.
+- Electric field energy is under 1% of the plasma energy and the charge imbalance under 0.1% in the 1× rows.
+
+What limits this:
+- **Three sizes, a factor of 3.5 in radius.** The two larger sizes decide whether the exponent holds.
+- **The pressure ratio is not matched:** 0.63–0.67 at the two smaller sizes, 0.87–0.90 at 1×.
+- **The 1× cases are not steady at 400 crossings.** The number held is still rising 2 to 6% over the last fifth
+  and the holding time with it: at fill 1.0 it is 117, 119, 129 and 141 crossings over 100–150, 150–200, 200–300
+  and 300–400 crossings. The 1× holding times are therefore lower bounds, which would raise the exponent.
+- No repeat with another seed, a finer mesh or more particles has been done with the correction.
+- Against the uncorrected twins (`pm1`), holding time at 1× is higher, not lower: 123 → 142 at fill 1.0 and
+  101 → 130 at fill 1.4. The uncorrected runs peak near 140 at 50 to 100 crossings and then fall as the wall
+  layer grows.
+
+## 4. Size scan before the wall correction (withdrawn)
+
+Kept for the record. Deck `inputs_rz_picket_fed`, the geometry checked against Park et al. 2019 in [picket-park.md](picket-park.md),
 at 0.25 to 4 times that paper's size measured in electron orbits. 100 keV electrons, ions of 64 electron masses
 unless the name says otherwise, 50 electron crossings. In the names, `s…` is the size against the paper's,
 `x…` the fill against that size's nominal fill, `k18` a sustaining feed of 1/18 of the filling feed (as in the
