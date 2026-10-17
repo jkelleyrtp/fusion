@@ -1,12 +1,41 @@
 # Reproducing the picket-fence cusp of Park et al. 2019
 
-Status 2026-10-16: 7 of 16 cases complete. Both published numbers are matched at the baseline at 100 keV;
-at the paper's own temperature the holding time is 29% above it. The seed, mesh, time-step and ion-mass repeats
-and the higher fills have not run yet.
+Status 2026-10-17: **the agreement reported here on 2026-10-16 does not survive the wall correction.** With
+the charge left at the wall removed ([wall-charge.md](wall-charge.md)), the baseline holds for 85 electron
+crossings, not 141, against the paper's 135. The current layer still agrees (2.5 orbits against 2.1). Three
+corrected cases at 100 keV are complete; the corrected 25 keV and 2.76 keV cases are running. Everything below
+the next section is the uncorrected record.
+
+## Corrected repeat
+
+Same inputs as `pf_x0.7`, `pf_x1.0`, `pf_x1.4` plus the two wall settings; campaign `pw1`, cases `pfw_…`.
+
+| | Park et al. 2019, Run 1 | `pfw_x0.7` | `pfw_x1.0` | `pfw_x1.4` | `pf_x1.0` (uncorrected) |
+|---|---|---|---|---|---|
+| Holding time, electron crossings of the coil diameter | about 135 | 86.6 | 84.6 | 85.6 | 141 |
+| Holding time, ion crossings | about 17 | 11.8 | 11.5 | 11.7 | 19.3 |
+| Current layer, in electron orbits (their convention) | about 2.1 | 2.35 | 2.46 | 2.60 | 2.2 |
+| Pressure inside ÷ magnetic pressure just outside the edge | not given in this form | 0.75 | 0.81 | 0.81 | 0.83 |
+| Gap stream half-height, in electron orbits at the edge | not given | 1.0 | 1.7 | 2.2 | 2.1 |
+| Electric field energy ÷ plasma energy | not given | 0.021 | 0.021 | 0.023 | not reduced |
+| Change in electrons held over the last fifth | | −4.0% | −3.9% | −3.1% | +0.3% |
+
+- The holding time is 37% below the paper's and does not depend on the fill between 0.7 and 1.4 times the
+  baseline. The uncorrected 141 matched the paper by an error of ours, not by getting the physics right.
+- These cases are not steady at 50 crossings: the sustaining feed is the paper's (1/18 of the filling rate,
+  which balances a holding time of about 135 crossings), so with a shorter holding time the inventory is still
+  falling. The holding time is the number held over the loss rate during that fall.
+- We do not know why the paper's number is higher. Candidates we have not tested: its wall treatment, which
+  the paper does not describe in enough detail for us to copy; its electron temperature (2.8 keV against our
+  100 keV); its implicit time stepping. The corrected 2.76 keV case addresses the second.
+- At 1.4× the fill the layer is still intact here (pressure ratio 0.81, the same as at 1.0×, with a wider gap
+  stream), so we do not see the paper's sudden failure of the wall in the gap; the plasma instead leaks until
+  the pressure ratio is back near 0.8.
+
 Uses two unreviewed WarpX patches: paired injection and the coil field on the mesh
 ([warpx-patches.md](warpx-patches.md), [flux-injection-charge.md](flux-injection-charge.md)).
 
-## Result
+## Result before the wall correction (superseded)
 
 | | Park et al. 2019, Run 1 | `pf_x1.0` | `pf_x0.7` (0.7× the fill) |
 |---|---|---|---|
