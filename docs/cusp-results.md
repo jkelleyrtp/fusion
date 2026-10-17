@@ -126,13 +126,40 @@ What limits this:
 
   - All five agree to 10 ns. The first three then gain plasma; the last two stay flat.
   - Neither the time step nor the mesh separates the groups: `nr384` has half the step and twice the mesh and
-    reproduces the baseline. What the two flat runs share is more particles per cell on the baseline mesh
-    (`half_dt` has more because the feed adds a fixed number per cell per step).
-  - At 0.25× the same change does nothing: `pw_s0.25_h1.0_long_ppc8` (4.3 times the particles) holds for 34.2
-    crossings against 33.9, with a 2.06-orbit layer against 2.10. The 0.25× baseline does not gain plasma late.
-  - Running to separate the causes: `pw_s0.5_h1.0_half_dt_ppc0.5` (half the step at the baseline's particles),
-    `pw_s0.5_h1.0_ppc2`, `pw_s0.5_h1.0_nr384_ppc2` (finer mesh with four times its particles), and
-    `pw_s0.5_h1.0_ppc16`.
+    reproduces the baseline.
+  - One number does order all of them (found 17 October, 10:10 UTC, after `pw_s0.5_h1.0_ppc2` finished): the
+    count of simulation electrons within one screening length or one cell of each other, whichever is larger,
+    `N_c = (electrons per unit area of the r-z plane at half the coil radius) × (screening length² + cell²)`.
+    It sets how often simulation particles scatter off each other, which real particles at this density and
+    temperature do a million times less often. The finer mesh has smaller cells and fewer particles per cell,
+    and the two cancel.
+
+    | Case | `N_c` | Holding time (electron crossings) | Electrons held at the end ÷ most held |
+    |---|---|---|---|
+    | `pw_s0.5_h1.0` | 564 | 71.3 | 0.85 |
+    | `pw_s0.5_h1.0_seed2` | 583 | 73.3 | 0.87 |
+    | `pw_s0.5_h1.0_nr384` | 616 | 72.2 | 0.86 |
+    | `pw_s0.5_h1.0_half_dt` | 942 | 55.9 | 0.67 |
+    | `pw_s0.5_h1.0_ppc2` | 1002 | 60.2 | 0.72 |
+    | `pw_s0.5_h1.0_ppc4` | 1942 | 52.5 | 0.63 |
+
+  - A straight line in `1/N_c` through the first and last rows gives 45 crossings with no scattering between
+    simulation particles. This is an inference from six runs, not a result.
+  - Predictions written before the runs finish: `pw_s0.5_h1.0_ppc16` (`N_c` about 7500) 46 to 48;
+    `pw_s0.5_h1.0_nr384_ppc2` (about 2100) 50 to 54; `pw_s0.5_h1.0_half_dt_ppc0.5` (about 500) 70 to 75.
+    If these fail, the explanation is wrong.
+  - It does not explain 0.25×, where `N_c` of 610, 2591 and 10561 gives 33.9, 34.2 and 35.4 crossings. The 0.25×
+    runs last half as many plasma oscillations as 0.5× and a quarter as many per holding time; whether that is
+    enough to remove the effect is not shown.
+  - By the same count, the 1× cases (`N_c` 330 to 450, 2.4 times the plasma oscillations of 0.5×) should be
+    affected more than 0.5×, which would make the measured growth of holding time with size too steep.
+  - Direct test, running: `pw_s0.5_h1.0_ppc4_clog1e6`, `_clog4e6` and `_clog1.6e7` add WarpX's Coulomb collisions
+    with a chosen logarithm (deck `inputs_rz_picket_fed_collisions`) to the four-times-particle case. If
+    scattering is the cause, a known amount of it should move that case toward the baseline.
+  - In every finished case the particle count closes: feed = loss + change in the number held, to 1%, for both
+    species in every time window. Over the last fifth the loss is 0.96 to 1.00 of the feed in the 0.25× and 0.5×
+    cases and 0.90 in `pw_s1_h1.0`. So the holding time is the number held divided by a feed we chose, and the
+    differences between repeats are differences in how much plasma each one ends up holding.
 - Against the uncorrected twins (`pm1`), holding time at 1× is higher, not lower: 123 → 142 at fill 1.0 and
   101 → 130 at fill 1.4. The uncorrected runs peak near 140 at 50 to 100 crossings and then fall as the wall
   layer grows.
