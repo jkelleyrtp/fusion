@@ -1,0 +1,135 @@
+"""The picket-fence deck (a row of opposed coils that repeats along the axis) and its reducer."""
+import math
+import re
+import sys
+import unittest
+from pathlib import Path
+
+import numpy as np
+
+CUSP = Path(__file__).resolve().parents[1] / "warpx" / "cusp"
+sys.path.insert(0, str(CUSP))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import analyze_picket
+import holding_by_interval
+import make_deck
+from test_spindle import elliptic
+
+
+class PicketTest(unittest.TestCase):
+    def deck_field(self, r: float, z: float) -> tuple[float, float]:
+        """The coil field (in units of mu0 * current / coil radius) the deck on disk gives WarpX at (r, 0, z)."""
+        text = (CUSP / "inputs_rz_picket_fed").read_text()
+        names = {"a": 1.0, "rc": 1.0, "h": 0.5, "coil_at": 1.0, "mu0": 1.0, "x": r, "y": 0.0, "z": z, "pi": math.pi,
+                 "sqrt": math.sqrt, "comp_ellint_1": lambda k: elliptic(k)[0], "comp_ellint_2": lambda k: elliptic(k)[1]}
+        # The last assignment of each component is the one WarpX uses.
+        return tuple(eval(re.findall(rf'^particles\.B{component}_external_particle_function\(x,y,z,t\) = "(.*)"$', text,
+                                     re.MULTILINE)[-1], names) for component in "xz")
+
+    def test_the_deck_on_disk_is_the_one_the_generator_writes(self) -> None:
+        self.assertEqual((CUSP / "inputs_rz_picket_fed").read_text(), make_deck.picket_deck())
+        self.assertEqual((CUSP / "inputs_rz_picket_fed_collisions").read_text(), make_deck.picket_deck() + make_deck.COLLISIONS)
+        self.assertEqual((CUSP / "inputs_rz_picket_two").read_text(), make_deck.picket_deck() + make_deck.periods(2))
+        self.assertEqual((CUSP / "inputs_rz_picket_four").read_text(), make_deck.picket_deck() + make_deck.periods(4))
+
+    def test_the_field_repeats_from_one_end_of_the_mesh_to_the_other(self) -> None:
+        # The mesh runs from -h to h. An endless row has no radial field in the plane of a coil, and the same
+        # axial field at both ends.
+        scale = math.hypot(*self.deck_field(0.77, 0.0))
+        for r in (0.2, 0.77, 1.3):
+            low, high = self.deck_field(r, -0.5), self.deck_field(r, 0.5)
+            self.assertLess(abs(low[0]) / scale, 3e-4)
+            self.assertLess(abs(high[0]) / scale, 3e-4)
+            self.assertAlmostEqual(low[1] / scale, high[1] / scale, places=9)
+            # One coil along, an endless row has the same field with its sign turned. The deck's row is cut
+            # off, which leaves each of the two off by up to 0.05% of the field at the plasma's edge.
+            self.assertAlmostEqual(self.deck_field(r, 0.1)[1] / scale, -self.deck_field(r, -0.4)[1] / scale, delta=1e-3)
+
+    def test_the_field_in_the_plane_of_a_coil_is_that_of_many_opposed_loops(self) -> None:
+        angle = (np.arange(2000) + 0.5) * math.pi / 1000
+        axial = 0.0
+        for k in range(-60, 61):
+            gap = (0.77**2 + 1 + (0.5 * k) ** 2 - 2 * 0.77 * np.cos(angle)) ** 1.5
+            axial += (-1) ** k / (4 * math.pi) * (math.pi / 1000) * ((1 - 0.77 * np.cos(angle)) / gap).sum()
+        self.assertAlmostEqual(self.deck_field(0.77, 0.0)[1] / axial, 1.0, places=3)
+
+    def test_the_thermal_speed_stays_below_that_of_light(self) -> None:
+        self.assertAlmostEqual(analyze_picket.thermal_speed(2760.0, analyze_picket.M_E) / analyze_picket.C_LIGHT, 0.0733, places=4)
+        self.assertAlmostEqual(analyze_picket.thermal_speed(1e5, analyze_picket.M_E) / analyze_picket.C_LIGHT, 0.4046, places=4)
+
+    def test_the_count_of_crowded_particles_doubles_with_the_particles_and_falls_on_a_finer_mesh(self) -> None:
+        density, temperature = 1e21, 1e5 * analyze_picket.Q_E
+        screening = math.sqrt(analyze_picket.EPS0 * temperature / (density * analyze_picket.Q_E**2))
+        count, cells = analyze_picket.crowding(density, temperature, 1e6, 0.005, screening)
+        self.assertAlmostEqual(cells, 1.0)
+        self.assertAlmostEqual(count, density * 2 * math.pi * 0.005 / 1e6 * 2 * screening**2)
+        self.assertAlmostEqual(analyze_picket.crowding(density, temperature, 5e5, 0.005, screening)[0], 2 * count)
+        self.assertAlmostEqual(analyze_picket.crowding(density, temperature, 1e6, 0.005, 1e-9 * screening)[0], 0.5 * count)
+
+    def test_the_edge_is_where_the_density_halves_and_its_thickness_is_the_fall_from_nine_tenths_to_one_tenth(self) -> None:
+        radius = (np.arange(600) + 0.5) * 0.015 / 600
+        # Density flat to 7.5 mm, then falling in a straight line to nothing at 8.5 mm; counts go as radius * density.
+        density = np.clip((0.0085 - radius) / 0.001, 0.0, 1.0)
+        found = analyze_picket.edge(radius, 3e9 * radius * density, {"rc": 0.01})
+        self.assertAlmostEqual(found["middle"], 0.008, places=5)
+        self.assertAlmostEqual(found["thickness"], 0.0008, places=5)
+        self.assertAlmostEqual(found["level"], 3e9, delta=3e3)
+
+    def test_the_current_layer_is_measured_at_half_its_peak_and_a_larger_current_elsewhere_is_ignored(self) -> None:
+        radius = (np.arange(384) + 0.5) * 0.015 / 384
+        # A layer 0.2 mm wide at half its height, at 7.3 mm, under the far larger current of a coil at 10 mm.
+        current = -4e9 * np.exp(-4 * np.log(2) * ((radius - 0.0073) / 0.0002) ** 2) + 5e10 * np.exp(-(((radius - 0.01) / 0.0002) ** 2))
+        found = analyze_picket.current_layer(radius, current, 0.00735, 0.001)
+        self.assertAlmostEqual(found["peak_at"], 0.0073, delta=2e-5)
+        self.assertAlmostEqual(found["width"], 0.0002, delta=1e-5)
+
+    def test_a_density_that_falls_slowly_from_the_centre_does_not_thicken_the_edge(self) -> None:
+        radius = (np.arange(600) + 0.5) * 0.015 / 600
+        # Density falling from 2.5 at the centre to 1 at 7.9 mm, then in a straight line to nothing at 8.1 mm.
+        density = np.where(radius < 0.0079, 1 + 1.5 * (0.0079 - radius) / 0.0079, np.clip((0.0081 - radius) / 0.0002, 0.0, 1.0))
+        found = analyze_picket.edge(radius, radius * density, {"rc": 0.01})
+        self.assertAlmostEqual(found["middle"], 0.008, delta=2e-5)
+        self.assertAlmostEqual(found["thickness"], 0.00016, delta=5e-5)
+
+    def test_plasma_outside_the_coil_does_not_hide_the_edge_inside_it(self) -> None:
+        radius = (np.arange(600) + 0.5) * 0.015 / 600
+        # The first test's plasma, with a fifth of its density again between the coil at 10 mm and the wall.
+        density = np.clip((0.0085 - radius) / 0.001, 0.0, 1.0) + 0.2 * (radius > 0.012)
+        found = analyze_picket.edge(radius, radius * density, {"rc": 0.01})
+        self.assertAlmostEqual(found["middle"], 0.008, places=5)
+        self.assertAlmostEqual(found["thickness"], 0.0008, places=5)
+
+
+    def test_a_wire_on_the_axis_gives_back_its_current(self) -> None:
+        radius = (np.arange(96) + 0.5) / 96 * 0.015
+        around = 4e-7 * np.pi * 5e4 / (2 * np.pi * radius)
+        self.assertAlmostEqual(analyze_picket.current_inside(radius, around, 0.015) / 5e4, 1.0, places=9)
+        self.assertAlmostEqual(analyze_picket.current_inside(radius, -around, 0.015) / 5e4, -1.0, places=9)
+
+    def test_field_crowding_on_the_axis_is_one_for_a_uniform_field_and_large_for_a_field_on_the_axis(self) -> None:
+        uniform = np.ones((8, 96))
+        self.assertAlmostEqual(analyze_picket.crowding_on_axis(uniform, 0 * uniform), 1.0, places=9)
+        on_axis = np.zeros((8, 96))
+        on_axis[:, :2] = 1.0
+        self.assertAlmostEqual(analyze_picket.crowding_on_axis(0 * on_axis, on_axis), (96 / 4) ** 2, places=9)
+
+    def test_a_decaying_plasma_gives_back_its_holding_time_whatever_the_feed(self) -> None:
+        # Held number relaxing toward feed * tau: the rate of leaving is held / tau at every instant.
+        time, tau, feed = np.linspace(0.0, 50.0, 5001), 60.0, 0.4
+        held = feed * tau + 30.0 * np.exp(-time / tau)
+        self.assertAlmostEqual(holding_by_interval.holding_time(time, held, feed, 10.0, 28.0), tau, places=3)
+
+    def test_a_slab_stream_gives_back_its_height_and_speed(self) -> None:
+        # Two gaps, each a slab 0.2 mm high at 3e20 per m3 (half the density inside) leaving at 1e7 m/s through
+        # a band 0.4 mm thick at a coil radius of 10 mm.
+        band, ring = 4e-4, 2 * np.pi * 0.01 * 4e-4
+        count = np.zeros(400)
+        count[190:210] = 2 * 3e20 * ring * 2e-4 / 20
+        lost = 2 * 3e20 * 2 * np.pi * 0.01 * 2e-4 * 1e7
+        height, speed = analyze_picket.gap_stream(count, lost, band, ring, 6e20)
+        self.assertAlmostEqual(height, 1e-4, places=9)
+        self.assertAlmostEqual(speed / 1e7, 1.0, places=9)
+
+
+if __name__ == "__main__":
+    unittest.main()

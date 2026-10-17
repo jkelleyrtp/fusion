@@ -1,0 +1,256 @@
+[
+  {
+    "case": "track_0V",
+    "casing_voltage_V": 0.0,
+    "current_A": 1.0,
+    "energy_eV": 5000.0,
+    "coil_ampere_turns": 30000.0,
+    "seed": 1234,
+    "tracked": 64,
+    "samples": 65536,
+    "sample_interval_s": 1.9999999999493283e-12,
+    "buffer_full": true,
+    "exited": 56,
+    "median_exit_lifetime_s": 1.5450308554578778e-07,
+    "mean_lifetime_lower_bound_s": 1.717693326170692e-07,
+    "sampled_core_entries_mean": 1.09375,
+    "sampled_core_entries_max": 4,
+    "fraction_entering_core_twice": 0.265625,
+    "exit_channels": {
+      "wall_y+": 10,
+      "wall_x-": 9,
+      "wall_z-": 3,
+      "gun_barrel": 5,
+      "wall_x+": 11,
+      "wall_y-": 12,
+      "wall_z+": 6
+    },
+    "exit_cusps": {
+      "point cusp (face axis)": 44,
+      "corner cusp": 7,
+      "gun_barrel": 5
+    }
+  },
+  {
+    "case": "track_0V_s2345",
+    "casing_voltage_V": 0.0,
+    "current_A": 1.0,
+    "energy_eV": 5000.0,
+    "coil_ampere_turns": 30000.0,
+    "seed": 2345,
+    "tracked": 64,
+    "samples": 65536,
+    "sample_interval_s": 1.9999999999493283e-12,
+    "buffer_full": true,
+    "exited": 55,
+    "median_exit_lifetime_s": 9.968573727768176e-08,
+    "mean_lifetime_lower_bound_s": 1.3728077568220095e-07,
+    "sampled_core_entries_mean": 0.9375,
+    "sampled_core_entries_max": 3,
+    "fraction_entering_core_twice": 0.234375,
+    "exit_channels": {
+      "wall_z-": 3,
+      "wall_x-": 8,
+      "wall_x+": 10,
+      "wall_y+": 8,
+      "gun_barrel": 10,
+      "wall_y-": 11,
+      "wall_z+": 5
+    },
+    "exit_cusps": {
+      "point cusp (face axis)": 39,
+      "corner cusp": 6,
+      "gun_barrel": 10
+    }
+  },
+  {
+    "case": "track_m1kV",
+    "casing_voltage_V": -1000.0,
+    "current_A": 1.0,
+    "energy_eV": 5000.0,
+    "coil_ampere_turns": 30000.0,
+    "seed": 1234,
+    "tracked": 64,
+    "samples": 65536,
+    "sample_interval_s": 1.9999999999493283e-12,
+    "buffer_full": true,
+    "exited": 55,
+    "median_exit_lifetime_s": 1.15556656325067e-07,
+    "mean_lifetime_lower_bound_s": 1.4921905918251422e-07,
+    "sampled_core_entries_mean": 0.84375,
+    "sampled_core_entries_max": 2,
+    "fraction_entering_core_twice": 0.21875,
+    "exit_channels": {
+      "wall_y-": 10,
+      "wall_z-": 3,
+      "gun_barrel": 11,
+      "wall_x-": 5,
+      "wall_y+": 9,
+      "wall_x+": 12,
+      "wall_z+": 5
+    },
+    "exit_cusps": {
+      "point cusp (face axis)": 36,
+      "gun_barrel": 11,
+      "corner cusp": 8
+    }
+  },
+  {
+    "case": "track_p5kV",
+    "casing_voltage_V": 5000.0,
+    "current_A": 1.0,
+    "energy_eV": 5000.0,
+    "coil_ampere_turns": 30000.0,
+    "seed": 1234,
+    "tracked": 64,
+    "samples": 65536,
+    "sample_interval_s": 1.9999999999493283e-12,
+    "buffer_full": true,
+    "exited": 59,
+    "median_exit_lifetime_s": 1.282254675190286e-07,
+    "mean_lifetime_lower_bound_s": 1.4089251244503672e-07,
+    "sampled_core_entries_mean": 1.53125,
+    "sampled_core_entries_max": 5,
+    "fraction_entering_core_twice": 0.421875,
+    "exit_channels": {
+      "wall_x-": 10,
+      "gun_barrel": 6,
+      "wall_x+": 15,
+      "wall_z+": 12,
+      "wall_y+": 6,
+      "wall_y-": 9,
+      "wall_z-": 1
+    },
+    "exit_cusps": {
+      "point cusp (face axis)": 38,
+      "gun_barrel": 6,
+      "corner cusp": 14,
+      "line cusp (edge)": 1
+    }
+  },
+  {
+    "case": "track_p10kV",
+    "casing_voltage_V": 10000.0,
+    "current_A": 1.0,
+    "energy_eV": 5000.0,
+    "coil_ampere_turns": 30000.0,
+    "seed": 1234,
+    "tracked": 64,
+    "samples": 65536,
+    "sample_interval_s": 1.9999999999493283e-12,
+    "buffer_full": true,
+    "exited": 56,
+    "median_exit_lifetime_s": 1.0579333186431688e-07,
+    "mean_lifetime_lower_bound_s": 1.3694412052632496e-07,
+    "sampled_core_entries_mean": 1.328125,
+    "sampled_core_entries_max": 4,
+    "fraction_entering_core_twice": 0.3125,
+    "exit_channels": {
+      "wall_x+": 14,
+      "wall_z+": 6,
+      "wall_y-": 7,
+      "wall_z-": 5,
+      "wall_x-": 14,
+      "gun_barrel": 5,
+      "wall_y+": 5
+    },
+    "exit_cusps": {
+      "point cusp (face axis)": 42,
+      "gun_barrel": 5,
+      "corner cusp": 9
+    }
+  },
+  {
+    "case": "track_3A",
+    "casing_voltage_V": 0.0,
+    "current_A": 3.0,
+    "energy_eV": 5000.0,
+    "coil_ampere_turns": 30000.0,
+    "seed": 1234,
+    "tracked": 64,
+    "samples": 65536,
+    "sample_interval_s": 1.9999999999493283e-12,
+    "buffer_full": true,
+    "exited": 61,
+    "median_exit_lifetime_s": 2.2840000000000488e-09,
+    "mean_lifetime_lower_bound_s": 6.342747897800801e-08,
+    "sampled_core_entries_mean": 0.5625,
+    "sampled_core_entries_max": 4,
+    "fraction_entering_core_twice": 0.15625,
+    "exit_channels": {
+      "wall_y-": 4,
+      "gun_barrel": 37,
+      "wall_y+": 6,
+      "wall_x+": 6,
+      "wall_x-": 6,
+      "wall_z+": 2
+    },
+    "exit_cusps": {
+      "point cusp (face axis)": 20,
+      "gun_barrel": 37,
+      "corner cusp": 4
+    }
+  },
+  {
+    "case": "track_p5kV_2keV",
+    "casing_voltage_V": 5000.0,
+    "current_A": 1.0,
+    "energy_eV": 2000.0,
+    "coil_ampere_turns": 30000.0,
+    "seed": 1234,
+    "tracked": 64,
+    "samples": 65536,
+    "sample_interval_s": 1.9999999999493283e-12,
+    "buffer_full": true,
+    "exited": 39,
+    "median_exit_lifetime_s": 1.1339162929832063e-07,
+    "mean_lifetime_lower_bound_s": 1.8713042557759353e-07,
+    "sampled_core_entries_mean": 0.921875,
+    "sampled_core_entries_max": 4,
+    "fraction_entering_core_twice": 0.140625,
+    "exit_channels": {
+      "wall_y-": 5,
+      "wall_x-": 8,
+      "gun_barrel": 6,
+      "wall_y+": 12,
+      "wall_x+": 5,
+      "wall_z+": 3
+    },
+    "exit_cusps": {
+      "point cusp (face axis)": 20,
+      "corner cusp": 13,
+      "gun_barrel": 6
+    }
+  },
+  {
+    "case": "track_60kAt",
+    "casing_voltage_V": 0.0,
+    "current_A": 1.0,
+    "energy_eV": 5000.0,
+    "coil_ampere_turns": 60000.0,
+    "seed": 1234,
+    "tracked": 64,
+    "samples": 65536,
+    "sample_interval_s": 1.9999999999493283e-12,
+    "buffer_full": true,
+    "exited": 52,
+    "median_exit_lifetime_s": 9.495988992165837e-08,
+    "mean_lifetime_lower_bound_s": 1.4426268981219645e-07,
+    "sampled_core_entries_mean": 0.9375,
+    "sampled_core_entries_max": 3,
+    "fraction_entering_core_twice": 0.21875,
+    "exit_channels": {
+      "wall_y+": 7,
+      "wall_x+": 8,
+      "wall_z+": 9,
+      "gun_barrel": 14,
+      "wall_x-": 5,
+      "wall_y-": 9
+    },
+    "exit_cusps": {
+      "point cusp (face axis)": 27,
+      "corner cusp": 11,
+      "gun_barrel": 14
+    }
+  }
+]

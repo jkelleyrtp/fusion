@@ -1,233 +1,66 @@
-# Biconic cusp electron trap — GPU kinetic simulation
+# Cusp confinement in WarpX
 
-Full-orbit test-particle (non-PIC) tracking of electrons in the static field of two coaxial
-current rings with opposite polarity (a spindle / biconic cusp). Runs one sweep member
-per GPU on a single node, writes compact results (subsampled tracked trajectories, per-electron
-escape time + channel, survival curve, (r,z) density) and renders a report.
+Fully kinetic particle-in-cell simulations of plasma held in magnetic cusps (the six-coil Polywell cage and its
+two-dimensional relatives), run with [WarpX](https://github.com/BLAST-WarpX/warpx) 26.10 on GPUs.
+
+**The question.** When the plasma pressure is comparable to or above the magnetic pressure, does the width of a
+cusp's leaks stay a fixed number of electron orbits as the device grows, or does it grow with the device? The
+first makes holding time rise fast with size ("cusp plugging"); the second does not. No published simulation
+measures leak width against device size at fixed pressure ratio with a sustained feed
+([prior work](docs/prior-work.md)).
+
+## Where it stands (2026-10-16)
+
+**2026-10-17:** every run counted below left charge at the conducting walls, and repeats without that fault
+give holding times 14 to 43% lower at high pressure in the smaller cases. The size scan's earlier exponents are
+withdrawn; its rerun has three of five sizes. See [docs/wall-charge.md](docs/wall-charge.md).
+
+Only finished runs are counted. Every result below uses WarpX patches that no one but their author has reviewed
+([warpx/patches](warpx/patches/README.md)).
+
+| Study | Result | Write-up |
+|---|---|---|
+| Check against a published case (2D picket fence, Park et al. 2019) | Holding time 141 electron crossings against about 135 published; current layer 2.2 electron orbits wide against about 2.1. Nothing tuned. Baseline only; mesh, seed and time-step repeats are not all in | [picket-park.md](docs/picket-park.md) |
+| Pressure scan, 2D two-coil cusp | Raising the pressure ratio from 0.1 to 37 widens the leak streams (0.6 to 7.7 mm in the gap) instead of narrowing them. Holding time rises until a ratio of about 8, then falls | not written up yet; data in `warpx/results/sp2.jsonl` |
+| Scalings, 3D six-coil cusp at low pressure | Holding time goes as field^0.3, temperature^−0.5, ion mass^0.35, size^1.3 to 1.45: plasma leaves at about the ion sound speed, slowed 2 to 3× by the field | [cusp-blog.md](docs/cusp-blog.md), `warpx/results/fed2.jsonl` |
+| Plasma fired in from outside, 3D six-coil | It gets in and is held about as well as plasma born at the centre if the guns sit close to the coils | [gun-fed-cusp.md](docs/gun-fed-cusp.md) |
+| Size scan, 2D picket fence, with the wall correction | **In progress.** 0.25×, 0.5× and 1× the published size done (50 to 230 electron orbits): holding time rises about in proportion to size and the gap stream stays under 1.6 electron orbits. Pressure ratio not matched (0.63 to 0.90); 2× and 4× running | `warpx/campaigns/picket/` |
+| Electron wells and ion focusing in a sphere (POPS), no magnetic field | Earlier study, finished | [pops-writeup.md](docs/pops-writeup.md), [pops-results.md](docs/pops-results.md) |
+
+What these runs are not: the 3D runs have cells about as large as an electron orbit except at the weakest
+fields, the 2D runs cannot show anything that varies around the axis, the coil field is a fixed formula, and
+most runs use ions of 57 to 64 electron masses.
 
 ## Layout
 
-| path | what |
+| Path | What |
 |---|---|
-| `src/cusp_sim.py` | simulator: exact loop field (elliptic integrals), fused CUDA Boris/RK4 kernel (torch `load_inline`), torch fallback |
-| `src/cuda_build_cache.py` | persistent fingerprint-keyed build cache for the fused kernel (see below) |
-| `src/benchmark_build_cache.py` | measures extension startup in fresh worker processes on the GPUs |
-| `src/cusp_viz.py` | `report.png` + `traj_<member>.png` + `traj3d_<member>.png` (equal-scale orthographic 3-D view with the coils and the gun source drawn below) + markdown summary table from a run directory. Trajectory plots show the subsampled stored path, so rapid gyration can be undersampled |
-| `jobs/*.yaml` | broker-submittable single-node RayJobs (`uv run train job submit /home/ubuntu/repos/fusion/jobs/<x>.yaml --cluster aws-usw2 --priority 1`) |
-| `results/` | reports and summaries pulled back from the runs |
-| `docs/` | [reassessment](docs/reassessment.md) and [precision notes](docs/precision-notes.md) |
-| `web/` | Three.js/WebGL2 control room; eight bundled larger-device runs |
-| `src/export_viewer.py` | compressed, content-addressed trajectory pages and exact ensemble dwell summaries |
-| `src/serve_viewer.py` | local production viewer server with precompressed application assets |
+| `warpx/campaign.py` | Runs named sets of cases on GPU nodes through the job broker, restarts them from checkpoints, reduces each on the node and fetches the reduced tables. See [warpx/README.md](warpx/README.md) |
+| `warpx/cusp/` | Decks (`inputs_*`), the deck writer and the reducers (`analyze_*.py`) for the cusp studies |
+| `warpx/pops/` | Decks and reducers for the electron-well study |
+| `warpx/campaigns/` | The case list of every campaign, by study, and `registry.json`: each campaign's question, cases and jobs |
+| `warpx/results/` | One reduced table per campaign, one line per finished case, as last fetched |
+| `warpx/patches/` | The three patches applied to WarpX 26.10, how to apply and build |
+| `tests/` | Tests of the campaign runner, deck writer and reducers |
+| `docs/` | Results, methods and prior work. Start at [docs/README.md](docs/README.md) |
+| `legacy/` | The in-house particle code this project used before WarpX, with its tests, results, viewer and notes. Not used by anything above. See [legacy/README.md](legacy/README.md) |
 
-## Browser control room
-
-```bash
-cd web
-npm ci
-npm run build
-cd ..
-python3 src/serve_viewer.py
-```
-
-Open `http://127.0.0.1:4173`. For development, run only `cd web && npm run dev`:
-it starts the single bundled Vite server on port 4173; a second Python server is not
-required during development.
-The bundled 25/50 cm studies occupy about 6 MB **on disk**; the browser initially
-fetches only the catalog, selected summary, and a small 16-particle preview.
-Full trajectories arrive only when requested. No GPU simulation is launched by
-the viewer. See [viewer usage and export format](docs/viewer.md).
-
-### Local job control
-
-The development server includes the authenticated, fixed `poisson-reference` job
-service at `/api/jobs`; static builds do not include this backend. It stores
-records and the chmod-600 control token under `.fusion/` (override job state with
-`FUSION_STATE_DIR`). The service uses the existing slime image and stages each
-clean Git `src/` snapshot under a revision/request-specific FSx directory before
-broker submission. The browser is read-only for this initial profile; use the
-local CLI from `web/` to launch or register jobs:
+## Running
 
 ```bash
-npm run job -- launch poisson-reference
-npm run job -- list
-npm run job -- register --job-id JOB --run-directory RUN --title TITLE [--campaign-id CAMPAIGN] [--profile poisson-reference|poisson-high-voltage]
+cd warpx
+python3 campaign.py submit NAME --cases campaigns/<study>/<file>.txt --nodes 1 --question "..."
+python3 campaign.py status NAME
+python3 campaign.py sync NAME        # fetch finished cases, write the table
+python3 campaign.py local NAME --cases FILE   # small cases on this machine's CPUs
 ```
 
-The CLI defaults to `127.0.0.1:4173`; broker interaction remains through the
-research checkout's documented `uv run train` commands. Launches are fixed to one
-node, eight GPUs, priority 1, with capacity checked first. Existing jobs can be
-registered without launching them. `poisson-high-voltage` registration records
-four GPUs and the 5 keV study metadata; server launches currently support only
-`poisson-reference`.
+GPU work goes through the job broker only, at priority 1, one node per job. The binding rules are in
+[AGENTS.md](AGENTS.md) and explained in [docs/gpu-jobs.md](docs/gpu-jobs.md).
 
-For transport retries, reuse the printed UUID with `launch poisson-reference
---request-id UUID`. An uncertain broker submission stays `unknown` and is never
-automatically resubmitted. Status and case iterations refresh every minute;
-trajectory snapshots still require a separate import into the viewer catalog.
-
-The latest [external-gun results](docs/external-gun-study.md) emphasize launch-to-loss
-dwell and continuous-injection inventory. These remain fixed-field estimates,
-not a self-consistent virtual cathode.
-
-## GPU dispatch (shared B200 cluster)
-
-Submit GPU work only through the slime job broker, from the research checkout:
+## Checks
 
 ```bash
-cd /home/ubuntu/repos/research
-uv run train gpus --cluster aws-usw2                       # check free capacity first
-uv run train job list --cluster aws-usw2
-uv run train job submit /home/ubuntu/repos/fusion/jobs/<name>.yaml --cluster aws-usw2 --priority 1
+OMP_NUM_THREADS=1 python3 -m unittest discover -s tests
+ruff check tests warpx/campaign.py
 ```
-
-- **Priority 1, exactly one node** (`--actor-num-nodes 1 --actor-num-gpus-per-node 8
-  --rollout-num-gpus 0` in the entrypoint), broker-scheduled cliques only.
-- Priority 1 is a user requirement: it is preemptible by priorities 2–5 and can
-  preempt priority 0 — it is not the absolute lowest. The broker's
-  `preempt_min_runtime` may delay reclamation; do not promise instant release.
-- If no node is free, wait — never displace running work, pin cliques, bypass
-  health checks, or `kubectl apply` GPU jobs directly.
-- `shutdownAfterJobFinishes: true` is mandatory; never hold GPUs awaiting input.
-- A preempted run restarts the sweep from scratch; per-member outputs already
-  written under the run directory are preserved on FSx.
-
-See `AGENTS.md` for the full binding policy.
-
-## Build cache
-
-The fused kernel compiles once per fingerprint instead of once per worker/job: `cuda_build_cache.load_cached_extension`
-hashes sources, bindings, flags, toolchain (compiler `PATH`s + `--version` output), Python/Torch/CUDA identity,
-the compile environment, and the architecture request into a 24-hex key shared by identical workers. Job YAMLs
-set `CUSP_BUILD_DIR=/public/jonathan/cusp/build_cache` (FSx, persists across jobs; mounted with cluster-wide
-`flock`); unset, it defaults to `~/.cache/cusp_build`. Locking is a POSIX `flock` on `<keydir>/build.flock`
-around the whole `load_inline` call; a stale torch `FileBaton` `lock` left by a killed build is removed while
-holding it. `CUSP_BUILD_VERBOSE=1` turns on verbose ninja output.
-
-`src/cuda_build_cache.py` must be staged next to `src/cusp_sim.py` under `/public/jonathan/cusp/src/` before
-running — the job pods import it via the script's directory. Benchmark on the GPUs (one node, priority 1, broker only):
-
-```bash
-uv run train job submit /home/ubuntu/repos/fusion/jobs/cusp-cache-benchmark-aws.yaml --cluster aws-usw2 --priority 1
-```
-
-Each member's `summary.json` records `kernel_setup_time_s`: wall time of the extension build/load attempt
-(including failed attempts; `null` on CPU or with `--no-kernel`).
-
-## Physics model
-
-- Field: Smythe's closed form for a circular filament, `B_r, B_z` in `K(k), E(k)` (AGM), tabulated on an
-  (r,z) grid once per member; the kernel does bilinear lookups. Validated against the on-axis formula (1e-15)
-  and a 2880-segment Biot-Savart polygon (6e-6).
-- Pusher: Boris (default, `--integrator boris`) or classic RK4 (`--integrator rk4`, reference). Boris energy drift
-  is at machine precision (1e-14) with B only; RK4 drifts 1e-5..1e-2 depending on `dt`.
-- Time step: adaptive per particle (`--adaptive 1`, default): `dt = steps-per-gyro-inv * 2π m/(e|B|)` at the
-  particle's position, capped by grid spacing / v and by a tenth of the space-charge radius / v. Every particle is
-  integrated to the same physical `--sim-time`; trajectory and density sampling are on physical-time intervals.
-  `--adaptive 0` recovers a fixed `dt` from the reference field. Adaptive runs take ~8x fewer steps here (most of
-  the volume is far weaker than the field at the coils).
-- Electrostatics: `--space-charge Q [Q2 ...]` (C) puts a uniformly charged sphere of radius
-  `--space-charge-radius` at the null (linear E inside, Coulomb outside) - a prescribed proxy
-  field; the charge is not computed from these particles. Negative = trapped electron cloud /
-  virtual cathode (decelerates and repels incoming electrons); positive = attractive well. It
-  is a sweep axis like energy.
-- Diagnostics per particle: escape time / channel, step count, minimum |B| seen (loss-cone proxy).
-- Energy drift is reported per member.
-- Loss channels: `-z` point cusp, `+z` point cusp, ring cusp / wall (`r > wall_fraction * a`).
-- Injection modes: `cusp` (beam through the -z point cusp, ring of radius `inject_r`, pitch band),
-  `inside` (born in a ball around the null, pitch uniform in cos over the band; `0..180` = isotropic),
-  and `gun` (external point source; see below).
-
-## External gun mode
-
-`--inject-mode gun` launches all particles as a packet at t=0 from a finite source —
-an off-axis point with a Gaussian transverse width and an angular cone, i.e. the
-effective beam after gun optics (hardware optics like a wire + focus element are not
-simulated). This mirrors the historical `electron-optimization` point gun:
-
-- Default origin: `(0, member inject_r, -(d + inject_offset))` — i.e. off-axis, *below* the -z coil.
-  `--gun-position X Y Z` overrides it (and then requires member `inject_r == 0` so sweep values
-  are not silently ignored).
-- `--gun-direction DX DY DZ` (default `0 0 1`) sets the aim; the member pitch band is uniform in
-  cos around the *aim direction* in gun mode (around +z in other modes). `--inject-sigma` is the
-  RMS Gaussian transverse beam-plane width (0 = pencil beam).
-- The origin must be outside the between-coil region (`|z| > d`) and inside the loss boundaries;
-  sampled beam positions outside the domain are a `ValueError` (increase `--axial-margin` or
-  reduce `--inject-sigma`) — no clipping.
-- Summaries record `gun_position_m`, `gun_direction_unit`, `gun_B_T`,
-  `gun_axis_B_angle_deg` (local-B crossing angle; null where B=0), and p05/p50/p95 of the
-  per-particle velocity–B angle. This is launch geometry, not capture proof.
-
-Example matching the historical off-axis gun (origin below the first coil, aimed slightly
-inward toward the axis). These are starting guesses, not an optimum:
-
-```bash
-python3 src/cusp_sim.py --inject-mode gun \
-  --ring-radius 0.05 --ring-half-sep 0.025 --current 23000 \
-  --inject-offset 0.03 --members 100,0.0006,0,1 \
-  --gun-direction 0 -0.007142857 1 --inject-sigma 0.0001 --axial-margin 0.04 \
-  --particles 20000 --sim-time 100e-6 --out out/gun_test
-```
-
-## Runs so far (all 1 node x 8 B200, priority 1 on the broker)
-
-| run | geometry | result |
-|---|---|---|
-| `run1_43mT` | a=5 cm, coils z=±4 cm, 4 kA-turn (43 mT), on-axis beam ±20° | 0% confined; losses split point/ring cusps, e-fold ~0.2 µs at 10-30 eV |
-| `run2_1T_onaxis` | a=25 cm, coils z=±20 cm, 400 kA-turn (0.86 T at the point cusp), on-axis beam | 0% confined, 99% out the ring cusp in one transit |
-| `run3_1T_sweep` | a=25 cm, coils z=±10 cm, 300 kA-turn (0.44 T point / 1.05 T ring cusp), beam, r_inj x pitch sweep | 0% confined; pitch 20-60° reflects at the ring cusp, then exits the point cusp it came in |
-| `run4_1T_inside` | same field, isotropic electrons born in a 5 cm ball at the null, 10 eV - 30 keV | see `results/run4_1T_inside/report.png` |
-| `run5_23kA_spacecharge` | 2015 geometry: a=10 cm, coils z=±5 cm, 23 kA-turn (99 mT axis), beam at r=14 mm, 100 eV-1 keV, central charge -1.4e-9..+1e-9 C (−940..+670 V); Boris + adaptive | 0% confined in every member: the beam rides its field line from the point cusp straight out the ring cusp in one transit (8 ns at 1 keV), regardless of the central charge - it never comes within a few cm of the sphere. See `traj_*.png`. |
-| `run7_corrected_well` | inside-born controls, 16 members, 200k each, 100 µs; prescribed charge well -3e-9..+1e-8 C at 30-1000 eV | see corrected interpretation in `docs/reassessment.md`; summaries + report in `results/run7_corrected_well/` |
-
-## What the runs say
-
-The tested beam configurations lost their particles; this does not prove a general impossibility of capture
-in static fields. The production target is an external electron gun crossing field lines, with its origin
-and aim explicitly specified. Inside-born populations are numerical controls. Strong positive-charge cases
-can be energetically bound even without B and are not evidence of a self-generated negative potential well for positive ions. See
-[the reassessment](docs/reassessment.md) for the corrected interpretation, measured performance, and staged
-simulation plan.
-
-## Convergence (CPU, inside-born 100 eV, 400 electrons, seed 7, 0.5 µs)
-
-| integrator | adaptive | dt / gyroperiod | confined | steps/particle |
-|---|---|---|---|---|
-| Boris | yes | 1/20 | 54.5% | 11k |
-| Boris | yes | 1/40 | 56.3% | 22k |
-| Boris | yes | 1/80 | 57.8% | 44k |
-| RK4 | yes | 1/40 | 55.8% | 22k |
-| Boris | fixed | 1/40 (of B_ref) | 55.3% | 174k |
-
-This small ensemble is a preliminary comparison, not a completed convergence study. Separate timestep/grid
-bias from sampling uncertainty. The original 50–100 Gparticle-steps/s values credited steps skipped after
-escape and are invalid as executed-throughput measurements. Run 7 measures actual particle steps and reports
-4.56–32.04 Gparticle-steps/s per B200 across different workloads; this is not a controlled kernel comparison.
-
-## Still to do
-
-- Loss-cone diagnostic: pitch angle at each null crossing (min |B| per particle is recorded now).
-- Physical convergence studies for transient PIC, explicit electrode geometry, and ion loading.
-
-## Space-charge reference
-
-`src/steady_space_charge.py` adds a stationary trajectory–Poisson iteration with
-current-weighted charge deposition, a grounded 3D box, thermal external injection,
-and electric-field feedback. It uses FP64 Torch on CPU or GPU. See
-[the numerical model and validation](docs/space-charge-rev0.md) before interpreting
-its outputs: stationary iteration does not establish transient stability.
-
-```bash
-OMP_NUM_THREADS=1 python3 src/steady_space_charge.py \
-  --out results/space-charge-reference --particles 256 --nodes 17 --iterations 3
-python3 -m unittest discover -s tests -p test_electrostatic.py -v
-ruff check src/electrostatic.py src/steady_space_charge.py
-mypy --follow-imports=silent src/electrostatic.py src/steady_space_charge.py
-```
-
-## Time-dependent PIC reference
-
-`src/run_transient_pic.py` continuously injects electrons, retains live particles,
-and solves instantaneous electrostatic feedback at each physical timestep.
-See [the transient PIC guide](docs/transient-pic.md) for the bounded CPU example,
-output format, numerical checks and remaining physical convergence work.

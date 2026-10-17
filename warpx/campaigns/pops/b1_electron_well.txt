@@ -1,0 +1,8 @@
+e05A inputs_3d_electron_well my_constants.current=5 my_constants.tmax=4e-9
+e10A inputs_3d_electron_well my_constants.current=10 my_constants.tmax=4e-9
+e20A inputs_3d_electron_well my_constants.current=20 my_constants.tmax=4e-9
+e40A inputs_3d_electron_well my_constants.current=40 my_constants.tmax=4e-9
+e20A_s10 inputs_3d_electron_well my_constants.current=20 my_constants.spread=0.1 my_constants.tmax=4e-9
+e20A_s30 inputs_3d_electron_well my_constants.current=20 my_constants.spread=0.3 my_constants.tmax=4e-9
+e20A_n96 inputs_3d_electron_well my_constants.current=20 my_constants.ncell=96 my_constants.tmax=4e-9
+a_check inputs_3d_ideal_well my_constants.fill=1e-2 my_constants.comp=10 my_constants.periods=2 my_constants.steps_per_period=500

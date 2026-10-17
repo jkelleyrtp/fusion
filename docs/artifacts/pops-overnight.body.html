@@ -1,0 +1,250 @@
+<div id="root"></div>
+<script type="text/jsx">
+// All numbers are from WarpX runs recorded in docs/pops-results.md (deuterium, 1 cm sphere, 10 keV electrons from the wall).
+const wells = [
+  { key: "one", label: "One population: 40 A, spread 0.3", c: [15.16, 5.66, 3.58, 2.75, null] },
+  { key: "twoA", label: "Two: 50 A at 0.7 + 8 A at 0.25", c: [30.5, 22.16, 15.92, 12.02, 9.54] },
+  { key: "twoB", label: "Two: 60 A at 0.8 + 8 A at 0.25", c: [30.71, 24.89, 18.72, 14.12, 11.04] },
+];
+const fills = [
+  { ions: "1 per 10,000", f: 1e-4, none: 33.03 },
+  { ions: "1 per 1,000", f: 1e-3, none: 30.71 },
+  { ions: "3 per 1,000", f: 3e-3, none: 24.29 },
+  { ions: "1 per 100", f: 1e-2, none: 10.43, beam: 18.74, beamSetting: "0.5 A at 6.8 keV", centre: 20.69 },
+  { ions: "3 per 100", f: 3e-2, none: 4.07, beam: 12.88, beamSetting: "1 A at 6.7 keV", centre: 10.8 },
+  { ions: "10 per 100", f: 1e-1, none: 1.69, beam: 7.53, beamSetting: "3 A at 6.8 keV", centre: 2.94 },
+  { ions: "30 per 100", f: 3e-1, none: null, beam: 4.86, beamSetting: "8 A at 6.25 keV" },
+];
+const energyScan = [
+  [6.1, 7.7], [6.2, 8.61], [6.3, 9.65], [6.4, 10.79], [6.6, 12.74], [6.7, 12.88], [6.8, 11.99],
+  [7.0, 5.84], [7.3, 4.84], [7.7, 4.43], [8.2, 4.69],
+].map(([kev, c]) => ({ kev, c, none: 4.07 }));
+const repeats = [
+  { key: "none", label: "No extra electrons", c: [4.07, 4.18, 4.16, null] },
+  { key: "beam1", label: "Wall beam, 1 A at 6.6 keV", c: [12.74, 7.73, 6.5, null] },
+  { key: "beam2", label: "Wall beam, 2 A at 7.0 keV", c: [9.26, 7.95, 7.81, 7.68] },
+  { key: "centre", label: "Released at the centre (numerical test)", c: [10.8, 3.36, 1.73, null] },
+];
+const drive = [
+  { key: "h10", label: "10% modulation", kept: 1.0, s: [1.03, 1.08, 1.15, 1.23, 1.31, 1.39, 1.48, 1.58, 1.68, 1.79] },
+  { key: "h20", label: "20%", kept: 0.985, s: [1.07, 1.2, 1.37, 1.56, 1.77, 2.02, 2.3, 2.61, 2.95, 3.31] },
+  { key: "h40", label: "40%", kept: 0.67, s: [1.14, 1.47, 1.92, 2.5, 3.19, 3.92, 4.63, 5.22, 5.69, 6.01] },
+  { key: "h70", label: "70%", kept: 0.32, s: [1.27, 1.98, 3.02, 4.05, 4.63, 4.91, 4.89, 4.69, 4.4, 4.13] },
+];
+const checks = [
+  { what: "Shaped well, 1 ion per 1,000 electrons, first two collapses", coarse: "30.7, 24.9", fine: "28.8, 21.6 (128³)" },
+  { what: "Released at the centre, 1 ion per 100, first collapse", coarse: "20.7", fine: "19.6 (96³), 19.2 (128³)" },
+  { what: "Released at the centre, 3 ions per 100, first collapse", coarse: "10.8", fine: "10.2 (96³), 10.0 (128³)" },
+  { what: "Wall beam 1 A at 6.6 keV, 3 ions per 100, first collapse", coarse: "12.7", fine: "11.6 (96³), 11.1 (128³)" },
+  { what: "Wall beam 0.5 A at 6.8 keV, 1 ion per 100, first collapse", coarse: "18.7", fine: "18.2 (96³)" },
+  { what: "Wall beam 3 A at 6.8 keV, 10 ions per 100, first collapse", coarse: "7.5", fine: "7.6 (96³)" },
+  { what: "Wall beam 6 A at 5.0 keV, 30 ions per 100, first collapse", coarse: "3.0", fine: "2.75 (96³)" },
+  { what: "Wall beam 8 A at 6.25 keV, 30 ions per 100, first collapse", coarse: "4.9", fine: "5.4 (96³)" },
+];
+
+const pivot = (list, field, xName) =>
+  list[0][field].map((_, i) => Object.fromEntries([[xName, i + 1], ...list.map((s) => [s.key, s[field][i]])]));
+const config = (list) => Object.fromEntries(list.map((s, i) => [s.key, { label: s.label, color: chartColors[i] }]));
+const best = Math.max(...fills.filter((r) => r.beam).map((r) => r.f * r.beam));
+const bestNone = Math.max(...fills.map((r) => r.f * (r.none || 0)));
+const bestRow = fills.find((r) => r.beam && r.f * r.beam === best);
+const product = (f, c) => (c ? (f * c).toFixed(2) : "–");
+
+function Lines({ list, field, xName, height }) {
+  return (
+    <ChartContainer config={config(list)} style={{ height: height || 260, width: "100%" }}>
+      <LineChart data={pivot(list, field, xName)}>
+        <ChartGrid />
+        <ChartXAxis dataKey={xName} />
+        <ChartYAxis />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartLegend content={<ChartLegendContent />} />
+        {list.map((s) => <ChartLine key={s.key} dataKey={s.key} type="linear" dot />)}
+      </LineChart>
+    </ChartContainer>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <Text size={16} className="font-semibold text-text-primary">{title}</Text>
+      {children}
+    </div>
+  );
+}
+const P = ({ children }) => <Text size={14} className="text-text-secondary">{children}</Text>;
+
+function Report() {
+  const fillSeries = {
+    none: { label: "No extra electrons", color: chartColors[0] },
+    beam: { label: "Low-energy beam from the wall", color: chartColors[1] },
+    centre: { label: "Released at the centre (numerical test)", color: chartColors[2] },
+  };
+  const scanSeries = { c: { label: "With 1 A beam", color: chartColors[1] }, none: { label: "No beam", color: chartColors[0] } };
+  return (
+    <PageLayout
+      title="POPS in WarpX: overnight results"
+      subtitle="How far an oscillating deuterium cloud compresses inside an electron-made well, and what limits it."
+    >
+      <P>
+        Shaping the electron well took compression from about 2× to 30×. The ions' own charge is now the limit, and a
+        low-energy electron beam from the wall, tuned to the well depth, lifts that limit two to seven times. Ion fill ×
+        compression is still about {Math.round(1000 / best / 100) * 100}× short of the roughly 1000 that useful power needs.
+      </P>
+      <StatsRow>
+        <StatCard label="Best compression, few ions">
+          <StatCardValue>33×</StatCardValue>
+          <StatCardCaption>Ion temperature allows 34.6×</StatCardCaption>
+        </StatCard>
+        <StatCard label="Fill × compression, no extra electrons">
+          <StatCardValue>{bestNone.toFixed(2)}</StatCardValue>
+          <StatCardCaption>Best of six ion fills</StatCardCaption>
+        </StatCard>
+        <StatCard label="Fill × compression, with wall beam">
+          <StatCardValue>{best.toFixed(2)}</StatCardValue>
+          <StatCardCaption>{bestRow.ions} electrons, first collapse</StatCardCaption>
+        </StatCard>
+        <StatCard label="Needed for useful power">
+          <StatCardValue>~1000</StatCardValue>
+          <StatCardCaption>My rough model, not a published figure</StatCardCaption>
+        </StatCard>
+      </StatsRow>
+
+      <Section title="1. Two electron populations make a well the ions stay in step in">
+        <P>
+          Compression at each collapse, 1 ion per 1,000 electrons. "Spread" is the electrons' sideways speed over their
+          inward speed at the wall. Electrons aimed straight at the centre give only 1.5–2.5×.
+        </P>
+        <Lines list={wells} field="c" xName="collapse" />
+      </Section>
+
+      <Section title="2. More ions: their own charge stops the collapse, and extra slow electrons partly fix it">
+        <P>
+          First-collapse compression in the best well. The wall beam is a third electron population injected like the
+          others. "Released at the centre" puts slow electrons there directly, which no gun can do; it shows what
+          cancelling the ion charge is worth. The last table column lists fill × compression in the same order as the
+          three columns before it. Ion counts are quoted against the 1.39×10¹¹ electrons of an ideal uniform 10 kV
+          cloud. The shaped well holds about 8.3×10¹⁰, so "30 per 100" is 49 ions per 100 of the well's own electrons.
+        </P>
+        <ChartContainer config={fillSeries} style={{ height: 280, width: "100%" }}>
+          <BarChart data={fills}>
+            <ChartGrid />
+            <ChartXAxis dataKey="ions" />
+            <ChartYAxis />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartLegend content={<ChartLegendContent />} />
+            <ChartBar dataKey="none" />
+            <ChartBar dataKey="beam" />
+            <ChartBar dataKey="centre" />
+          </BarChart>
+        </ChartContainer>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Ions per electron</TableHead>
+              <TableHead>No extra electrons</TableHead>
+              <TableHead>Wall beam (best setting found)</TableHead>
+              <TableHead>Released at the centre</TableHead>
+              <TableHead>Fill × compression</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {fills.map((r) => (
+              <TableRow key={r.ions}>
+                <TableCell>{r.ions}</TableCell>
+                <TableCell>{r.none ? `${r.none}×` : "no collapse"}</TableCell>
+                <TableCell>{r.beam ? `${r.beam}× (${r.beamSetting})` : "not run"}</TableCell>
+                <TableCell>{r.centre ? `${r.centre}×` : "not run"}</TableCell>
+                <TableCell>
+                  {[product(r.f, r.none), product(r.f, r.beam), product(r.f, r.centre)].join(" / ")}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Section>
+
+      <Section title="3. The wall beam only works in a narrow energy window">
+        <P>
+          First-collapse compression against beam energy, 1 A, 3 ions per 100 electrons. The well is about 6.6 kV
+          deep without the beam. At 4–5 keV the beam never reaches the centre; above 6.8 keV it passes straight
+          through once the ions arrive.
+        </P>
+        <ChartContainer config={scanSeries} style={{ height: 260, width: "100%" }}>
+          <LineChart data={energyScan}>
+            <ChartGrid />
+            <ChartXAxis dataKey="kev" type="number" domain={[6, 8.4]} />
+            <ChartYAxis />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartLegend content={<ChartLegendContent />} />
+            <ChartLine dataKey="c" type="linear" dot />
+            <ChartLine dataKey="none" type="linear" />
+          </LineChart>
+        </ChartContainer>
+        <P>
+          The best energy and current move with ion fill: 2 A needs about 7.0–7.4 keV at this fill, 1 ion per 100
+          electrons does best at 0.5 A, and 10 per 100 peaks at 3 A and 6.8 keV. A beam with a 2% or 5% spread in speed does worse (9.7× and 7.2× against 12.7×).
+        </P>
+      </Section>
+
+      <Section title="4. The wall beam keeps working on later collapses; electrons released at the centre do not">
+        <P>Compression at each collapse, 3 ions per 100 electrons.</P>
+        <Lines list={repeats} field="c" xName="collapse" />
+      </Section>
+
+      <Section title="5. Radio-frequency drive pumps the cloud until ions hit the wall">
+        <P>
+          Largest over smallest cloud radius in each drive period, starting from a warm cloud in balance with the well,
+          1 ion per 1,000 electrons. The electron current is modulated at the cloud's resonance. Ions still in the
+          sphere after ten periods: {drive.map((d) => `${Math.round(d.kept * 100)}% at ${d.label.replace(" modulation", "")}`).join(", ")}.
+          No run settles into a steady oscillation.
+        </P>
+        <Lines list={drive} field="s" xName="period" />
+      </Section>
+
+      <Section title="Checks on finer meshes">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Result</TableHead>
+              <TableHead>64³ mesh</TableHead>
+              <TableHead>Finer mesh</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {checks.map((r) => (
+              <TableRow key={r.what}>
+                <TableCell>{r.what}</TableCell>
+                <TableCell>{r.coarse}</TableCell>
+                <TableCell>{r.fine}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Section>
+
+      <Section title="What is not established">
+        <P>
+          The wall-beam settings come from coarse scans at four ion fills, so better ones probably exist. All four
+          fills have a finer-mesh check of the compression (table above). The 64³ mesh does not resolve the centre of the collapsed cloud at 10 per 100 and below: inside 0.5 mm it is missing 8–10 kV of the ions' own repulsion, so the density of the core, and how much of the ion charge is cancelled there, are not established at those fills. A scan from 64³ to 256³ is running.
+          At 10 and 30 per 100 the ions cancel much of the well, and the beam works by adding enough slow electrons
+          to hold the centre at its own energy. Raising the 10 keV currents by 1.5–2× with no slow beam does not do
+          the same: 2.1× at 10 per 100 and no collapse at 30 per 100. With the beam on, the cloud at 30 per 100 is
+          about 90–100% neutralised at the collapse, and the rest of the ion charge is still enough to stop it.
+          The trapped slow electrons reach 650–740 eV at the collapse. What sets how much charge they leave
+          uncancelled is not established: a larger starting cloud compresses further (11.8× at 10 per 100), which
+          a limit set by electron heating alone would not allow. The beam also has a sharp current threshold:
+          2.5 A does nothing at 10 per 100 where 3 A works. A second slow beam switched on during the collapse adds nothing: its electrons replace the first beam's one for one. Over eight collapses the wall-beam runs fade from 9.3× to 5.3× at 3 per 100 and from 18.7× to 3.7× at 1 per 100. Nothing here
+          shows sustained compression, net power, or anything about cusp plugging.
+        </P>
+      </Section>
+      <Footnote>
+        WarpX 26.10, electrostatic, 3D, real electron and deuteron masses, 64³ mesh unless stated, one B200 GPU per
+        run. Compression is the starting rms cloud radius over the smallest. Full tables: docs/pops-results.md.
+      </Footnote>
+    </PageLayout>
+  );
+}
+render(<Report />);
+</script>

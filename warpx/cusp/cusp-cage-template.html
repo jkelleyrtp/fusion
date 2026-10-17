@@ -1,0 +1,227 @@
+<div id="root"></div>
+<script type="text/jsx">
+const countRows = __COUNT__;
+const scanRows = __SCAN__;
+const loss = __LOSS__;
+const offRows = __OFF__;
+const facts = __FACTS__;
+const images = __IMAGES__;
+const maps = __MAPS__;
+
+const countSeries = {
+  emitted: { label: "Total emitted (0.1 A)", color: "rgb(var(--text-tertiary))" },
+  b0: { label: "Coils off", color: chartColors[0] },
+  b4: { label: "4 kA-turns", color: chartColors[1] },
+  b16: { label: "16 kA-turns", color: chartColors[2] },
+};
+const scanSeries = {
+  k0: { label: "Coils off", color: chartColors[0] },
+  k8: { label: "8 kA-turns", color: chartColors[1] },
+  k16: { label: "16 kA-turns", color: chartColors[2] },
+  k32: { label: "32 kA-turns", color: chartColors[3] },
+};
+const offSeries = {
+  off0: { label: "Coils off", color: chartColors[0] },
+  off16: { label: "16 kA-turns", color: chartColors[2] },
+  off64: { label: "64 kA-turns", color: chartColors[3] },
+};
+const amps = (x) => (Math.abs(x) < 0.005 ? "0.00" : x.toFixed(2));
+const kv = (x) => (x / 1000).toFixed(1);
+const pct = (x) => `${Math.round(100 * x)}%`;
+const change = (x) => (Math.abs(x) < 0.0005 ? "under 0.1%" : `${x >= 0 ? "+" : "−"}${Math.abs(100 * x) < 0.95 ? Math.abs(100 * x).toFixed(1) : Math.round(Math.abs(100 * x))}%`);
+const volts = (x) => `${x < 0 ? "−" : ""}${Math.abs(Math.round(x))} V`;
+const checkRows = [
+  ["Mesh 192³ against 128³, 500 eV emitters", facts.checks.mesh500],
+  ["Mesh 192³ against 128³, 50 eV emitters", facts.checks.mesh50],
+  ["Time step halved, 50 eV emitters", facts.checks.step],
+  ["Second random seed, 500 eV emitters", facts.checks.seed500],
+  ["Second random seed, 50 eV emitters", facts.checks.seed50],
+];
+
+function Report() {
+  const [map, setMap] = useState(maps[2].run);
+  const shown = maps.find((m) => m.run === map);
+  const off16 = facts.off.off16;
+  return (
+    <PageLayout
+      title="Six-coil cusp cage in WarpX"
+      subtitle="Electrons from six wall emitters, their own charge solved every step, coil field fixed."
+    >
+      <StatsRow columns={3}>
+        <StatCard label="Deepest voltage dip at the centre">
+          <StatCardValue>{kv(facts.best.well)} kV</StatCardValue>
+          <StatCardCaption>
+            of {kv(facts.best.available)} kV possible, at {facts.best.coil / 1000} kA-turns. Coils off: {kv(facts.well_off)} kV.
+          </StatCardCaption>
+        </StatCard>
+        <StatCard label="Current landing on the rings">
+          <StatCardValue>{amps(facts.ring_on)} A</StatCardValue>
+          <StatCardCaption>
+            with coils on, against {amps(facts.ring_off)} A with them off.
+          </StatCardCaption>
+        </StatCard>
+        <StatCard label="Electrons left after switch-off">
+          <StatCardValue>{pct(off16.left)}</StatCardValue>
+          <StatCardCaption>
+            {Math.round(off16.after_ns)} ns after the emitters stop, at 16 kA-turns. Coils off: {pct(facts.off.off0.left_2)} after 2 ns.
+          </StatCardCaption>
+        </StatCard>
+      </StatsRow>
+
+      <Text size={14} weight="medium">A slice through the device</Text>
+      <SegmentedControl value={map} onValueChange={setMap}>
+        {maps.map((m) => (
+          <SegmentedControlItem key={m.run} value={m.run}>{m.label}</SegmentedControlItem>
+        ))}
+      </SegmentedControl>
+      <img src={images[shown.run]} alt={`Electron density and voltage, ${shown.label}`} className="w-full rounded-md" />
+      <Text size={12} className="text-text-secondary">
+        Mid-plane at 30 ns. Grey discs are the coil rings cut by the plane (+10 kV), red squares are four of the six
+        electron emitters, the circle is the outer wall. The first four maps use the 3 A setting with 500 eV emitters;
+        "weak emitters" is the 1 A setting at 50 eV. Each map is averaged over the device's symmetries, so it cannot
+        show an asymmetry.
+      </Text>
+
+      <Text size={14} weight="medium">Voltage dip at the centre against coil current</Text>
+      <ChartContainer config={scanSeries} style={{ height: 280, width: "100%" }}>
+        <LineChart data={scanRows}>
+          <ChartGrid />
+          <ChartXAxis dataKey="t" type="number" domain={[0, 30]} tickCount={7} unit=" ns" />
+          <ChartYAxis unit=" V" />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <ChartLegend content={<ChartLegendContent />} />
+          <ChartLine dataKey="k0" dot={false} />
+          <ChartLine dataKey="k8" dot={false} />
+          <ChartLine dataKey="k16" dot={false} />
+          <ChartLine dataKey="k32" dot={false} />
+        </LineChart>
+      </ChartContainer>
+      <Text size={12} className="text-text-secondary">
+        How far the electrons' charge pulls the centre voltage below its empty-device value. 3 A setting, 500 eV
+        emitters of 3 mm radius, wall at −1.5 kV. The dip cannot pass {kv(facts.best.available)} kV: beyond that the
+        centre is more negative than the emitted electrons can climb. At 32 kA-turns it levels off just under that
+        limit, with the centre at {volts(facts.best.centre)}. The 64 kA-turn run hit its time limit just before
+        30 ns and is being repeated.
+      </Text>
+
+      <Text size={14} weight="medium">Where the electrons go</Text>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Coils</TableHead>
+            <TableHead>Emitters</TableHead>
+            <TableHead>Wall (kV)</TableHead>
+            <TableHead>In (A)</TableHead>
+            <TableHead>Returned (A)</TableHead>
+            <TableHead>Wall (A)</TableHead>
+            <TableHead>Rings (A)</TableHead>
+            <TableHead>Filling (A)</TableHead>
+            <TableHead>Dip (kV)</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {loss.map((r) => (
+            <TableRow key={r.run}>
+              <TableCell>{r.coil_at / 1000}</TableCell>
+              <TableCell>{r.current_A} A, {r.emitter_eV} eV, {(r.emitter_radius_m * 1000).toFixed(1)} mm{r.end_ns > 31 ? ", 60 ns" : ""}</TableCell>
+              <TableCell>{(r.wall_V / 1000).toFixed(1).replace("-", "−")}</TableCell>
+              <TableCell>{amps(r.emitter_in_A)}</TableCell>
+              <TableCell>{amps(r.emitter_out_A)}</TableCell>
+              <TableCell>{amps(Math.max(0, r.wall_out_A - r.wall_in_A))}</TableCell>
+              <TableCell>{amps(r.ring_direct_A ?? r.ring_A)}{r.ring_direct_A === undefined ? " ‡" : ""}</TableCell>
+              <TableCell>{amps(r.filling_A)}</TableCell>
+              <TableCell>{(r.well_V / 1000).toFixed(1)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <Text size={12} className="text-text-secondary">
+        Currents averaged over the last fifth of each run (30 ns unless marked). "Coils" is in kA-turns. "In" and
+        "returned" (electrons going back into the emitters) are counted through a thin shell just inside the wall
+        in front of the emitters, "wall" through the rest of that shell, and "rings" through a shell around the ring
+        surfaces. "Filling" is the rate the electron count is still rising. "Dip" is the centre voltage dip; the most it could be is 8.6 kV in the 50 eV rows and 8.8 to 8.9 kV in
+        the 500 eV rows. These count electrons passing through
+        the shells, not hits recorded on the metal. Rows marked ‡ predate the ring shell; their ring current is what
+        the other columns leave over. "Emitters" gives the current setting, emission energy and patch radius. A
+        setting higher than "in" means the emitters are choked by the charge in front of them. Every run is still
+        gaining electrons at 30 ns, so none of these is a settled state.
+      </Text>
+
+      <Text size={14} weight="medium">Emitters switched off</Text>
+      <ChartContainer config={offSeries} style={{ height: 280, width: "100%" }}>
+        <LineChart data={offRows}>
+          <ChartGrid />
+          <ChartXAxis dataKey="t" type="number" domain={[-5, 25]} tickCount={7} unit=" ns" />
+          <ChartYAxis unit="%" domain={[0, 110]} ticks={[0, 25, 50, 75, 100]} />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <ChartLegend content={<ChartLegendContent />} />
+          <ChartLine dataKey="off0" dot={false} />
+          <ChartLine dataKey="off16" dot={false} />
+          <ChartLine dataKey="off64" dot={false} />
+        </LineChart>
+      </ChartContainer>
+      <Text size={12} className="text-text-secondary">
+        Electrons in the device as a share of the number at switch-off, against time since then (1 A setting, 50 eV
+        emitters, wall at −0.3 kV). With the coils off the device empties in a few nanoseconds. At 16 kA-turns{" "}
+        {pct(1 - off16.left_10)} leaves in the first 10 ns and the loss then slows: over the last 5 ns the count is
+        falling at a rate that would take about {Math.round(off16.late_tau_ns / 10) * 10} ns to empty the device.
+        That time was still lengthening when the run ended, so it is a lower bound and not a confinement time.
+      </Text>
+
+      <Text size={14} weight="medium">Electrons in the device, 0.1 A emitted</Text>
+      <ChartContainer config={countSeries} style={{ height: 260, width: "100%" }}>
+        <LineChart data={countRows}>
+          <ChartGrid />
+          <ChartXAxis dataKey="t" type="number" domain={[0, 30]} tickCount={7} unit=" ns" />
+          <ChartYAxis unit=" bn" />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <ChartLegend content={<ChartLegendContent />} />
+          <ChartLine dataKey="emitted" dot={false} />
+          <ChartLine dataKey="b0" dot={false} />
+          <ChartLine dataKey="b4" dot={false} />
+          <ChartLine dataKey="b16" dot={false} />
+        </LineChart>
+      </ChartContainer>
+      <Text size={12} className="text-text-secondary">
+        Billions of electrons against time in the first, low-current runs (50 eV emitters). A run that follows the
+        "total emitted" line has lost almost nothing.
+      </Text>
+
+      <Text size={14} weight="medium">Checks</Text>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Change (16 kA-turns)</TableHead>
+            <TableHead>Compared at (ns)</TableHead>
+            <TableHead>Electrons held</TableHead>
+            <TableHead>Centre dip</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {checkRows.map(([label, c]) => (
+            <TableRow key={label}>
+              <TableCell>{label}</TableCell>
+              <TableCell>{c.t}</TableCell>
+              <TableCell>{change(c.n)}</TableCell>
+              <TableCell>{change(c.dip)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <Text size={12} className="text-text-secondary">
+        The mesh is the weak point: the finer mesh changes how much current the emitters take in, by more with the
+        50 eV emitters, which choke on a scale the coarser mesh does not resolve.
+      </Text>
+
+      <Footnote>
+        WarpX 26.10, 3D electrostatic, 128³ mesh unless stated. The coil field is a fixed formula applied to the
+        particles: the plasma cannot push it back, so these runs say nothing about cusp plugging. Electrons only: no
+        ions, no gas, no collisions. The emitters are idealised patches on the wall facing each coil. Geometry: coil
+        radius 1 cm, coil centres 1.3 cm from the device centre, wall radius 2.4 cm, rings at +10 kV, emitters at
+        0 V. 16 kA-turns gives 0.38 T at the coil centres. Only runs that finished are shown. Data as of __STAMP__.
+      </Footnote>
+    </PageLayout>
+  );
+}
+render(<Report />);
+</script>

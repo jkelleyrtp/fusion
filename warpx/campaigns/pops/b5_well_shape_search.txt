@@ -1,0 +1,32 @@
+s30_20A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=20 my_constants.spread=0.3
+s35_20A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=20 my_constants.spread=0.35
+s40_20A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=20 my_constants.spread=0.4
+s45_20A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=20 my_constants.spread=0.45
+s50_20A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=20 my_constants.spread=0.5
+s60_20A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=20 my_constants.spread=0.6
+s30_40A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.3
+s35_40A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.35
+s40_40A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.4
+s45_40A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.45
+s50_40A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.5
+s60_40A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.6
+s30_80A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=80 my_constants.spread=0.3
+s35_80A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=80 my_constants.spread=0.35
+s40_80A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=80 my_constants.spread=0.4
+s45_80A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=80 my_constants.spread=0.45
+s50_80A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=80 my_constants.spread=0.5
+s60_80A inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=80 my_constants.spread=0.6
+m40A50_5A10 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.5 my_constants.core_current=5 my_constants.core_spread=0.1
+m40A50_10A20 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.5 my_constants.core_current=10 my_constants.core_spread=0.2
+m40A50_10A30 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.5 my_constants.core_current=10 my_constants.core_spread=0.3
+m40A40_10A80 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.4 my_constants.core_current=10 my_constants.core_spread=0.8
+m40A30_20A80 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.3 my_constants.core_current=20 my_constants.core_spread=0.8
+m40A30_10A60 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.3 my_constants.core_current=10 my_constants.core_spread=0.6
+m60A50_10A20 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=60 my_constants.spread=0.5 my_constants.core_current=10 my_constants.core_spread=0.2
+m80A50_20A20 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=80 my_constants.spread=0.5 my_constants.core_current=20 my_constants.core_spread=0.2
+m80A60_20A30 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=80 my_constants.spread=0.6 my_constants.core_current=20 my_constants.core_spread=0.3
+m80A60_10A10 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=80 my_constants.spread=0.6 my_constants.core_current=10 my_constants.core_spread=0.1
+m40A60_10A30 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.6 my_constants.core_current=10 my_constants.core_spread=0.3
+m40A60_10A20 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.6 my_constants.core_current=10 my_constants.core_spread=0.2
+m20A40_20A50 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=20 my_constants.spread=0.4 my_constants.core_current=20 my_constants.core_spread=0.5
+m40A45_3A2 inputs_3d_electron_well my_constants.fill=0 my_constants.tmax=4e-9 my_constants.ppc_e=1 my_constants.probe_every=250 my_constants.current=40 my_constants.spread=0.45 my_constants.core_current=3 my_constants.core_spread=0.02

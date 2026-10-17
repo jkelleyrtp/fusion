@@ -1,0 +1,250 @@
+# POPS stage B: electrons injected inward from a grounded spherical wall form the well; optional ions.
+# Override any my_constants value on the command line.
+
+my_constants.a = 0.01                 # sphere radius (m)
+my_constants.e0 = 1.0e4               # electron injection energy (eV)
+my_constants.current = 20.            # injected electron current over the whole wall (A)
+my_constants.spread = 0.02            # tangential momentum spread at the wall, in units of the normal momentum
+my_constants.core_current = 0.        # peak current of a second, low-spread electron beam aimed at the centre (A)
+my_constants.core_spread = 0.02
+my_constants.core_t0 = 0.             # time of its first pulse (s)
+my_constants.core_period = 1.         # pulse spacing (s)
+my_constants.core_sigma = 0.          # Gaussian pulse width (s); 0 keeps the beam steady
+my_constants.cold_current = 0.        # steady current of a third beam whose electrons are slow at the centre (A)
+my_constants.cold_e0 = 7.0e3          # its injection energy (eV): just above the well depth, so it only reaches a lifted centre
+my_constants.cold_spread = 0.005
+my_constants.cold_espread = 0.002     # its spread in speed along the beam
+my_constants.late_current = 0.        # current of a second slow wall beam that is on only in a time window (A)
+my_constants.late_e0 = 7.0e3          # its injection energy (eV)
+my_constants.late_t0 = 0.             # start of its first window (s)
+my_constants.late_len = 1.            # window length (s)
+my_constants.late_period = 1.         # window spacing (s)
+my_constants.seed_charge = 0.        # slow electrons released at the centre in each window, per ion; a numerical experiment, not a gun
+my_constants.seed_r = 1.0e-3          # radius of the disc at z=0 they leave from (m)
+my_constants.seed_kt = 5.             # their temperature (eV)
+my_constants.seed_t0 = 0.             # start of the first window (s)
+my_constants.seed_len = 1.            # window length (s)
+my_constants.seed_period = 1.         # window spacing (s)
+my_constants.ppc_seed = 1
+my_constants.rf_amp = 0.            # fractional modulation of all three electron currents (the radio-frequency drive)
+my_constants.rf_period = 1.         # its period (s)
+my_constants.mass_amu = 2.014
+my_constants.fill = 0.                # ions per electron of a uniform cloud with a well of depth e0
+my_constants.s0 = 0.3*a
+my_constants.ti = 1.                  # initial ion temperature (eV)
+my_constants.tmax = 3.0e-9            # run time (s)
+my_constants.dt = 1.0e-12
+my_constants.ncell = 64
+my_constants.ppc_e = 4
+my_constants.ppc_i = 8
+my_constants.probe_every = 1000
+my_constants.hist_every = 500
+
+my_constants.gam = 1 + e0*q_e/(m_e*clight**2)
+my_constants.un = sqrt(gam**2 - 1)
+my_constants.un_cold = sqrt((1 + cold_e0*q_e/(m_e*clight**2))**2 - 1)
+my_constants.un_late = sqrt((1 + late_e0*q_e/(m_e*clight**2))**2 - 1)
+my_constants.mi = mass_amu*m_u
+my_constants.nions = fill*8*pi*epsilon0*e0*a/q_e
+my_constants.n0 = nions/((2*pi)**1.5*s0**3)
+my_constants.uti = sqrt(ti*q_e/mi)/clight
+my_constants.u_seed = sqrt(seed_kt*q_e/m_e)/clight
+
+max_step = tmax/dt
+warpx.const_dt = dt
+amr.n_cell = ncell ncell ncell
+amr.max_level = 0
+amr.blocking_factor = 8
+amr.max_grid_size = 64
+geometry.dims = 3
+geometry.prob_lo = -1.125*a -1.125*a -1.125*a
+geometry.prob_hi =  1.125*a  1.125*a  1.125*a
+boundary.field_lo = pec pec pec
+boundary.field_hi = pec pec pec
+boundary.particle_lo = absorbing absorbing absorbing
+boundary.particle_hi = absorbing absorbing absorbing
+
+warpx.do_electrostatic = labframe
+warpx.eb_implicit_function = "(x**2+y**2+z**2-a**2)"
+warpx.eb_potential(x,y,z,t) = "0."
+warpx.self_fields_required_precision = 1.e-6
+algo.field_gathering = momentum-conserving
+algo.particle_shape = 1
+warpx.serialize_initial_conditions = 1
+
+particles.species_names = electrons ions core cold seed late
+
+electrons.charge = -q_e
+electrons.mass = m_e
+electrons.injection_style = NFluxPerCell
+electrons.inject_from_embedded_boundary = 1
+electrons.num_particles_per_cell = ppc_e
+electrons.flux_profile = parse_flux_function
+electrons.flux_function(x,y,z,t) = "current/(q_e*4*pi*a**2)*(1+rf_amp*sin(2*pi*t/rf_period))"
+electrons.momentum_distribution_type = gaussianflux
+electrons.ux_th = spread*un
+electrons.uy_th = spread*un
+electrons.uz_th = 0.002*un
+electrons.uz_m = un
+
+core.charge = -q_e
+core.mass = m_e
+core.injection_style = NFluxPerCell
+core.inject_from_embedded_boundary = 1
+core.num_particles_per_cell = ppc_e
+core.flux_profile = parse_flux_function
+# pulses centred on core_t0 + k*core_period, switched off below 1% of the peak so no particles are made between them
+core.flux_function(x,y,z,t) = "(1+rf_amp*sin(2*pi*t/rf_period))*core_current/(q_e*4*pi*a**2)*if(core_sigma>0, if(abs(fmod(t-core_t0+100.5*core_period, core_period)-0.5*core_period)<3*core_sigma, exp(-(fmod(t-core_t0+100.5*core_period, core_period)-0.5*core_period)**2/(2*core_sigma**2+1e-300)), 0), 1)"
+core.momentum_distribution_type = gaussianflux
+core.ux_th = core_spread*un
+core.uy_th = core_spread*un
+core.uz_th = 0.002*un
+core.uz_m = un
+
+cold.charge = -q_e
+cold.mass = m_e
+cold.injection_style = NFluxPerCell
+cold.inject_from_embedded_boundary = 1
+cold.num_particles_per_cell = ppc_e
+cold.flux_profile = parse_flux_function
+cold.flux_function(x,y,z,t) = "cold_current/(q_e*4*pi*a**2)*(1+rf_amp*sin(2*pi*t/rf_period))"
+cold.momentum_distribution_type = gaussianflux
+cold.ux_th = cold_spread*un_cold
+cold.uy_th = cold_spread*un_cold
+cold.uz_th = cold_espread*un_cold
+cold.uz_m = un_cold
+
+late.charge = -q_e
+late.mass = m_e
+late.injection_style = NFluxPerCell
+late.inject_from_embedded_boundary = 1
+late.num_particles_per_cell = ppc_e
+late.flux_profile = parse_flux_function
+late.flux_function(x,y,z,t) = "late_current/(q_e*4*pi*a**2)*(t>=late_t0)*(fmod(t-late_t0+late_period, late_period)<late_len)"
+late.momentum_distribution_type = gaussianflux
+late.ux_th = cold_spread*un_late
+late.uy_th = cold_spread*un_late
+late.uz_th = cold_espread*un_late
+late.uz_m = un_late
+
+seed.charge = -q_e
+seed.mass = m_e
+seed.injection_style = NFluxPerCell
+seed.surface_flux_pos = 0.
+seed.flux_normal_axis = z
+seed.flux_direction = +1
+seed.num_particles_per_cell = ppc_seed
+seed.flux_profile = parse_flux_function
+seed.flux_function(x,y,z,t) = "seed_charge*nions/(pi*seed_r**2*seed_len)*(x**2+y**2<seed_r**2)*(t>=seed_t0)*(fmod(t-seed_t0+seed_period, seed_period)<seed_len)"
+seed.momentum_distribution_type = gaussianflux
+seed.ux_th = u_seed
+seed.uy_th = u_seed
+seed.uz_th = u_seed
+seed.uz_m = 0.
+
+ions.charge = q_e
+ions.mass = mi
+ions.injection_style = NRandomPerCell
+ions.num_particles_per_cell = ppc_i
+ions.profile = parse_density_function
+ions.density_function(x,y,z) = "n0*exp(-(x**2+y**2+z**2)/(2*s0**2))*((x**2+y**2+z**2)<(0.95*a)**2)"
+ions.momentum_distribution_type = gaussian
+ions.ux_th = uti
+ions.uy_th = uti
+ions.uz_th = uti
+
+warpx.reduced_diags_names = ebeam ibeam cbeam sbeam number wall probe irad erad krad crad srad cke lrad lke
+ebeam.type = BeamRelevant
+ebeam.species = electrons
+ebeam.intervals = 20
+ibeam.type = BeamRelevant
+ibeam.species = ions
+ibeam.intervals = 20
+cbeam.type = BeamRelevant
+cbeam.species = cold
+cbeam.intervals = 20
+sbeam.type = BeamRelevant
+sbeam.species = seed
+sbeam.intervals = 20
+# particles per radial shell, to see how much electron charge sits inside the ion cloud
+irad.type = ParticleHistogram
+irad.species = ions
+irad.intervals = hist_every
+irad.histogram_function(t,x,y,z,ux,uy,uz) = "sqrt(x*x+y*y+z*z)"
+irad.bin_number = 40
+irad.bin_min = 0.
+irad.bin_max = a
+erad.type = ParticleHistogram
+erad.species = electrons
+erad.intervals = hist_every
+erad.histogram_function(t,x,y,z,ux,uy,uz) = "sqrt(x*x+y*y+z*z)"
+erad.bin_number = 40
+erad.bin_min = 0.
+erad.bin_max = a
+krad.type = ParticleHistogram
+krad.species = core
+krad.intervals = hist_every
+krad.histogram_function(t,x,y,z,ux,uy,uz) = "sqrt(x*x+y*y+z*z)"
+krad.bin_number = 40
+krad.bin_min = 0.
+krad.bin_max = a
+crad.type = ParticleHistogram
+crad.species = cold
+crad.intervals = hist_every
+crad.histogram_function(t,x,y,z,ux,uy,uz) = "sqrt(x*x+y*y+z*z)"
+crad.bin_number = 40
+crad.bin_min = 0.
+crad.bin_max = a
+srad.type = ParticleHistogram
+srad.species = seed
+srad.intervals = hist_every
+srad.histogram_function(t,x,y,z,ux,uy,uz) = "sqrt(x*x+y*y+z*z)"
+srad.bin_number = 40
+srad.bin_min = 0.
+srad.bin_max = a
+# kinetic energy (eV) of the slow-beam electrons inside 1 mm
+cke.type = ParticleHistogram
+cke.species = cold
+cke.intervals = hist_every
+cke.histogram_function(t,x,y,z,ux,uy,uz) = "0.5*m_e*clight**2/q_e*(ux*ux+uy*uy+uz*uz)"
+cke.filter_function(t,x,y,z,ux,uy,uz) = "x*x+y*y+z*z<1.0e-6"
+cke.bin_number = 80
+cke.bin_min = 0.
+cke.bin_max = 8000.
+
+lrad.type = ParticleHistogram
+lrad.species = late
+lrad.intervals = hist_every
+lrad.histogram_function(t,x,y,z,ux,uy,uz) = "sqrt(x*x+y*y+z*z)"
+lrad.bin_number = 40
+lrad.bin_min = 0.
+lrad.bin_max = a
+
+lke.type = ParticleHistogram
+lke.species = late
+lke.intervals = hist_every
+lke.histogram_function(t,x,y,z,ux,uy,uz) = "0.5*m_e*clight**2/q_e*(ux*ux+uy*uy+uz*uz)"
+lke.filter_function(t,x,y,z,ux,uy,uz) = "x*x+y*y+z*z<1.0e-6"
+lke.bin_number = 80
+lke.bin_min = 0.
+lke.bin_max = 8000.
+number.type = ParticleNumber
+number.intervals = 20
+wall.type = ChargeOnEB
+wall.intervals = 20
+# radial electric field along +x; integrate it inward from the wall to get the potential
+probe.type = FieldProbe
+probe.probe_geometry = Line
+probe.x_probe = 0.
+probe.y_probe = 0.
+probe.z_probe = 0.
+probe.x1_probe = a
+probe.y1_probe = 0.
+probe.z1_probe = 0.
+probe.resolution = 65
+probe.intervals = probe_every
+
+diagnostics.diags_names = diag1
+diag1.intervals = 0
+diag1.diag_type = Full
+diag1.fields_to_plot = phi rho

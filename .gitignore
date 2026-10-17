@@ -2,8 +2,9 @@ __pycache__/
 *.pyc
 .mypy_cache/
 .ruff_cache/
-web/node_modules/
-web/dist/
-web/public/data/
-web/.test-build/
+legacy/web/node_modules/
+legacy/web/dist/
+legacy/web/public/data/
+legacy/web/public/figures/
+legacy/web/.test-build/
 .fusion/

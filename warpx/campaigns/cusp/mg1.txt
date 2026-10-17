@@ -1,0 +1,3 @@
+mg_n256_8gpu inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.tmax=4.e-9 my_constants.chk_every=100000 my_constants.ncell=256 my_constants.dt=2.5e-13 amr.max_grid_size=128
+mg_n384_8gpu inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.tmax=4.e-9 my_constants.chk_every=100000 my_constants.ncell=384 my_constants.dt=1.6667e-13 amr.max_grid_size=192
+mg_n512_8gpu inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.tmax=4.e-9 my_constants.chk_every=100000 my_constants.ncell=512 my_constants.dt=1.25e-13 amr.max_grid_size=256
