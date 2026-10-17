@@ -78,7 +78,7 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
 
 | Size | Case | Particles against the table above | Coil radius (electron orbits) | Holding time (electron crossings) | Change over the last fifth | Current layer (orbits) | Electron gap stream (orbits) | Standing |
 |---|---|---|---|---|---|---|---|---|
-| 0.25× | `pw_s0.25_h1.0_long_ppc8` | 4× | 56 | 34.2 | +0.8% | 2.06 | 1.07 | same at 1×, 4× and 16× the particles |
+| 0.25× | `pw_s0.25_h1.0_long_ppc8` | 4× | 56 | 34.2 | +0.8% | 2.06 | 1.07 | same at 1×, 4× and 16× the particles, and on a mesh twice as fine (`pw_s0.25_h1.0_long_nr192`: 34.0 crossings, layer 1.88, gap stream 1.11) |
 | 0.5× | `pw_s0.5_h1.0_ppc4`, `_ppc4_seed2`, `_nr384_ppc2`, `_ppc16` | 4× to 16× | 96 to 103 | 52.5 to 58.2 | +1.0 to +4.9% | 1.83 to 2.02 | 0.78 to 0.87 | same on two meshes; 11% spread |
 | 1× | `pw_s1_h1.0_ppc2` | 4× | 216 | 113.9 | +5.6% | 2.76 | 1.19 | not settled; 16× running |
 | 2× | `pw_s2_h1.0` | 1× | 396 | 179.3 | +0.2% | 3.08 | 1.64 | baseline particles only: an upper limit |
