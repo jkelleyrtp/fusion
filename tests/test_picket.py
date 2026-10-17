@@ -28,7 +28,8 @@ class PicketTest(unittest.TestCase):
     def test_the_deck_on_disk_is_the_one_the_generator_writes(self) -> None:
         self.assertEqual((CUSP / "inputs_rz_picket_fed").read_text(), make_deck.picket_deck())
         self.assertEqual((CUSP / "inputs_rz_picket_fed_collisions").read_text(), make_deck.picket_deck() + make_deck.COLLISIONS)
-        self.assertEqual((CUSP / "inputs_rz_picket_two").read_text(), make_deck.picket_deck() + make_deck.two_periods())
+        self.assertEqual((CUSP / "inputs_rz_picket_two").read_text(), make_deck.picket_deck() + make_deck.periods(2))
+        self.assertEqual((CUSP / "inputs_rz_picket_four").read_text(), make_deck.picket_deck() + make_deck.periods(4))
 
     def test_the_field_repeats_from_one_end_of_the_mesh_to_the_other(self) -> None:
         # The mesh runs from -h to h. An endless row has no radial field in the plane of a coil, and the same

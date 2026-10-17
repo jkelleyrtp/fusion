@@ -713,23 +713,32 @@ cii.CoulombLog = clog
 """
 
 
-def two_periods() -> str:
-    """Appended to the picket deck: two periods on one mesh. The feeds move to the planes of the coils at +h and
-    -h, so each half of the mesh is the one-period deck again and only the plasma ties the halves together.
-    Lines 1 and 3 fold the two halves onto one, so they count twice what one period would."""
-    text = "\n# Two periods on one mesh, each fed on the plane of its own middle coil.\nmy_constants.zw = 2*h\n"
+def periods(count: int) -> str:
+    """Appended to the picket deck: `count` periods (2 or 4) on one mesh. The feeds move to the planes of every
+    second coil (+h and -h for two periods), so each stretch of the mesh is the one-period deck again and only
+    the plasma ties them together. Lines 1 and 3 fold the periods onto one, so they count `count` times what one
+    period would."""
+    words = {2: "Two", 4: "Four"}
+    text = f"\n# {words[count]} periods on one mesh, each fed on the plane of its own middle coil.\nmy_constants.zw = {count}*h\n"
     flux = "0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*((t<tfill)+sustain*(t>=tfill))"
+    places = [f"{sign}{'' if k == 1 else f'{k}*'}h" for k in range(1, count, 2) for sign in ("", "-")]
+    sources = [(f"{way}{'' if n == 0 else n + 1}", place, direction)
+               for n, place in enumerate(places) for way, direction in (("up", "+1"), ("down", "-1"))]
+    # Distance along the axis to the nearest fed plane.
+    fold = "abs(z)"
+    for half in ([2, 1] if count == 4 else [1]):
+        fold = f"abs({fold}-{'' if half == 1 else f'{half}*'}h)"
     for name in ("electrons", "ions"):
-        text += f"{name}.injection_sources = ball up down up2 down2\n"
-        for source, place, direction in (("up", "h", "+1"), ("down", "h", "-1"), ("up2", "-h", "+1"), ("down2", "-h", "-1")):
+        text += f"{name}.injection_sources = ball {' '.join(source for source, _, _ in sources)}\n"
+        for source, place, direction in sources:
             text += (f"{name}.{source}.injection_style = NFluxPerCell\n{name}.{source}.surface_flux_pos = {place}\n"
                      f"{name}.{source}.flux_normal_axis = z\n{name}.{source}.flux_direction = {direction}\n"
                      f"{name}.{source}.flux_paired = 1\n{name}.{source}.num_particles_per_cell = ppc_feed\n"
                      f"{name}.{source}.flux_profile = parse_flux_function\n"
                      f'{name}.{source}.flux_function(x,y,z,t) = "{flux}"\n'
                      f"{name}.{source}.momentum_distribution_type = gaussianflux\n")
-        text += (f'{name[0]}_line1.filter_function(t,x,y,z,ux,uy,uz) = "abs(abs(z)-h)<0.02*a"\n'
-                 f'{name[0]}_line3.histogram_function(t,x,y,z,ux,uy,uz) = "abs(abs(z)-h)"\n')
+        text += (f'{name[0]}_line1.filter_function(t,x,y,z,ux,uy,uz) = "{fold}<0.02*a"\n'
+                 f'{name[0]}_line3.histogram_function(t,x,y,z,ux,uy,uz) = "{fold}"\n')
     return text
 
 
@@ -746,4 +755,5 @@ if __name__ == "__main__":
     here.with_name("inputs_rz_spindle_fed").write_text(spindle_deck())
     here.with_name("inputs_rz_picket_fed").write_text(picket_deck())
     here.with_name("inputs_rz_picket_fed_collisions").write_text(picket_deck() + COLLISIONS)
-    here.with_name("inputs_rz_picket_two").write_text(picket_deck() + two_periods())
+    here.with_name("inputs_rz_picket_two").write_text(picket_deck() + periods(2))
+    here.with_name("inputs_rz_picket_four").write_text(picket_deck() + periods(4))
