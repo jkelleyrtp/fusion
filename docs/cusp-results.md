@@ -154,6 +154,45 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
   over the last fifth. With 34.2 at 0.25× and 52.5 to 54.7 at 0.5× at four times the particles, three sizes
   lie on size^0.65.
 
+**A current along the axis separates the runs that keep gaining plasma from those that settle (20:55 UTC).**
+The picket deck repeats along the axis, so a current can flow along the axis and close on itself through the
+repeat. The snapshots show one. It is read from the field around the axis between the plasma and the wall
+(`warpx/cusp/axial_current.py`, run where the snapshots are; output kept in
+`results/axial_current_2026-10-17.txt` on the analysis machine). It flows in the plasma's boundary layer, not
+in the core, is the same all along the axis, and takes either sign from run to run.
+
+| 0.5×, middle fill, complete cases | Holding time (electron crossings) | Current along the axis at the end (kA; the coils carry 78 kA) |
+|---|---|---|
+| Baseline particles: `pw_s0.5_h1.0`, `_seed2`, `_nr384`, `_half_dt_ppc0.5` | 71 to 73 | 56, 60, 55, 61 |
+| Wider particles, `_shape3`; one smoothing pass, `_smooth1` | 66; 63 | 54; 46 |
+| 2× particles, `_ppc2` | 60 | 38 |
+| 4× particles, seed 5 | 62.2 | 45 |
+| 4× particles, seed 3 | 57.4 | 21 |
+| 4× particles, seed 2; finer mesh `_nr384_ppc2` | 54.7; 56.2 | 18; 20 |
+| 4× particles, seed 1, seed 4, twice as long | 52.5, 52.3, 54.3 | 8, 0, 6 (wandering about zero) |
+| 16× particles, seed 2 | 67.5 | 52, rising in a straight line from 25 ns |
+| 16× particles, seed 1 | 58.2 | 2 (15 earlier in the run) |
+
+- Across particle count, seed, mesh, time step and particle shape the holding time follows this current: about
+  50 crossings with none, 71 with 0.75 of the coil current. The 16× seed 1 case is the one that does not fit.
+  This accounts for the spread between seeds and for most of what was put down to too few particles: at the
+  baseline particle count the current always appears, at four and sixteen times it appears in some seeds.
+- **Other sizes.** 0.125×: 53 to 78 kA against 20 kA in the coils at all three feeds, so that plasma is held
+  mostly by its own current, which is why it is a different state. 0.25× with many particles: under 9 kA at the
+  end, wandering (coils 39 kA). 0.375×: 14 kA (coils 59). 1×: 140 kA at baseline particles, 185 kA in the
+  double-length run, 77 kA and rising in `pw_s1_h1.0_ppc2` (coils 157 kA), but 12 kA in `pw_s1_h0.7_ppc2`,
+  which is also the 1× case that settles (94.5 crossings, +1.2% over the last fifth). 2× at baseline particles:
+  101 to 146 kA (coils 314). The two cases with strong collisions reach 170 kA.
+- **What is and is not known.** This is a correlation over finished cases. That the current causes the extra
+  plasma is not tested, why it starts is not known, and neither is whether a real device could carry it: it
+  needs the repeat along the axis, which a row of coils of finite length or a cage does not have. The two-coil
+  cusp has end walls, cannot carry it, and showed no dependence on particle count.
+- **Sizes without the current,** which is the like-for-like set so far: 34.2 crossings at 0.25×, 45.2 at
+  0.375×, 52.3 to 54.3 at 0.5×, and 94.5 at 1× (fill 0.7; fill does not move the holding time at 0.25× or
+  0.5×). The stream heights are 0.221, 0.169, 0.143 and 0.071 mm.
+- **Test queued:** the same cases with mirror planes at the end coils in place of the repeat
+  (`pw21_mirror_ends.txt`), which the picket's symmetry allows and which cannot carry a net current.
+
 **What the leak carries (added 19:30 UTC).** The half-height of the stream, which the tables above call the gap
 stream, is not what sets the loss. Two numbers that do are now in every row of the table:
 
