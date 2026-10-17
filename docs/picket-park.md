@@ -8,6 +8,9 @@ length we are well below it, and the difference is unexplained. The current laye
 orbits against 2.1). The corrected 2.76 keV case is running. Everything below the next two sections is the
 uncorrected record.
 
+For the differences between the two simulations and our holding time over the paper's own part of the run
+(56 to 62 crossings at 100 keV), see [park-vs-warpx.md](park-vs-warpx.md).
+
 ## Corrected repeat
 
 Same inputs as `pf_x0.7`, `pf_x1.0`, `pf_x1.4` plus the two wall settings; campaign `pw1`, cases `pfw_…`.

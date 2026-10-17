@@ -11,6 +11,7 @@ CUSP = Path(__file__).resolve().parents[1] / "warpx" / "cusp"
 sys.path.insert(0, str(CUSP))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import analyze_picket
+import holding_by_interval
 import make_deck
 from test_spindle import elliptic
 
@@ -111,6 +112,12 @@ class PicketTest(unittest.TestCase):
         on_axis = np.zeros((8, 96))
         on_axis[:, :2] = 1.0
         self.assertAlmostEqual(analyze_picket.crowding_on_axis(0 * on_axis, on_axis), (96 / 4) ** 2, places=9)
+
+    def test_a_decaying_plasma_gives_back_its_holding_time_whatever_the_feed(self) -> None:
+        # Held number relaxing toward feed * tau: the rate of leaving is held / tau at every instant.
+        time, tau, feed = np.linspace(0.0, 50.0, 5001), 60.0, 0.4
+        held = feed * tau + 30.0 * np.exp(-time / tau)
+        self.assertAlmostEqual(holding_by_interval.holding_time(time, held, feed, 10.0, 28.0), tau, places=3)
 
     def test_a_slab_stream_gives_back_its_height_and_speed(self) -> None:
         # Two gaps, each a slab 0.2 mm high at 3e20 per m3 (half the density inside) leaving at 1e7 m/s through

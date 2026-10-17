@@ -280,7 +280,7 @@ from the field snapshots at the end of three complete cases:
 
   - Between mirrors, charge gathers in the one column of cells on the axis, inside the coil throats, and grows
     all run: the electron density there over that three cells out goes 2 → 10 by 63 ns → 50 by 125 ns at
-    0.25×. Repeating runs stay at 2 for 132 ns. By the end the field in the corner cell is 6×10^10 V/m, more
+    0.25×. Repeating runs at 0.25× and 0.5× stay at 2 for 132 ns. (At 1× they do not: 28 to 47 at the standard particle count, 7 to 10 with four times, 5 with sixteen times, steady and falling with particle count, so noise in the small cells on the axis and not this pile. See section 6 of [park-vs-warpx.md](park-vs-warpx.md).) By the end the field in the corner cell is 6×10^10 V/m, more
     than light speed times the magnetic field there, which no plasma can hold. So the late state is a fault of
     the run, not physics.
   - It is not a few stray heavy particles and not particle noise. A restart file of the two-period 0.25× case

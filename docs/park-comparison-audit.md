@@ -78,7 +78,7 @@ Conversions use our length scale, coil radius rc = a = 1 cm ↔ 30 di, so di = 0
 |---|---|---|---|
 | Code | ECsim-CYL: semi-implicit, energy-conserving PIC in cylindrical coordinates [P] | WarpX 26.10 RZ, explicit Yee FDTD, quadratic particle shape, Villasenor deposition (corrected cases), filter off (RZ default) [D] | **Different method** |
 | Geometry | 2D axisymmetric (r, z); periodic in z; domain 45 × 30 di [P] | RZ; z periodic over 2h = rc = 30 di; r from 0 to rw = 1.5a = 45 di [D] | Yes |
-| Coils | Ring coils of diameter 60 di (r = 30), spacing 15, alternating current; Fig. S1 shows 5 coils [P] | rc = a, spacing h = 0.5 rc; 25 alternating coils (half weight at the ends), field put on the mesh once [D] | Yes |
+| Coils | Ring coils of diameter 60 di (r = 30), spacing 15, alternating current; 27 coils supply the field, of which Fig. S1 shows 5 [P] | rc = a, spacing h = 0.5 rc; 25 alternating coils (half weight at the ends), field put on the mesh once [D] | Yes |
 | Coil current | **Not stated.** Only the field normalisation (r = m·vth/B in NCU) and the field values seen in figures [P] | `coil_at = 156800` A-turns = 2π·41.6·p_th/(e μ0), "our reading of the paper's figures" [D] | Plausible, checked indirectly (§4.1) |
 | Where particles are removed | "Loss boundary" at r = 42 di (1.4 rc), absorbing for particles **and** EM waves; domain edge 45 [P] | Particles absorbed at r = 45 di (1.5 rc); fields: PEC metal wall at 45 [D] | **Different**: our wall is 3 di further out and reflects fields |
 | Charge left by absorbed particles | Not described [P] | Removed by `crop_on_PEC_boundary=1` + `villasenor` (corrected cases) [D, R] | **Unknown on their side** |

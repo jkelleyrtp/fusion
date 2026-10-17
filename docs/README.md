@@ -11,6 +11,7 @@ Read in this order.
 | [picket-park.md](picket-park.md) | Check of our setup against the published picket-fence cusp of Park et al. 2019 |
 | [gun-fed-cusp.md](gun-fed-cusp.md) | Plasma fired into the six-coil cusp from outside |
 | [prior-work.md](prior-work.md) | What the literature says about cusp leaks at high pressure, and what is missing from it |
+| [park-vs-warpx.md](park-vs-warpx.md) | How Park et al. 2019's code and setup differ from ours, what each difference has been shown to do, and our holding time over Park's own part of the run |
 | [park-comparison-audit.md](park-comparison-audit.md) | Item-by-item audit of our picket-fence deck against Park et al. 2019, and the runs that would explain the holding-time gap |
 | [ring-voltage-design.md](ring-voltage-design.md) | Design, with CPU tests, for holding the 3D six-coil rings at chosen voltages without changing WarpX (not yet run on GPU) |
 | [electrostatic-plugging-prior-work.md](electrostatic-plugging-prior-work.md) | What is published on charged cages and plugging cusp leaks with electrodes, with what was read in full and what was not |
