@@ -1,0 +1,341 @@
+<div id="root"></div>
+<script type="text/jsx">
+// Finished runs only. Source: warpx/results/pw1 table, 17 October 2026, 23:05 UTC.
+const sizes = [
+  { size: 0.25, measured: 34.2, orbits: 1.24, current: 0.22 },
+  { size: 0.375, measured: 45.2, orbits: 1.3, current: 0.24 },
+  { size: 0.5, measured: 52.5, orbits: 1.37, current: 0.11 },
+  { size: 0.75, measured: 73.0, orbits: 1.72, current: 0.16 },
+  { size: 1, measured: 91.2, orbits: 2.13, current: 0.18 },
+].map((r) => ({ ...r, fixed: +(34.2 * r.size / 0.25).toFixed(1), grows: 34.2 }));
+
+const scanSeries = {
+  fixed: { label: "If the slit stayed a fixed number of orbits", color: chartColors[1] },
+  measured: { label: "Measured", color: chartColors[0] },
+  grows: { label: "If the slit grew with the device", color: chartColors[2] },
+};
+
+// Fifteen repeats of one case at 0.5x: periodic ends, standard ion mass, no smoothing, no added collisions.
+const repeats = [
+  { what: "Standard particles", current: 0.714, hold: 71.3 },
+  { what: "Standard particles, second seed", current: 0.766, hold: 73.3 },
+  { what: "Standard particles, half time step", current: 0.779, hold: 71.2 },
+  { what: "Finer mesh", current: 0.705, hold: 72.2 },
+  { what: "Finer mesh, 4x its particles", current: 0.259, hold: 56.2 },
+  { what: "Half time step, more particles", current: 0.341, hold: 55.9 },
+  { what: "2x particles", current: 0.481, hold: 60.2 },
+  { what: "4x particles", current: 0.106, hold: 52.5 },
+  { what: "4x particles, twice as long", current: 0.082, hold: 54.3 },
+  { what: "4x particles, seed 2", current: 0.225, hold: 54.7 },
+  { what: "4x particles, seed 3", current: 0.27, hold: 57.4 },
+  { what: "4x particles, seed 4", current: 0.001, hold: 52.3 },
+  { what: "4x particles, seed 5", current: 0.572, hold: 62.2 },
+  { what: "16x particles", current: 0.029, hold: 58.2 },
+  { what: "16x particles, seed 2", current: 0.665, hold: 67.5 },
+];
+
+const suspects = [
+  ["Time step too long", "Half the step", "No: 71 and 71 crossings"],
+  ["Mesh too coarse", "Twice as fine", "No: same holding time, same leak"],
+  ["Simulated particles bumping into each other", "Add real collisions", "No: it moves the wrong way"],
+  ["Too few particles", "2x, 4x, 16x the particles", "Partly: helps, but 16x still splits by seed"],
+  ["Smooth the noise away", "1, 4, 16 smoothing passes", "No: the answer keeps falling with more smoothing"],
+  ["A current along the axis", "Measure it in every run; forbid it with mirror ends", "Yes, with a complication"],
+];
+
+const mirrors = [
+  ["0.25x, periodic ends", 1.9, 34.2],
+  ["0.5x, periodic ends", 2.1, 52.5],
+  ["0.125x, mirror ends", 0.1, 38.8],
+  ["0.5x, mirror ends, 4x particles", 4.2, 60.8],
+  ["0.25x, mirror ends", 14, 42.4],
+  ["0.375x, mirror ends", 27, 50.2],
+  ["0.5x, mirror ends, standard particles", 197, 63.7],
+  ["0.25x, mirror ends, twice as long", 417, 36.9],
+];
+
+function H({ children }) {
+  return <Text as="h2" size={17} weight="semibold" className="mt-6 block">{children}</Text>;
+}
+function P({ children }) {
+  return <Text as="p" size={14} className="block max-w-[720px] leading-relaxed text-text-primary">{children}</Text>;
+}
+function Note({ children }) {
+  return <Text as="p" size={12} className="block max-w-[720px] text-text-secondary">{children}</Text>;
+}
+function List({ items }) {
+  return (
+    <ul className="max-w-[720px] list-disc space-y-1 pl-5">
+      {items.map((item, i) => (
+        <li key={i}><Text size={14} className="leading-relaxed">{item}</Text></li>
+      ))}
+    </ul>
+  );
+}
+
+function Fence() {
+  // Half of one coil period, axis at the bottom: coils as dots, plasma as a band, leak streams through the gaps.
+  const coils = [80, 240, 400, 560];
+  return (
+    <svg viewBox="0 0 640 170" className="w-full max-w-[720px] text-text-secondary" role="img"
+         aria-label="Sketch of a picket fence of ring coils with plasma leaking through the gaps">
+      <line x1="10" y1="150" x2="630" y2="150" stroke="currentColor" strokeDasharray="6 4" />
+      <text x="14" y="165" fontSize="11" fill="currentColor">axis</text>
+      <line x1="10" y1="14" x2="630" y2="14" stroke="currentColor" />
+      <text x="14" y="28" fontSize="11" fill="currentColor">metal wall</text>
+      <path d="M10 150 L10 100 Q80 118 160 96 L160 96 Q240 118 320 96 Q400 118 480 96 Q560 118 630 100 L630 150 Z"
+            fill="currentColor" opacity="0.18" />
+      <text x="290" y="138" fontSize="12" fill="currentColor">plasma</text>
+      {coils.map((x) => (
+        <g key={x}>
+          <circle cx={x} cy="78" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
+          <text x={x - 12} y="62" fontSize="11" fill="currentColor">coil</text>
+        </g>
+      ))}
+      {[160, 320, 480].map((x) => (
+        <g key={x}>
+          <rect x={x - 3} y="14" width="6" height="82" fill="currentColor" opacity="0.35" />
+          <text x={x + 8} y="46" fontSize="11" fill="currentColor">leak</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function Report() {
+  return (
+    <PageLayout
+      title="Does the leak grow with the bottle?"
+      subtitle="A plain-language account of the cusp size scan: what we are asking, how the simulations work, what went wrong, and where the answer stands on 17 October 2026."
+    >
+      <StatsRow>
+        <StatCard label="Finished runs in this campaign">
+          <StatCardValue>96</StatCardValue>
+          <StatCardCaption>2D WarpX, one GPU each</StatCardCaption>
+        </StatCard>
+        <StatCard label="Holding time goes as size to the power">
+          <StatCardValue>about 0.7</StatCardValue>
+          <StatCardCaption>1 = plugging scales; 0 = it does not. Not final</StatCardCaption>
+        </StatCard>
+        <StatCard label="Leak, in electron orbits, over 4x in size">
+          <StatCardValue>1.7x wider</StatCardValue>
+          <StatCardCaption>1x = fixed slit; 4x = grows with the device</StatCardCaption>
+        </StatCard>
+      </StatsRow>
+
+      <H>The question</H>
+      <P>
+        A magnetic cusp is a bottle with holes. Coils make a field that is weak in the middle and strong at the
+        edge, so plasma sits in the middle. But the field lines have to go somewhere, and where they lead out
+        between the coils, plasma follows them out. Every cusp leaks; what matters is how wide the leaks are.
+      </P>
+      <P>
+        The old hope, called cusp plugging: fill the bottle until the plasma pushes back as hard as the field
+        does. The plasma then shoves the field out of its interior, the boundary between the two becomes sharp,
+        and the leaks narrow to slits a few electron orbits wide. (An electron orbit is the small circle an
+        electron makes in the field, a fraction of a millimetre here.)
+      </P>
+      <P>The hope only pays off if it survives scale-up. It could go two ways:</P>
+      <List items={[
+        "The slit stays a few electron orbits wide however big the device is. Then a bigger device holds its plasma longer in proportion to its size, and cusps get good quickly.",
+        "The slit grows with the device. Then a bigger device holds its plasma no longer than a small one, counted in the time an electron takes to cross it, and plugging buys little.",
+      ]} />
+      <P>
+        I could not find a published simulation that measures the leak against device size with the pressure held
+        high and the plasma continuously fed. That measurement is what this project is after.
+      </P>
+
+      <H>How we ask it</H>
+      <Fence />
+      <Note>
+        Sketch, not data: a cut through the picket fence from the axis to the wall. The real coils are rings
+        around the axis, so each leak is a ring-shaped sheet.
+      </Note>
+      <P>
+        The tool is WarpX, an open particle-in-cell code that runs on GPUs. It follows millions of simulated
+        electrons and ions and solves the electric and magnetic fields they make at every step. Nothing about the
+        boundary or the leak is assumed. The coils' own field is put in by formula; the plasma's push on it is
+        computed.
+      </P>
+      <P>
+        The device is the simplest one that has the leak in question: a stack of ring coils, called a picket
+        fence, simulated in 2D (everything is taken to be the same all the way around the axis). One published
+        simulation (Park and others, 2019) used this shape, which gives us something to compare with.
+      </P>
+      <P>
+        Each run feeds hot plasma into the middle, waits for it to push the field out, and keeps feeding to
+        replace what leaks. Then we read off two numbers:
+      </P>
+      <List items={[
+        "Holding time: plasma held divided by plasma lost per second, counted in electron crossings of the device.",
+        "Leak height: how tall a slot would have to be to pass the same stream of plasma at the inside density.",
+      ]} />
+      <P>
+        To change the size we do not make the box bigger. We make the field stronger and the plasma denser to
+        match, which shrinks every microscopic length together. The device is then larger measured in electron
+        orbits, which is the size that matters here. "1x" is the size Park used. Finished runs span an eighth of
+        it to twice it. Larger sizes need finer meshes: the smallest takes ten minutes on one GPU, 2x takes ten
+        hours or more.
+      </P>
+
+      <H>The first answer was wrong</H>
+      <P>
+        The first size scan gave a clean power law. Then a check of the charge near the metal walls showed that
+        every run had been leaving charge stuck there, a fault in two settings. Fixing it lowered holding times by
+        14 to 43% where the pressure was high. Those exponents are withdrawn; everything below is from reruns.
+      </P>
+
+      <H>Then the repeats disagreed</H>
+      <P>
+        With the fix in, the middle size (0.5x) gave 71 crossings. The same case with four times the particles
+        gave 52. Two runs differing only in their random numbers gave 58 and 67. A result that changes by a third
+        between repeats is not a result, so most of the last two days went into finding out why.
+      </P>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Suspect</TableHead>
+            <TableHead>Test</TableHead>
+            <TableHead>Verdict</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {suspects.map((s) => (
+            <TableRow key={s[0]}>
+              {s.map((cell, i) => <TableCell key={i} className="whitespace-normal">{cell}</TableCell>)}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <H>The culprit: a current that should not be there</H>
+      <P>
+        The simulated stack of coils repeats forever along its axis: what leaves the top comes back in at the
+        bottom. That is a standard way to model a long row, and it is what Park did. But it lets a current flow
+        along the axis and close on itself through the repeat. A real, finite row of coils has nowhere for that
+        current to go.
+      </P>
+      <P>
+        The field snapshots show exactly such a current. It starts at zero, grows near the plasma's edge, and
+        points either way depending on the random numbers. At the middle size it sorts the repeats:
+      </P>
+      <Text size={12} weight="medium" className="block text-text-secondary">Holding time (electron crossings) against the current along the axis</Text>
+      <ChartContainer config={{ hold: { label: "Holding time (electron crossings)", color: chartColors[0] } }}
+                      style={{ height: 300, width: "100%" }}>
+        <ScatterChart margin={{ left: 8, right: 16, bottom: 24 }}>
+          <ChartGrid />
+          <ChartXAxis type="number" dataKey="current" domain={[0, 0.8]} ticks={[0, 0.2, 0.4, 0.6, 0.8]}
+                      label={{ value: "Current along the axis at the end ÷ coil current", position: "bottom", offset: 4 }} />
+          <ChartYAxis type="number" dataKey="hold" domain={[45, 80]} ticks={[45, 50, 55, 60, 65, 70, 75, 80]} />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <Scatter name="Repeats at 0.5x" data={repeats} fill={chartColors[0]} isAnimationActive={false} />
+        </ScatterChart>
+      </ChartContainer>
+      <Note>
+        Fifteen finished repeats of one case at 0.5x (periodic ends; different particle counts, meshes, time
+        steps and seeds). The coils carry 78 kA.
+      </Note>
+      <P>
+        Runs with few particles always grow the current. Runs with many grow it in some seeds. So "too few
+        particles" was really "more noise to start the current".
+      </P>
+      <P>
+        This is a correlation. To test cause, I replaced the repeat with mirror planes at the end coils, which
+        cannot pass a net current. At the smallest size, where the current had been several times the coil
+        current and the plasma looked nothing like the others, the mirrors removed it and the normal sharp
+        boundary came back. There, the current was the cause.
+      </P>
+
+      <H>The cure had its own disease</H>
+      <P>
+        The mirrors were meant to become the new standard. They will not, as they stand. In mirrored runs, charge
+        slowly gathers in the single column of cells on the axis. Run long enough, the electric field there grows
+        past anything a plasma could hold, the electrons heat up, and the plasma drains. Runs with the repeat show
+        no such pile-up over the same length.
+      </P>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Finished run</TableHead>
+            <TableHead>Electric field crowding on the axis at the end (about 1 = none)</TableHead>
+            <TableHead>Holding time (electron crossings)</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {mirrors.map((m) => (
+            <TableRow key={m[0]}>
+              <TableCell>{m[0]}</TableCell>
+              <TableCell>{m[1]}</TableCell>
+              <TableCell>{m[2]}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <P>
+        I had told myself the mirrors passed the same check that caught the wall fault. That check skipped the
+        inner tenth of the radius, which is where this is. Every run now carries the measure above, so a spoiled
+        run shows up in its own line of the table.
+      </P>
+      <P>
+        So neither treatment of the ends is right yet. The repeat allows a current a real device cannot carry.
+        The mirrors forbid it and break something on the axis.
+      </P>
+
+      <H>Where the answer stands</H>
+      <Text size={12} weight="medium" className="block text-text-secondary">Holding time (electron crossings) against device size</Text>
+      <ChartContainer config={scanSeries} style={{ height: 320, width: "100%" }}>
+        <LineChart data={sizes} margin={{ left: 8, right: 16, bottom: 24 }}>
+          <ChartGrid />
+          <ChartXAxis type="number" dataKey="size" domain={[0.25, 1]} ticks={[0.25, 0.375, 0.5, 0.75, 1]}
+                      tickFormatter={(v) => v + "x"}
+                      label={{ value: "Device size (1x = Park 2019)", position: "bottom", offset: 4 }} />
+          <ChartYAxis domain={[0, 140]} ticks={[0, 35, 70, 105, 140]} />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <ChartLegend content={<ChartLegendContent />} verticalAlign="top" />
+          <ChartLine dataKey="fixed" type="linear" dot={false} />
+          <ChartLine dataKey="measured" type="linear" dot={true} />
+          <ChartLine dataKey="grows" type="linear" dot={false} />
+        </LineChart>
+      </ChartContainer>
+      <Note>
+        Measured: finished periodic runs that ended with little current along the axis (0.11 to 0.24 of the coil
+        current). Both reference lines start from the 0.25x point. The 0.75x and 1x points are single runs.
+      </Note>
+      <P>
+        The holding time goes up about as size to the power 0.7. Plugging that scales perfectly would give a
+        power of 1; a leak that grows with the device would give 0. The leak, counted in electron orbits, widens
+        from {sizes[0].orbits} to {sizes[4].orbits} orbits while the device grows 4 times. So the answer so far is in
+        between, nearer the hopeful side, and getting less hopeful toward the large end.
+      </P>
+      <P>
+        That is not a final exponent. The two largest points are single runs, none of the points is free of the
+        current, and the mirrored runs (now in doubt) read lower, near a power of 0.5.
+      </P>
+
+      <H>Two things that did come out clean</H>
+      <List items={[
+        "How full the bottle is does not matter, at the three sizes where runs settle. The holding time is the same at three fills.",
+        "Heavier ions help. Plasma leaves at the speed of its ions through a hole whose size barely depends on ion mass. An earlier result of mine, that the leak widens like an ion orbit, was the particle-count problem in disguise and is withdrawn. Our ions are 64 electron masses and real deuterium is 3,670, so this is a long reach.",
+      ]} />
+
+      <H>What comes next</H>
+      <List items={[
+        "Find out whether the pile-up on the axis is a mesh artefact. A run on a finer mesh is queued.",
+        "If it is not, model what a device actually is: a finite row of coils with real end walls. Our two-coil runs have end walls and never showed the repeat problem.",
+        "Redo the size scan in whichever model survives, with enough particles at 1x and 2x.",
+        "Only then go back to 3D and to charged coils, which is where this started.",
+      ]} />
+
+      <Footnote>
+        Finished runs only, read from the reduced table of campaign pw1 on 17 October 2026, 23:05 UTC. Caveats: 2D
+        only, so nothing that varies around the axis can appear; ions of 64 electron masses, electrons fed at 100
+        keV, no collisions in the main runs; our holding times are about half of what Park's paper reports for
+        the same case and the reason is not found (the boundary thickness matches); WarpX is used with three
+        patches that nobody but their author has reviewed. Tables with case names are in docs/cusp-results.md and
+        the run-by-run log, mistakes included, is in docs/progress-2026-10-17.md.
+      </Footnote>
+    </PageLayout>
+  );
+}
+render(<Report />);
+</script>
