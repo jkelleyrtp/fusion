@@ -1,7 +1,9 @@
 """Net current along the axis in every snapshot of finished picket cases, from the field around the axis."""
 import sys
 from pathlib import Path
+
 import numpy as np
+
 MU0 = 4e-7 * np.pi
 root = Path("/public/jonathan/cusp/campaigns/pw1")
 profile_for = set(sys.argv[1].split(",")) if len(sys.argv) > 1 else set()

@@ -190,8 +190,11 @@ in the core, is the same all along the axis, and takes either sign from run to r
 - **Sizes without the current,** which is the like-for-like set so far: 34.2 crossings at 0.25×, 45.2 at
   0.375×, 52.3 to 54.3 at 0.5×, and 94.5 at 1× (fill 0.7; fill does not move the holding time at 0.25× or
   0.5×). The stream heights are 0.221, 0.169, 0.143 and 0.071 mm.
-- **Test queued:** the same cases with mirror planes at the end coils in place of the repeat
-  (`pw21_mirror_ends.txt`), which the picket's symmetry allows and which cannot carry a net current.
+- **Test queued (21:00 UTC):** nine of the same cases with mirror planes at the end coils in place of the
+  repeat (`pw21_mirror_ends.txt`: `boundary.field` `pmc` and `boundary.particle` `reflecting` along the axis).
+  The coils' field already has that symmetry, and a mirror plane cannot pass a net current. A short run on
+  this machine at 0.125× held its plasma and showed 0.1 kA. If the mirrored cases settle and agree across
+  particle counts, the current is the cause and the mirrored set is the one to scan with.
 
 **What the leak carries (added 19:30 UTC).** The half-height of the stream, which the tables above call the gap
 stream, is not what sets the loss. Two numbers that do are now in every row of the table:
