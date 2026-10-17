@@ -158,8 +158,9 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
 The picket deck repeats along the axis, so a current can flow along the axis and close on itself through the
 repeat. The snapshots show one. It is read from the field around the axis between the plasma and the wall
 (`warpx/cusp/axial_current.py`, run where the snapshots are; output kept in
-`results/axial_current_2026-10-17.txt` on the analysis machine). It flows in the plasma's boundary layer, not
-in the core, is the same all along the axis, and takes either sign from run to run.
+`results/axial_current_2026-10-17.txt` on the analysis machine). Most of it flows between 0.7
+and 0.8 coil radii, near the plasma's edge and not in the core. It is the same all along the axis and takes
+either sign from run to run.
 
 | 0.5×, middle fill, complete cases | Holding time (electron crossings) | Current along the axis at the end (kA; the coils carry 78 kA) |
 |---|---|---|
