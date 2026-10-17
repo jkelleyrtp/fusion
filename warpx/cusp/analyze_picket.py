@@ -66,6 +66,36 @@ def on_coil_plane(run: Path, after: float) -> tuple[np.ndarray, np.ndarray, np.n
     return profile[:, 0], profile[:, 1], profile[:, 2]
 
 
+def current_inside(radius: np.ndarray, field_around_axis: np.ndarray, wall: float) -> float:
+    """Current (A) along the axis flowing inside 0.7 to 0.8 of the wall's radius, from the field around the axis
+    there. That band lies between the plasma's edge and the wall."""
+    band = (radius > 0.7 * wall) & (radius < 0.8 * wall)
+    return float((2 * np.pi * radius[band] * field_around_axis[band] / MU0).mean())
+
+
+def along_axis(run: Path, wall: float) -> np.ndarray | None:
+    """Rows of (time, current along the axis) from every snapshot. The deck repeats along the axis, so a current
+    can flow along the axis and close through the repeat. Kept beside the other reduced diagnostics."""
+    kept = run / "diags/reducedfiles/current_along_axis.txt"
+    rows = []
+    for snapshot in (run / "diags").glob("diag1*"):
+        if not snapshot.name[5:].isdigit() or not (snapshot / "Level_0/Cell_D_00000").exists():
+            continue
+        if (snapshot / "Level_0/Cell_D_00001").exists():
+            continue
+        header = (snapshot / "Header").read_text().split("\n")
+        names = header[2 : 2 + int(header[1])]
+        with open(snapshot / "Level_0/Cell_D_00000", "rb") as data:
+            high = data.readline().decode().split(") (")[1].split(")")[0]
+            nr, nz = (int(value) + 1 for value in high.split(","))
+            data.seek(names.index("Bt") * nr * nz * 8, 1)
+            around = np.frombuffer(data.read(nr * nz * 8), dtype="<f8").reshape(nz, nr).mean(axis=0)
+        rows.append((float(header[3 + int(header[1])]), current_inside((np.arange(nr) + 0.5) / nr * wall, around, wall)))
+    if rows:
+        np.savetxt(kept, sorted(rows), header="time (s), current along the axis inside 0.7 to 0.8 of the wall's radius (A)")
+    return np.atleast_2d(np.loadtxt(kept)) if kept.exists() else None
+
+
 def current_layer(radius: np.ndarray, current: np.ndarray, near: float, within: float) -> dict:
     """The layer of current at the plasma's edge: where it peaks within `within` of `near`, and its full width
     at half that peak. This is the thickness Park et al. 2019 quote."""
@@ -209,6 +239,10 @@ def reduce(run: Path) -> dict:
             out[f"{species}_mean_speed_through_gap_over_light"] = round(speed / C_LIGHT, 4)
     out["pressure_inside_Pa"] = float(f"{pressure:.4g}")
     out.update(field_and_charge(run, 0.8 * time[-1], time[-1]))
+    axial = along_axis(run, c["rw"])
+    if axial is not None:
+        out["current_along_axis_at_end_over_coil_current"] = round(float(abs(axial[-1, 1]) / c["coil_at"]), 3)
+        out["current_along_axis_largest_over_coil_current"] = round(float(np.abs(axial[:, 1]).max() / c["coil_at"]), 3)
     profiles = on_coil_plane(run, 0.8 * time[-1])
     if profiles is not None and electron_edge:
         radius, strength, current = profiles[0] * c["rw"], profiles[1], profiles[2]

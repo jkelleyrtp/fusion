@@ -157,8 +157,8 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
 **A current along the axis separates the runs that keep gaining plasma from those that settle (20:55 UTC).**
 The picket deck repeats along the axis, so a current can flow along the axis and close on itself through the
 repeat. The snapshots show one. It is read from the field around the axis between the plasma and the wall
-(`warpx/cusp/axial_current.py`, run where the snapshots are; output kept in
-`results/axial_current_2026-10-17.txt` on the analysis machine). Most of it flows between 0.7
+(`along_axis` in `warpx/cusp/analyze_picket.py`; every table row now carries it as a share of the coil
+current). Most of it flows between 0.7
 and 0.8 coil radii, near the plasma's edge and not in the core. It is the same all along the axis and takes
 either sign from run to run.
 
