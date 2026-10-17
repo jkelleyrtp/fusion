@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from analyze_cage import C_LIGHT, M_E, MU0, Q_E
+from analyze_cage import C_LIGHT, EPS0, M_E, MU0, Q_E
 from analyze_spindle import M_U, half_width, leaving, pressure_per_particle
 
 from analyze_beta import bin_centres, field_and_charge, table
@@ -127,6 +127,18 @@ def edge(radius: np.ndarray, count: np.ndarray, c: dict) -> dict:
     return {"level": float(level), "middle": place[0.5], "thickness": place[0.1] - place[0.9]}
 
 
+def crowding(density: float, temperature_J: float, weight: float, radius: float, cell: float) -> tuple[float, float]:
+    """(simulation particles within a screening length or a cell of each other, screening length in cells).
+
+    A simulation particle in this geometry is a ring about the axis, so the count is of rings crossing an area
+    of the r-z plane at `radius`: the screening length squared plus the cell squared, since a particle cannot
+    be told from another closer than a cell. Runs with fewer than about 2000 hold more plasma than runs with
+    more (docs/cusp-results.md).
+    """
+    screening = EPS0 * temperature_J / (density * Q_E**2)
+    return float(density * 2 * np.pi * radius / weight * (screening + cell**2)), float(np.sqrt(screening) / cell)
+
+
 def reduce(run: Path) -> dict:
     c = constants(run)
     number, energy = table(run, "number"), table(run, "energy")
@@ -173,6 +185,11 @@ def reduce(run: Path) -> dict:
             pressure += density * pressure_per_particle(mean_energy, mass)
         if index == 0:
             electron_edge, electron_pressure_each = found, pressure_per_particle(mean_energy, M_E)
+            if found:
+                weight = float((held[late] / number[late, 3]).mean())
+                count, cells = crowding(density, electron_pressure_each, weight, 0.5 * c["rc"], c["rw"] / c["nr"])
+                out["simulation_electrons_within_a_screening_length_or_cell"] = round(count)
+                out["screening_length_in_cells"] = round(cells, 2)
         data, height = table(run, f"{letter}_line3"), bin_centres(run, f"{letter}_line3")
         profile = data[data[:, 1] >= 0.8 * time[-1], 2:].mean(axis=0)
         # The gap is centred half-way between the coils; fold the profile about that plane.

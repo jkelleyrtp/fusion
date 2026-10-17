@@ -54,6 +54,15 @@ class PicketTest(unittest.TestCase):
         self.assertAlmostEqual(analyze_picket.thermal_speed(2760.0, analyze_picket.M_E) / analyze_picket.C_LIGHT, 0.0733, places=4)
         self.assertAlmostEqual(analyze_picket.thermal_speed(1e5, analyze_picket.M_E) / analyze_picket.C_LIGHT, 0.4046, places=4)
 
+    def test_the_count_of_crowded_particles_doubles_with_the_particles_and_falls_on_a_finer_mesh(self) -> None:
+        density, temperature = 1e21, 1e5 * analyze_picket.Q_E
+        screening = math.sqrt(analyze_picket.EPS0 * temperature / (density * analyze_picket.Q_E**2))
+        count, cells = analyze_picket.crowding(density, temperature, 1e6, 0.005, screening)
+        self.assertAlmostEqual(cells, 1.0)
+        self.assertAlmostEqual(count, density * 2 * math.pi * 0.005 / 1e6 * 2 * screening**2)
+        self.assertAlmostEqual(analyze_picket.crowding(density, temperature, 5e5, 0.005, screening)[0], 2 * count)
+        self.assertAlmostEqual(analyze_picket.crowding(density, temperature, 1e6, 0.005, 1e-9 * screening)[0], 0.5 * count)
+
     def test_the_edge_is_where_the_density_halves_and_its_thickness_is_the_fall_from_nine_tenths_to_one_tenth(self) -> None:
         radius = (np.arange(600) + 0.5) * 0.015 / 600
         # Density flat to 7.5 mm, then falling in a straight line to nothing at 8.5 mm; counts go as radius * density.
