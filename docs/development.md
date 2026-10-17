@@ -41,3 +41,13 @@ cd legacy && PYTHONPATH=src OMP_NUM_THREADS=1 python3 -m unittest discover -s te
 2. `campaign.py sync NAME`, then copy `table.jsonl` to `warpx/results/NAME.jsonl`.
 3. Only cases whose `DONE` reads `complete` are in the table. Quote case names in the write-up so every number
    can be found there.
+
+## When a case will not reduce
+
+- `steps repeat or go backwards`: two workers wrote into the case's directory at once (it happened to three
+  cases on 16 October). The output cannot be separated. Write `failed: <why>` to the case's `DONE`, and add
+  the case again under a new name with `campaign.py add`.
+- A row in `table.jsonl` without the edge and current-layer fields: the reducer found no plasma edge inside
+  the coil in the last fifth of the run. Look at `diags/reducedfiles/e_line1.txt` before trusting the rest
+  of the row.
+- `attempts.log` in the case's directory lists every try, which job and GPU made it, and how it ended.
