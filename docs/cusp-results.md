@@ -4,6 +4,12 @@ Status 2026-10-16. Tables here are read from the reduced tables in `warpx/result
 `case` field there. Only finished cases appear. All runs: plasma born inside, fixed coil field, light ions, and
 WarpX patches reviewed by no one but their author ([warpx-patches.md](warpx-patches.md)).
 
+> **2026-10-17: read [wall-charge.md](wall-charge.md) first.** Every run in this file left charge at the
+> conducting walls, a fault of the deposition settings we used. Repeats without it give holding times 14 to 43%
+> lower wherever the plasma pressure is near or above the magnetic pressure. The size-scan exponents in
+> section 3 are withdrawn. The widths of the current layer and the widening of the leaks with pressure hold up
+> in the cases repeated so far. Corrected tables will replace these as the repeats finish.
+
 ## 1. Raising the pressure widens the leaks (2D two-coil cusp)
 
 Deck `inputs_rz_spindle_fed`, campaign `sp2`, 16 kA-turns, 1 cm coils, 10 keV electrons, ions of 57 electron

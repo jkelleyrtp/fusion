@@ -11,6 +11,10 @@ measures leak width against device size at fixed pressure ratio with a sustained
 
 ## Where it stands (2026-10-16)
 
+**2026-10-17:** every run counted below left charge at the conducting walls, and repeats without that fault
+give holding times 14 to 43% lower at high pressure. The size scan is being rerun and its earlier exponents are
+withdrawn. See [docs/wall-charge.md](docs/wall-charge.md).
+
 Only finished runs are counted. Every result below uses WarpX patches that no one but their author has reviewed
 ([warpx/patches](warpx/patches/README.md)).
 
