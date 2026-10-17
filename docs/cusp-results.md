@@ -217,9 +217,20 @@ either sign from run to run.
 | 0.125× | mirrors | 38.8 | +3.9% | 38 / 193 | 2.3 | 0.001 / 0.004 |
 | 0.25×, 4× particles | repeat | 34.2 | +0.8% | 71 / 144 | 2.7 | 0.22 / 0.44 |
 | 0.25×, 4× particles | mirrors | 42.4 | +2.3% | 43 / 133 | 2.5 | 0.003 / 0.006 |
+| 0.375×, 5.3× particles | repeat | 45.2 | +1.4% | 70 / 125 | 2.2 | 0.24 / 0.40 |
+| 0.375×, 5.3× particles | mirrors | 50.2 | +2.3% | 43 / 113 | 2.0 | 0.001 / 0.004 |
+| 0.5×, baseline particles | repeat | 71.3 | +1.7% | 73 / 97 | 4.3 | 0.71 / 0.80 |
+| 0.5×, baseline particles | mirrors | 63.7 | +1.3% | 44 / 94 | 4.3 | 0.001 / 0.003 |
 
   - At 0.125× the current was the cause of the different state: without it the thin boundary forms and the
     holding time halves.
+  - Between mirrors the electrons end at 38 to 44 keV at every size, against 66 to 75 keV with the repeat.
+    The mirrored holding times so far (38.8, 42.4, 50.2, and 63.7 at baseline particles) rise more slowly
+    with size than the repeating ones, but every one is still gaining 1 to 4% over its last fifth and the
+    0.5× case has baseline particles, so no exponent is taken from them.
+  - The highest fill at 0.5× for twice the length (`pw_s0.5_h1.4_ppc4_long`, complete, 22:15 UTC) never
+    settles: 102.6 crossings, +8% over the last fifth, and a current along the axis of 1.68 times the coil
+    current, the largest at this size. It stays out of the tables.
   - At 0.25×, where the current only wandered, mirrors still change the answer by a quarter. Both pairs
     agree to 2% for the first 3 ns. After that the electrons in the repeating run level off at 71 keV while
     those between mirrors go on cooling (42 keV at the end and still falling, plasma still rising), and the
