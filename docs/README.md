@@ -11,6 +11,7 @@ Read in this order.
 | [picket-park.md](picket-park.md) | Check of our setup against the published picket-fence cusp of Park et al. 2019 |
 | [gun-fed-cusp.md](gun-fed-cusp.md) | Plasma fired into the six-coil cusp from outside |
 | [prior-work.md](prior-work.md) | What the literature says about cusp leaks at high pressure, and what is missing from it |
+| [electrostatic-plugging-prior-work.md](electrostatic-plugging-prior-work.md) | What is published on charged cages and plugging cusp leaks with electrodes, with what was read in full and what was not |
 
 ## Methods
 
