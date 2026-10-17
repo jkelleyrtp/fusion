@@ -158,9 +158,29 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
 The picket deck repeats along the axis, so a current can flow along the axis and close on itself through the
 repeat. The snapshots show one. It is read from the field around the axis between the plasma and the wall
 (`along_axis` in `warpx/cusp/analyze_picket.py`; every table row now carries it as a share of the coil
-current). Most of it flows between 0.7
-and 0.8 coil radii, near the plasma's edge and not in the core. It is the same all along the axis and takes
-either sign from run to run.
+current). It is the same all along the axis and takes either sign from run to run.
+
+**Where it flows (maps drawn 23:25 UTC, 17 October).** At 0.5× (coil radius 10 mm, wall 15 mm, coils 78 kA),
+from the field snapshots at the end of three complete cases:
+
+![Maps of electron density, the field around the axis and the current along the axis in two 0.5× cases](images/picket-axial-current-map.png)
+
+| Case | Inside 2.3 mm (kA) | 2.3 to 5 mm (kA) | 5 to 6.3 mm (kA) | 6.3 to 8 mm, the plasma's edge (kA) | Total (kA) |
+|---|---|---|---|---|---|
+| `pw_s0.5_h1.0` (71 crossings) | +8 | −28 | 0 | −35 | −55 |
+| `pw_s0.5_h1.0_seed2` (73 crossings) | −9 | +29 | 0 | +40 | +60 |
+| `pw_s0.5_h1.0_ppc4_seed4` (52 crossings) | +10 | −34 | +24 between 4.8 and 7 mm | 0 | 0 |
+
+- About 60% of the net current is a thin sheet on the plasma's boundary, which follows the scalloped edge of the
+  coil field. The rest is a broad layer at 2.3 to 5 mm. Nothing flows outside 8 mm.
+- **The case with no net current still carries currents along the axis.** It has layers of +10, −34 and +24 kA
+  that cancel. So "no current" in the tables means no net current. What the low-holding-time case lacks is the
+  sheet on the boundary. Whether the holding time follows the net current or that sheet is not known; they are
+  not separated by any case so far.
+- An earlier version of this paragraph said most of the current flows between 0.7 and 0.8 coil radii. That is
+  the sheet only. The reducer reads the total between 0.7 and 0.8 of the wall's radius, outside all of it.
+- Drawn by `warpx/cusp/plot_field_maps.py`. The current maps are the curl of the field around the axis, smoothed
+  over 1.5 cells.
 
 | 0.5×, middle fill, complete cases | Holding time (electron crossings) | Current along the axis at the end (kA; the coils carry 78 kA) |
 |---|---|---|
@@ -231,6 +251,14 @@ either sign from run to run.
   | 0.25×, 4× particles | repeat | 1.9 | 34.2 |
   | 0.5×, 4× particles | repeat | 2.1 | 52.5 |
   | 0.5×, baseline particles | repeat | 7.4 | 71.3 |
+
+  ![Maps of net charge and electric field strength in the 0.25× mirrored case at four times, beside the repeating case](images/picket-mirror-axis-charge-map.png)
+
+  - The map shows the pile is lopsided along the axis: surplus electrons (up to 190 ×10^20 per m^3) toward one
+    mirror plane and surplus ions (up to 120 ×10^20) toward the other, where the plasma holds 4 ×10^20. The
+    repeating case has a fainter, different pattern in the same two columns of cells (surplus ions of about
+    5 ×10^20 near the feed plane, electrons elsewhere). Whether the pile is the repeating runs' current along
+    the axis stopped by the mirror planes is a guess that has not been tested.
 
   - Between mirrors, charge gathers in the one column of cells on the axis, inside the coil throats, and grows
     all run: the electron density there over that three cells out goes 2 → 10 by 63 ns → 50 by 125 ns at
