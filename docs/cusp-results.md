@@ -148,6 +148,27 @@ What limits this:
   - Predictions written before the runs finish: `pw_s0.5_h1.0_ppc16` (`N_c` about 7500) 46 to 48;
     `pw_s0.5_h1.0_nr384_ppc2` (about 2100) 50 to 54; `pw_s0.5_h1.0_half_dt_ppc0.5` (about 500) 70 to 75.
     If these fail, the explanation is wrong.
+  - Outcome so far (17 October, 10:40 UTC). One of the three is complete and holds:
+    `pw_s0.5_h1.0_half_dt_ppc0.5` gives 71.2 crossings (`N_c` about 500). Halving the time step at a fixed
+    particle count changes nothing, so the 55.9 of `pw_s0.5_h1.0_half_dt` came from its extra particles.
+  - The other two are unfinished, so what follows is a reading of runs in progress and not a result.
+    Electrons held (×10^15) at the same times:
+
+    | Case | 10 ns | 20 ns | 25 ns | 35 ns |
+    |---|---|---|---|---|
+    | `pw_s0.5_h1.0` | 1.375 | 1.356 | 1.439 | 1.562 |
+    | `pw_s0.5_h1.0_ppc2` | 1.353 | 1.325 | 1.334 | 1.328 |
+    | `pw_s0.5_h1.0_ppc4` | 1.347 | 1.243 | 1.230 | 1.235 |
+    | `pw_s0.5_h1.0_nr384_ppc2` (running) | 1.375 | 1.255 | 1.241 | |
+    | `pw_s0.5_h1.0_ppc16` (running) | 1.389 | 1.286 | 1.273 | 1.270 |
+
+    `ppc16` sits 3% above `ppc4`, not below it. If that lasts to the end it gives about 54 crossings, the 46 to 48
+    predicted above is wrong, and the straight line in `1/N_c` with it: the holding time stops changing near
+    `N_c` of 2000 at about 53 crossings instead of falling to 45.
+  - The same comparison at 1×, also in progress: `pw_s1_h1.0_ppc2` (four times the particles of `pw_s1_h1.0`)
+    holds 0.78, 0.78 and 0.80 of its amount at 10 crossings when it reaches 50, 75 and 100 crossings; `pw_s1_h1.0`
+    holds 0.89, 0.92 and 0.95 and is at 1.18 by 300 (`pw_s1_h1.0_long`). The 1× holding time of 142 crossings is
+    too high by more than the 0.5× one is.
   - It does not explain 0.25×, where `N_c` of 610, 2591 and 10561 gives 33.9, 34.2 and 35.4 crossings. The 0.25×
     runs last half as many plasma oscillations as 0.5× and a quarter as many per holding time; whether that is
     enough to remove the effect is not shown.
@@ -156,6 +177,18 @@ What limits this:
   - Direct test, running: `pw_s0.5_h1.0_ppc4_clog1e6`, `_clog4e6` and `_clog1.6e7` add WarpX's Coulomb collisions
     with a chosen logarithm (deck `inputs_rz_picket_fed_collisions`) to the four-times-particle case. If
     scattering is the cause, a known amount of it should move that case toward the baseline.
+    In progress at 12.5 ns: electrons held are 1.305×10^15 without collisions and 1.174, 1.041 and 0.809×10^15
+    with logarithms of 1e6, 4e6 and 1.6e7. Collisions lower the amount held; too few particles raises it. So
+    whatever too few particles does, it is not what pair collisions do, and "scattering between simulation
+    particles" is the wrong description of the cause even though `N_c` orders the runs.
+  - No run before 17 October 10:40 UTC smoothed its currents. WarpX turns smoothing off in this geometry unless
+    `warpx.use_filter=1` is given, and the deck's `warpx.filter_npass_each_dir = 0 1` did nothing without it
+    (checked locally: 1, 4 and 16 passes give identical output without the switch, different output with it).
+    Smoothing along the radius is refused outright. `pw_s0.5_h1.0_smooth1`, `_smooth4` (one and four passes
+    along z) and `_shape3` (wider particles, no smoothing) are running at the baseline particle count. If
+    one of them reproduces the many-particle answer, the larger sizes can be run without 4 to 16 times the
+    particles. The WarpX manual warns of a known fault in this smoothing (issue 1943), so a smoothed run counts
+    only if its field energy and charge balance match the unsmoothed many-particle run.
   - In every finished case the particle count closes: feed = loss + change in the number held, to 1%, for both
     species in every time window. Over the last fifth the loss is 0.96 to 1.00 of the feed in the 0.25× and 0.5×
     cases and 0.90 in `pw_s1_h1.0`. So the holding time is the number held divided by a feed we chose, and the

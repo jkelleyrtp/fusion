@@ -45,7 +45,10 @@ boundary.particle_lo = none absorbing
 boundary.particle_hi = absorbing absorbing
 algo.maxwell_solver = yee
 algo.particle_shape = 2
-warpx.filter_npass_each_dir = 0 1    # WarpX cannot smooth along the radius in this geometry
+# WarpX leaves current smoothing off in this geometry unless warpx.use_filter=1 is given, and then smooths only
+# along z. Every run before 17 October 2026 10:40 UTC ran without it, whatever this line says.
+my_constants.npass_z = 1
+warpx.filter_npass_each_dir = 0 npass_z
 warpx.serialize_initial_conditions = 1
 
 particles.species_names = electrons ions
