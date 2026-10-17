@@ -197,7 +197,9 @@ def reduce(run: Path) -> dict:
         "filling_in_electron_crossings": round(c["tfill"] / crossing["electrons"], 1),
     }
     pressure = 0.0
-    slab = 2 * 0.02 * c["a"]
+    # A mesh of several periods folds them onto one in lines 1 and 3 (make_deck.two_periods).
+    periods = round(c["zw"] / c["h"])
+    slab = 2 * 0.02 * c["a"] * periods
     for index, (species, mass) in enumerate(masses.items()):
         letter, held = species[0], number[:, 6 + index]
         when, rate = leaving(run, f"{letter}_through_side", c["shell"])
@@ -234,7 +236,7 @@ def reduce(run: Path) -> dict:
         out[f"{species[:-1]}_stream_half_height_in_gap_mm"] = round(half_width(height[: len(folded)], folded) * 1e3, 4)
         if found and lost > 0:
             band = 2 * 0.02 * c["a"]
-            slab_height, speed = gap_stream(profile, lost, band, 2 * np.pi * c["rc"] * band, density)
+            slab_height, speed = gap_stream(profile / periods, lost / periods, band, 2 * np.pi * c["rc"] * band, density)
             out[f"{species[:-1]}_stream_height_at_inside_density_mm"] = round(slab_height * 1e3, 4)
             out[f"{species}_mean_speed_through_gap_over_light"] = round(speed / C_LIGHT, 4)
     out["pressure_inside_Pa"] = float(f"{pressure:.4g}")

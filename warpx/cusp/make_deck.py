@@ -713,6 +713,26 @@ cii.CoulombLog = clog
 """
 
 
+def two_periods() -> str:
+    """Appended to the picket deck: two periods on one mesh. The feeds move to the planes of the coils at +h and
+    -h, so each half of the mesh is the one-period deck again and only the plasma ties the halves together.
+    Lines 1 and 3 fold the two halves onto one, so they count twice what one period would."""
+    text = "\n# Two periods on one mesh, each fed on the plane of its own middle coil.\nmy_constants.zw = 2*h\n"
+    flux = "0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*((t<tfill)+sustain*(t>=tfill))"
+    for name in ("electrons", "ions"):
+        text += f"{name}.injection_sources = ball up down up2 down2\n"
+        for source, place, direction in (("up", "h", "+1"), ("down", "h", "-1"), ("up2", "-h", "+1"), ("down2", "-h", "-1")):
+            text += (f"{name}.{source}.injection_style = NFluxPerCell\n{name}.{source}.surface_flux_pos = {place}\n"
+                     f"{name}.{source}.flux_normal_axis = z\n{name}.{source}.flux_direction = {direction}\n"
+                     f"{name}.{source}.flux_paired = 1\n{name}.{source}.num_particles_per_cell = ppc_feed\n"
+                     f"{name}.{source}.flux_profile = parse_flux_function\n"
+                     f'{name}.{source}.flux_function(x,y,z,t) = "{flux}"\n'
+                     f"{name}.{source}.momentum_distribution_type = gaussianflux\n")
+        text += (f'{name[0]}_line1.filter_function(t,x,y,z,ux,uy,uz) = "abs(abs(z)-h)<0.02*a"\n'
+                 f'{name[0]}_line3.histogram_function(t,x,y,z,ux,uy,uz) = "abs(abs(z)-h)"\n')
+    return text
+
+
 if __name__ == "__main__":
     here = Path(__file__)
     here.with_name("inputs_3d_cusp_cage").write_text(deck())
@@ -726,3 +746,4 @@ if __name__ == "__main__":
     here.with_name("inputs_rz_spindle_fed").write_text(spindle_deck())
     here.with_name("inputs_rz_picket_fed").write_text(picket_deck())
     here.with_name("inputs_rz_picket_fed_collisions").write_text(picket_deck() + COLLISIONS)
+    here.with_name("inputs_rz_picket_two").write_text(picket_deck() + two_periods())

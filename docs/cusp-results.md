@@ -233,6 +233,11 @@ either sign from run to run.
     two and is the next control.
   - Queued (`pw22_mirror_checks_at_0.25.txt`): the 0.25× mirrored case at twice the length, and with sixteen
     times the particles.
+  - Queued (`pw23_two_periods.txt`, deck `inputs_rz_picket_two`): 0.125× and 0.25× on a mesh two periods
+    long, with the repeat and with mirrors. Each period is fed on the plane of its own middle coil, so the
+    two halves are the one-period case twice and only the plasma ties them. Between mirrors, the plane
+    between the two periods is then free to do what a mirror forbids. A 2.5 ns check on this machine held
+    twice the one-period plasma to 1.2% with 0.005 of the coil current along the axis.
 - **What is and is not known.** This is a correlation over finished cases. That the current causes the extra
   plasma is not tested, why it starts is not known, and neither is whether a real device could carry it: it
   needs the repeat along the axis, which a row of coils of finite length or a cage does not have. The two-coil
