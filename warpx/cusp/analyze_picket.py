@@ -91,10 +91,12 @@ def edge(radius: np.ndarray, count: np.ndarray, c: dict) -> dict:
 
     The density also falls slowly from the centre outward, so "inside" is a band 0.03 coil radii wide that
     ends one edge thickness short of the place the density halves; the band is moved until the thickness it
-    gives stops changing. Each level is taken at the outermost place the density still reaches it, so
-    ripples further in do not count.
+    gives stops changing. Each level is taken at the outermost place inside the coil that the density still
+    reaches it, so ripples further in do not count, and neither does plasma that has already left through a gap
+    and is passing the coil on the outside.
     """
-    density = count / radius
+    inside = radius < c["rc"]
+    radius, density = radius[inside], (count / radius)[inside]
     step = radius[1] - radius[0]
 
     def places(level: float) -> dict[float, float]:

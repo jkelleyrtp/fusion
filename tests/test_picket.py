@@ -78,6 +78,15 @@ class PicketTest(unittest.TestCase):
         self.assertAlmostEqual(found["middle"], 0.008, delta=2e-5)
         self.assertAlmostEqual(found["thickness"], 0.00016, delta=5e-5)
 
+    def test_plasma_outside_the_coil_does_not_hide_the_edge_inside_it(self) -> None:
+        radius = (np.arange(600) + 0.5) * 0.015 / 600
+        # The first test's plasma, with a fifth of its density again between the coil at 10 mm and the wall.
+        density = np.clip((0.0085 - radius) / 0.001, 0.0, 1.0) + 0.2 * (radius > 0.012)
+        found = analyze_picket.edge(radius, radius * density, {"rc": 0.01})
+        self.assertAlmostEqual(found["middle"], 0.008, places=5)
+        self.assertAlmostEqual(found["thickness"], 0.0008, places=5)
+
+
 
 if __name__ == "__main__":
     unittest.main()
