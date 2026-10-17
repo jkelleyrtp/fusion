@@ -35,7 +35,7 @@ REGISTRY = ROOT / "campaigns/registry.json"
 RESULTS = Path("/home/ubuntu/warpx/results")
 JOBS = Path("/home/ubuntu/warpx/jobs")
 # WarpX 26.10 built here for CPUs with the same patches, for `local`.
-LOCAL = {"inputs_rz_": Path("/home/ubuntu/warpx/warpx/build-rz/bin/warpx.rz.NOMPI.OMP.DP.PDP"), "inputs_3d_": Path("/home/ubuntu/warpx/warpx/build/bin/warpx.3d.NOMPI.OMP.DP.PDP")}
+LOCAL = {"inputs_rz_": Path("/home/ubuntu/warpx/warpx/build-rz/bin/warpx.rz"), "inputs_3d_": Path("/home/ubuntu/warpx/warpx/build/bin/warpx.3d")}
 MAX_NODES = 6  # most nodes this script will hold at once, across all campaigns
 PATCHES = sorted((ROOT / "patches").glob("*.patch"))
 # The build directory is named after the patches applied to WarpX 26.10, so a changed patch gets a fresh build.

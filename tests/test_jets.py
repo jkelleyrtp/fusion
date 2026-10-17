@@ -8,9 +8,8 @@ import numpy as np
 
 CUSP = Path(__file__).resolve().parents[1] / "warpx/cusp"
 sys.path.insert(0, str(CUSP))
-import make_deck
-
 import analyze_beta
+import make_deck
 
 CONSTANTS = {"a": 0.01, "coil_at": 32000.0, "zg": 0.019, "vj": 0.0, "rf": 0.003, "feed": 1e22, "toff": 6e-9}
 
@@ -76,6 +75,27 @@ class JetsTest(unittest.TestCase):
             self.assertEqual(out[f"{species}_inside_early_over_late_in_firing"], 1.0)
             # The 4e13 placed at 2.01 a is within 0.15 a of the mouths, out of 6e13 fired.
             self.assertAlmostEqual(out[f"{species}_at_gun_mouths_at_end_over_fired"], 0.6667, places=4)
+
+    def test_a_table_is_refused_unless_each_step_is_there_once_and_in_order(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            run = Path(folder)
+            (run / "diags/reducedfiles").mkdir(parents=True)
+
+            def write(name: str, steps: list[int]) -> None:
+                np.savetxt(run / f"diags/reducedfiles/{name}.txt", np.column_stack([steps, steps]), header="step time")
+
+            write("number", [0, 250, 500])
+            self.assertEqual(len(analyze_beta.table(run, "number")), 3)
+            # A second worker writing to the same directory repeats steps the first has written.
+            write("number", [0, 250, 500, 250, 500])
+            with self.assertRaises(AssertionError):
+                analyze_beta.table(run, "number")
+            # A field probe along a line writes a row per point at each step.
+            write("axis", [0, 0, 0, 500, 500, 500])
+            self.assertEqual(len(analyze_beta.table(run, "axis", rows_per_step=3)), 6)
+            write("axis", [0, 0, 0, 500, 500, 500, 500, 500, 500])
+            with self.assertRaises(AssertionError):
+                analyze_beta.table(run, "axis", rows_per_step=3)
 
 
 if __name__ == "__main__":

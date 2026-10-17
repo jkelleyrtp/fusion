@@ -16,6 +16,9 @@ import numpy as np
 from analyze_cage import M_E, MU0, Q_E, coil_field
 
 
+PROBE_POINTS = 193  # points along each field probe line in the six-coil decks (`resolution` in make_deck.py)
+
+
 def constants(run: Path) -> dict:
     """The my_constants values this run used, and whether it solved the full fields or only the charge."""
     text = (run / "warpx_used_inputs").read_text()
@@ -31,10 +34,12 @@ def constants(run: Path) -> dict:
     return out
 
 
-def table(run: Path, name: str) -> np.ndarray:
+def table(run: Path, name: str, rows_per_step: int = 1) -> np.ndarray:
+    """A reduced diagnostic's rows. A field probe along a line writes one row per point at each step."""
     rows = np.loadtxt(run / f"diags/reducedfiles/{name}.txt", skiprows=1, ndmin=2)
     # Two runs writing to one directory, or a restart that repeated steps, leave rows out of order.
-    assert (np.diff(rows[:, 0]) > 0).all(), f"{name}.txt: steps repeat or go backwards, so this is not one run's output"
+    in_order = (np.diff(rows[:, 0]) >= 0).all() and (np.unique(rows[:, 0], return_counts=True)[1] == rows_per_step).all()
+    assert in_order, f"{name}.txt: steps repeat or go backwards, so this is not one run's output"
     return rows
 
 
@@ -138,7 +143,7 @@ def jets(run: Path, c: dict) -> dict:
 
 def field_change(run: Path, c: dict, line: str) -> dict:
     """How the field along a probe line at the last snapshot differs from the coil field alone."""
-    data = table(run, line)
+    data = table(run, line, PROBE_POINTS)
     last = data[data[:, 0] == data[:, 0].max()]
     points = last[:, 2:5]
     radius = np.linalg.norm(points, axis=1)
