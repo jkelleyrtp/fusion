@@ -549,5 +549,31 @@
     "submitted": "2026-10-17T00:04:46+00:00"
    }
   ]
+ },
+ "hot1": {
+  "question": "Six-coil cusp in 3D with 100 keV electrons and ions of 64 electron masses, so that 512 cells resolve the electron orbit and the screening length: at coil radii of about 13, 25 and 51 electron orbits and three feeds each, how wide are the leak streams in electron orbits, and how many electron crossings is plasma held?",
+  "cases": [
+   "h_39k_f1e23 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.25 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=39210 my_constants.feed=1e+23 my_constants.tmax=1.2e-08",
+   "h_78k_f2.4e23 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.25 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=78420 my_constants.feed=2.4e+23 my_constants.tmax=1.8e-08",
+   "h_157k_f6e23 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.125 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=156840 my_constants.feed=6e+23 my_constants.tmax=3e-08",
+   "h_39k_f3e22 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.25 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=39210 my_constants.feed=3e+22 my_constants.tmax=1.2e-08",
+   "h_39k_f3e23 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.25 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=39210 my_constants.feed=3e+23 my_constants.tmax=1.2e-08",
+   "h_78k_f8e22 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.25 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=78420 my_constants.feed=8e+22 my_constants.tmax=1.8e-08",
+   "h_78k_f8e23 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.25 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=78420 my_constants.feed=8e+23 my_constants.tmax=1.8e-08",
+   "h_157k_f2e23 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.125 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=156840 my_constants.feed=2e+23 my_constants.tmax=3e-08",
+   "h_157k_f2e24 inputs_3d_cusp_fed my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.125 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=156840 my_constants.feed=2e+24 my_constants.tmax=3e-08"
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-bc6c9b74d144",
+    "gpus_per_case": 8,
+    "submitted": "2026-10-17T01:23:30+00:00"
+   },
+   {
+    "job": "jonathan-warpx-daa708dbfc8c",
+    "gpus_per_case": 8,
+    "submitted": "2026-10-17T01:23:32+00:00"
+   }
+  ]
  }
 }
