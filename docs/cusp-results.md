@@ -124,6 +124,16 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
 - **Sizes in between (queued 18:24 UTC, `pw17_sizes_between.txt`):** 0.125×, 0.375× and 0.75× at the particles
   per cell of the four-times cases, with the sustaining feed interpolated between the neighbouring sizes.
   They test whether the step from 0.25× to 0.5× (1.6 times the holding time) carries on above and below.
+- **0.125× is not the same kind of plasma (19:00 UTC).** `pw_s0.125_h1.0_ppc16` gives 82.8 crossings, more
+  than twice the 34 at 0.25×. It never forms the thin boundary: the electron edge is 6.7 orbits thick in a
+  device 22 orbits in radius, the gap stream is 1.95 orbits, the table pressure ratio is 0.23, and it goes on
+  taking in plasma for the whole run until it holds 3.1 times what it was filled with (0.25× ends at 0.82
+  times its fill). So the thin-boundary state needs a device somewhere above 22 orbits in radius, and this
+  point does not belong on the same line as the larger sizes. The feed after filling was my extrapolation
+  (0.38 of the filling rate); half and twice that are queued (`pw19_seeds_and_small_feed.txt`) to see whether
+  the holding time there is set by the feed.
+- **Three more seeds at 0.5× with four times the particles** are queued in the same file, to measure the
+  spread between seeds at one particle count.
 
 What the three sizes show at the baseline particle count:
 - **Holding time in electron crossings rises about in proportion to the radius in electron orbits.** A fit of
@@ -184,7 +194,10 @@ What limits this:
     would give mass^0.5; with the measured widths, mass^0.33 to 0.47. So the reading that fits is a hole of
     nearly fixed size that plasma leaves through at the speed of its ions, not a hole an ion orbit wide.
   - The baseline count overstated the holding time by 49%, 36% and 15% at 16, 64 and 256 electron masses.
-    Only the middle mass has a 16× repeat; `pw_s0.5_h1.0_m16_ppc16` is running.
+  - **The lightest mass holds at 16 times the particles (19:00 UTC).** `pw_s0.5_h1.0_m16_ppc16` gives 35.3
+    crossings (+2.0% over the last fifth) against 33.2, an electron stream of 0.082 mm against 0.075 and an
+    ion stream of 0.226 mm against 0.228. So from 16 to 64 electron masses the electron stream does not widen
+    at all at the best particle count of each. The heaviest mass has no 16× repeat.
 - Numerical repeats at 0.5× split into two groups, and we do not know why (17 October):
 
   | Case | Cells across the radius | Time step | Electrons per cell ÷ baseline's | Holding time (electron crossings) | Electrons held at 20 → 65.9 ns (10^15) | Current layer (orbits) | Gap stream (orbits) |
