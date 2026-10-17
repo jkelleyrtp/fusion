@@ -96,6 +96,14 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
   least trusted width here. Halving the cell leaves it where it was in millimetres: 0.192 → 0.195 mm at 0.25×
   (`_ppc8` against `_nr192`) and 0.082 → 0.084 mm at 0.5× (`_ppc4` against `_nr384_ppc2`). So at the two
   smaller sizes the width is not set by the mesh. No finer-mesh case exists at 1× or 2×.
+- **Fill at 0.5× with four times the particles (17 October, 16:50 UTC).** `pw_s0.5_h0.7_ppc4`,
+  `pw_s0.5_h1.0_ppc4` and `pw_s0.5_h1.4_ppc4` give 52.0, 52.5 and 79.0 crossings, holding 0.87, 1.27 and
+  2.42 ×10^15 electrons. The two lower fills are settled (+1.8% and +1.0% over the last fifth) and agree, so
+  between them the holding time does not depend on how full the device is. The highest fill is not settled: it
+  gains 11% over the last fifth, its magnetic field energy rises from about 4.5 to 11 J through the run, and
+  its electrons heat to 85 keV against 66 to 70 keV in the other two. Its 79 is not a result. The same case
+  for twice the length is queued (`pw16_fill_at_converged_particles.txt`), with the two outer fills at 0.25× at
+  four times the particles.
 
 What the three sizes show at the baseline particle count:
 - **Holding time in electron crossings rises about in proportion to the radius in electron orbits.** A fit of
@@ -366,3 +374,11 @@ What cannot:
 - Gun-fed runs: [gun-fed-cusp.md](gun-fed-cusp.md).
 - The two-coil size scan in physical units (`z15` to `z60` in `sp2`): several of those runs were still filling
   when they ended, which inflates their holding times; they need longer runs before a table.
+- The same scan with the wall correction (`zw15`, `zw30`, `zw60`: one device, field raised so that the coil
+  radius is 15, 30 and 60 electron orbits). Finished so far, at 40 ns: `zw15_f1.8e22_long` 3.98 ns and
+  `zw30_f4.5e22_long` 5.87 ns, with gap streams of 0.62 and 0.89 orbits and coil streams of 2.2 and 3.6
+  orbits, at a pressure of 1.7 and 2.0 times the magnetic pressure of the coils alone in the gap. Both still
+  gain 6 to 7% of their electrons over the last fifth, so neither is settled. Four times the particles leaves
+  the smallest unchanged (`zw15_f1.8e22_long_ppc4`: 3.99 ns, gap stream 0.62 orbits, +6.6%), so here the slow
+  gain is not a particle-count effect. The 60-orbit case at 40 ns and the 30-orbit case with more particles are
+  running; a table waits for them.
