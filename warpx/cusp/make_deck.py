@@ -248,6 +248,7 @@ chk.diag_type = Full
 chk.intervals = chk_every
 diag1.intervals = plot_every
 diag1.diag_type = Full
+diag1.write_species = 0              # fields only: a particle dump is several GB at each plot and nothing reads it
 diag1.fields_to_plot = phi rho
 """
 
@@ -413,6 +414,7 @@ chk.diag_type = Full
 chk.intervals = chk_every
 diag1.intervals = plot_every
 diag1.diag_type = Full
+diag1.write_species = 0              # fields only: a particle dump is several GB at each plot and nothing reads it
 diag1.fields_to_plot = Bx By Bz rho_electrons rho_ions
 """
 
@@ -576,6 +578,7 @@ chk.diag_type = Full
 chk.intervals = chk_every
 diag1.intervals = plot_every
 diag1.diag_type = Full
+diag1.write_species = 0              # fields only: a particle dump is several GB at each plot and nothing reads it
 diag1.fields_to_plot = Br Bt Bz Er Ez jt rho_electrons rho_ions
 particles.B_ext_particle_init_style = parse_B_ext_particle_function
 """

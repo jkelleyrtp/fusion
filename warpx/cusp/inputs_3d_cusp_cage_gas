@@ -175,6 +175,7 @@ chk.diag_type = Full
 chk.intervals = chk_every
 diag1.intervals = plot_every
 diag1.diag_type = Full
+diag1.write_species = 0              # fields only: a particle dump is several GB at each plot and nothing reads it
 diag1.fields_to_plot = phi rho
 irad.intervals = hist_every
 irad.histogram_function(t,x,y,z,ux,uy,uz) = "sqrt(x*x+y*y+z*z)"
