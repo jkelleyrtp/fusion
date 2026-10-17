@@ -18,7 +18,7 @@ from analyze_cage import C_LIGHT, M_E, MU0, Q_E
 
 M_U = 1.66053906660e-27
 
-from analyze_beta import bin_centres, table
+from analyze_beta import bin_centres, field_and_charge, table
 
 C = 299792458.0
 
@@ -208,6 +208,7 @@ def reduce(run: Path) -> dict:
         out["core_pressure_over_magnetic_in_gap"] = float(f"{out['core_pressure_Pa'] / (field_in_gap**2 / (2 * MU0)):.3g}")
         out.update(pushed_out(run, c))
     out["core_pressure_Pa"] = float(f"{out['core_pressure_Pa']:.4g}")
+    out.update(field_and_charge(run, 0.8 * fed_until, fed_until))
     return out
 
 

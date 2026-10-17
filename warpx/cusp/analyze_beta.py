@@ -43,6 +43,17 @@ def table(run: Path, name: str, rows_per_step: int = 1) -> np.ndarray:
     return rows
 
 
+def field_and_charge(run: Path, since: float, until: float) -> dict:
+    """Two checks on the bookkeeping, averaged from `since` to `until`. Charge left behind at an absorbing
+    conducting wall shows as electric field energy that keeps growing against the plasma's energy, and as
+    electrons outnumbering ions."""
+    number, energy, fields = table(run, "number"), table(run, "energy"), table(run, "fields")
+    window = [(rows[:, 1] >= since) & (rows[:, 1] <= until) for rows in (number, energy, fields)]
+    electrons, ions = number[window[0], 6].mean(), number[window[0], 7].mean()
+    return {"electric_field_energy_over_plasma_energy": float(f"{fields[window[2], 3].mean() / energy[window[1], 2].mean():.3g}"),
+            "ions_minus_electrons_over_electrons": round(float((ions - electrons) / electrons), 4)}
+
+
 def bin_centres(run: Path, name: str) -> np.ndarray:
     header = (run / f"diags/reducedfiles/{name}.txt").read_text().split("\n", 1)[0]
     return np.array([float(value) for value in re.findall(r"bin\d+=([-\d.e+]+)\(\)", header)])
@@ -250,6 +261,8 @@ def reduce(run: Path) -> dict:
             window = (when >= 0.8 * min(when[-1], c["toff"])) & (when <= c["toff"])
             assert window.sum() >= 4, "under four histograms in the last fifth of the feed"
             out[f"{species}_inside_cage_over_feed_ns"] = round(float(inside[window].mean() / c["feed"] * 1e9), 3)
+    if electrons[-1]:
+        out.update(field_and_charge(run, 0.8 * time[-1], time[-1]))
     for line in ("axis", "edge", "corner") if c["coil_at"] else ():
         out.update({f"{line}_{key}": value for key, value in field_change(run, c, line).items()})
     if c["coil_at"]:

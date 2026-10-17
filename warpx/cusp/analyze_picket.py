@@ -18,7 +18,7 @@ import numpy as np
 from analyze_cage import C_LIGHT, M_E, MU0, Q_E
 from analyze_spindle import M_U, half_width, leaving, pressure_per_particle
 
-from analyze_beta import bin_centres, table
+from analyze_beta import bin_centres, field_and_charge, table
 
 NAMES = ("a", "rc", "h", "rw", "zw", "coil_at", "te", "ti", "mass_amu", "feed", "tfill", "sustain", "nr", "shell")
 
@@ -179,6 +179,7 @@ def reduce(run: Path) -> dict:
         folded = 0.5 * (profile + profile[::-1])[len(profile) // 2 :]
         out[f"{species[:-1]}_stream_half_height_in_gap_mm"] = round(half_width(height[: len(folded)], folded) * 1e3, 4)
     out["pressure_inside_Pa"] = float(f"{pressure:.4g}")
+    out.update(field_and_charge(run, 0.8 * time[-1], time[-1]))
     profiles = on_coil_plane(run, 0.8 * time[-1])
     if profiles is not None and electron_edge:
         radius, strength, current = profiles[0] * c["rw"], profiles[1], profiles[2]
