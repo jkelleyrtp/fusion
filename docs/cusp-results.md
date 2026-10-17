@@ -83,6 +83,20 @@ What the three sizes show:
 - **The current layer thickens slowly,** 2.1, 2.4, 2.8 fed-temperature orbits, about radius^0.2 to 0.3.
 - Electric field energy is under 1% of the plasma energy and the charge imbalance under 0.1% in the 1× rows.
 
+**Is this high pressure?** Yes, by the usual meanings, though the table's ratio stays below 1. On the plane of
+the middle coil, at fill 1.0 (field of the coils alone computed from the coil formula; 17 October):
+
+| Case | Field at 0.6 coil radii, coils alone → with plasma (T) | Field at 0.75 coil radii, coils alone → with plasma (T) | Pressure ÷ magnetic pressure of the field inside the plasma | Pressure ÷ magnetic pressure of the coils alone at the plasma edge | Pressure ÷ magnetic pressure just outside the edge (the table's ratio) |
+|---|---|---|---|---|---|
+| `pw_s0.25_h1.0_long` | 1.15 → 0.40 | 2.56 → 3.05 | 43 | 1.66 | 0.63 |
+| `pw_s0.5_h1.0` | 2.25 → 0.46 | 5.25 → 6.75 | 117 | 1.77 | 0.65 |
+| `pw_s0.5_h1.0_ppc4` | 2.25 → 0.29 | 5.25 → 6.49 | 68 | 1.56 | 0.69 |
+| `pw_s1_h1.0` | 4.55 → 0.50 | 10.62 → 14.31 | 341 | 2.17 | 0.87 |
+
+The plasma pushes the field out of its interior and piles it up outside its edge. The table's ratio compares
+the pressure with that piled-up field, which is why it tops out near 1. The field is pushed out by a factor of
+3 at the smallest size and 9 at the largest, so the three sizes are not in the same state.
+
 What limits this:
 - **Three sizes, a factor of 3.5 in radius.** The two larger sizes decide whether the exponent holds.
 - **The pressure ratio is not matched:** 0.63–0.67 at the two smaller sizes, 0.87–0.90 at 1×.
