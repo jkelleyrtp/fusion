@@ -114,7 +114,13 @@ What limits this:
   71.3 and 0.66.
 - Ion mass, at 0.5×: 49.3, 71.3 and 110.2 crossings and a gap stream of 0.040, 0.066 and 0.146 mm at 16, 64
   and 256 electron masses. The gap stream goes as about mass^0.46.
-- The finer-mesh and half-time-step repeats are running.
+- Half the time step (`pw_s0.5_h1.0_half_dt`) gives 55.9 crossings, a 2.17-orbit layer and a 0.74-orbit gap
+  stream, and holds a flat 1.30 to 1.35 × 10^15 electrons. This is not a clean time-step test: the feed adds a
+  fixed number of particles per cell per step, so the run ends with 1.65 times the baseline's particles (16.0
+  against 9.7 million; `ppc4` ends with 31.3 million). Holding time against particles is 71.3, 55.9, 52.5 for
+  9.7, 16.0, 31.3 million, which particle count alone could explain. `pw_s0.5_h1.0_half_dt_ppc0.5` (half the
+  step with the baseline's particle count) separates the two and is running.
+- The finer-mesh repeat is running.
 - Against the uncorrected twins (`pm1`), holding time at 1× is higher, not lower: 123 → 142 at fill 1.0 and
   101 → 130 at fill 1.4. The uncorrected runs peak near 140 at 50 to 100 crossings and then fall as the wall
   layer grows.

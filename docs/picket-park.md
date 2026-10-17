@@ -31,6 +31,27 @@ Same inputs as `pf_x0.7`, `pf_x1.0`, `pf_x1.4` plus the two wall settings; campa
 - We do not know why the paper's number is higher. Candidates we have not tested: its wall treatment, which
   the paper does not describe in enough detail for us to copy; its electron temperature (2.8 keV against our
   100 keV); its implicit time stepping. The corrected 2.76 keV case addresses the second.
+- Four runs proposed by an audit of this comparison ([park-comparison-audit.md](park-comparison-audit.md));
+  three are complete (17 October, `campaigns/picket/pk1_park_audit.txt`), all at 100 keV with the baseline
+  particle count:
+
+  | Case | Change from `pfw_x1.0` | Holding time (electron crossings) | Measured over crossings | Change in electrons held over the last fifth | Electric field energy ÷ plasma energy |
+  |---|---|---|---|---|---|
+  | `pfw_x1.0` | none | 84.6 | 40–50 | −3.9% | 0.021 |
+  | `pk_open_wall` | outer boundary absorbs waves (Silver-Mueller) instead of reflecting them | 91.7 | 40–50 | −2.6% | 0.014 |
+  | `pk_open_wall_esirkepov` | the same, with the default deposition and no cropping | 94.0 | 40–50 | −2.5% | 0.014 |
+  | `pk_const_charge` | sustaining feed raised to 0.154 of the filling rate, run for 28 crossings as the paper's Run 1 | 61.2 | 22–28 | +0.2% | 0.017 |
+
+  - With the paper's protocol (number held kept constant, 28 crossings) the holding time is 61, against the
+    paper's 135 (or 174 from its own charge and injection figures). The number held is steady to 0.2%, so this
+    is held ÷ feed as well as held ÷ loss. The gap is not the protocol.
+  - An open outer boundary raises the holding time by 8%, and with it the deposition method changes the result
+    by 2.5%, with no wall layer in either (field energy 1.4% of plasma energy in both). The false wall charge
+    is specific to a conducting mesh edge. An open boundary in WarpX does not produce the paper's number. This
+    says nothing about what the paper's code does at its boundary.
+  - The wall was left at 1.5 coil radii in these runs. The audit asked for 1.4 (the paper's 42 against our 45
+    code units), which is not yet run.
+  - `pk_ppc_paper` (8 times the particles) is running.
 - At 1.4× the fill the layer is still intact here (pressure ratio 0.81, the same as at 1.0×, with a wider gap
   stream), so we do not see the paper's sudden failure of the wall in the gap; the plasma instead leaks until
   the pressure ratio is back near 0.8.
