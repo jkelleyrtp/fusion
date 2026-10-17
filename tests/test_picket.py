@@ -105,6 +105,13 @@ class PicketTest(unittest.TestCase):
         self.assertAlmostEqual(analyze_picket.current_inside(radius, around, 0.015) / 5e4, 1.0, places=9)
         self.assertAlmostEqual(analyze_picket.current_inside(radius, -around, 0.015) / 5e4, -1.0, places=9)
 
+    def test_field_crowding_on_the_axis_is_one_for_a_uniform_field_and_large_for_a_field_on_the_axis(self) -> None:
+        uniform = np.ones((8, 96))
+        self.assertAlmostEqual(analyze_picket.crowding_on_axis(uniform, 0 * uniform), 1.0, places=9)
+        on_axis = np.zeros((8, 96))
+        on_axis[:, :2] = 1.0
+        self.assertAlmostEqual(analyze_picket.crowding_on_axis(0 * on_axis, on_axis), (96 / 4) ** 2, places=9)
+
     def test_a_slab_stream_gives_back_its_height_and_speed(self) -> None:
         # Two gaps, each a slab 0.2 mm high at 3e20 per m3 (half the density inside) leaving at 1e7 m/s through
         # a band 0.4 mm thick at a coil radius of 10 mm.
