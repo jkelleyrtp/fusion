@@ -219,6 +219,18 @@ class LocalTest(unittest.TestCase):
         self.assertIn("complete but not reduced", said.getvalue())
         self.assertTrue(said.getvalue().strip().endswith(": bare"))
 
+    def test_launchers_are_counted_only_on_nodes_without_taints_and_by_the_cpu_not_yet_asked_for(self) -> None:
+        def node(name: str, taints: list) -> dict:
+            return {"metadata": {"name": name}, "spec": {"taints": taints}, "status": {"allocatable": {"cpu": "15890m"}}}
+
+        def described(asked: str) -> str:
+            return f"Allocated resources:\n  Resource  Requests  Limits\n  --------  --------  ------\n  cpu  {asked} (97%)  31 (195%)\n"
+
+        nodes = {"items": [node("full", []), node("open", []), node("gpu", [{"key": "nvidia.com/gpu"}])]}
+        # 15.89 - 15.51 leaves no half core; 15.89 - 14.6 leaves two; the GPU node's free CPU is not for launchers.
+        about = {"full": described("15510m"), "open": described("14600m"), "gpu": described("1")}
+        self.assertEqual(campaign.launcher_room(nodes, about), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

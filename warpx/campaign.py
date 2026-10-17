@@ -19,6 +19,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -37,6 +38,7 @@ JOBS = Path("/home/ubuntu/warpx/jobs")
 # WarpX 26.10 built here for CPUs with the same patches, for `local`.
 LOCAL = {"inputs_rz_": Path("/home/ubuntu/warpx/warpx/build-rz/bin/warpx.rz"), "inputs_3d_": Path("/home/ubuntu/warpx/warpx/build/bin/warpx.3d")}
 MAX_NODES = 6  # most nodes this script will hold at once, across all campaigns
+LAUNCHER_CPU = 0.5  # cores the broker's launcher pod for a job asks for
 PATCHES = sorted((ROOT / "patches").glob("*.patch"))
 # The build directory is named after the patches applied to WarpX 26.10, so a changed patch gets a fresh build.
 BUILD = f"{SHARED}/warpx-26.10-cuda-" + hashlib.sha256(b"".join(patch.read_bytes() for patch in PATCHES)).hexdigest()[:8]
@@ -197,6 +199,23 @@ def free_nodes() -> int:
     return sum(int(line.split("│")[4]) for line in table.splitlines() if "compute.internal" in line) - waiting
 
 
+def cpu(amount: str) -> float:
+    """Kubernetes writes CPU as cores ("2") or thousandths of one ("500m")."""
+    return float(amount[:-1]) / 1000 if amount.endswith("m") else float(amount)
+
+
+def launcher_room(nodes: dict, described: dict[str, str]) -> int:
+    """How many more launcher pods fit. A launcher asks for half a CPU on one of the few nodes without taints.
+    `nodes` is `kubectl get nodes -o json`; `described` is `kubectl describe node` by node name."""
+    room = 0
+    for node in nodes["items"]:
+        if node["spec"].get("taints") or node["spec"].get("unschedulable"):
+            continue
+        asked = re.search(r"Allocated resources:.*?\n\s+cpu\s+(\S+)", described[node["metadata"]["name"]], re.DOTALL).group(1)
+        room += int((cpu(node["status"]["allocatable"]["cpu"]) - cpu(asked)) / LAUNCHER_CPU)
+    return room
+
+
 def payload(texts: dict[str, str]) -> str:
     """What a worker needs beside WarpX, packed for a shell to unpack: the decks, the reducers and which deck
     each reducer serves, the WarpX patches, and the files given here by name."""
@@ -251,6 +270,11 @@ def submit(args: argparse.Namespace) -> None:
     waiting = [line.split()[0] for line in shell(f"kubectl --context {CONTEXT} get pods --no-headers").splitlines()
                if line.startswith("jonathan-warpx-") and "-head-" not in line and line.split()[2] == "Pending"]
     assert not waiting, f"{waiting} is still waiting for a launcher slot; submit after it starts"
+    nodes = json.loads(shell(f"kubectl --context {CONTEXT} get nodes -o json"))
+    described = {node["metadata"]["name"]: shell(f"kubectl --context {CONTEXT} describe node {node['metadata']['name']}")
+                 for node in nodes["items"] if not node["spec"].get("taints")}
+    room = launcher_room(nodes, described)
+    assert room >= args.nodes, f"the launcher nodes have room for {room} more jobs; {args.nodes} would hold GPU nodes idle"
     held, free = len(my_pods()), free_nodes()
     assert held + args.nodes <= MAX_NODES, f"holding {held} nodes; {args.nodes} more would pass the cap of {MAX_NODES}"
     assert free >= args.nodes, f"only {free} nodes are free"

@@ -33,6 +33,14 @@ The entrypoint keeps `--actor-num-nodes 1`, `--actor-num-gpus-per-node 8` (or fe
 `shutdownAfterJobFinishes: true` and `ttlSecondsAfterFinished` make the job release its node when
 it ends.
 
+## The launcher
+
+A job's entrypoint is started by a small launcher pod that asks for half a CPU on one of three CPU nodes
+shared by the whole cluster. When those are full the launcher waits, and the GPU node the job was given sits
+idle. `campaign.py submit` therefore refuses to submit unless the launcher nodes have room. If a launcher is
+already waiting (`campaign.py status` shows `worker Pending`), stop the job with `uv run train job stop` and
+submit it again when there is room.
+
 ## Preemption
 
 The broker takes a priority-1 node back whenever higher-priority work needs it, and starts the job again when
