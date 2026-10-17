@@ -96,6 +96,39 @@ rises" stands, and the rise of holding time with pressure was partly the fault: 
 pressure here it was 2.3 to 2.4 times, and corrected it is 1.7 to 1.8 times. The 10 keV pressure scan in
 section 1 of [cusp-results.md](cusp-results.md) has not been repeated.
 
+## The 3D six-coil runs are a different case
+
+The two settings do nothing in `inputs_3d_cusp_fed`, because its outer wall is not the edge of the mesh but a
+conducting sphere cut into it (`warpx.eb_implicit_function`), and plasma is absorbed there first. The repeat of
+`h_78k_f2.4e23` with the settings (`hw_78k_f2.4e23`, 14.7 of 18 ns when read, so not a result) follows the
+original to 0.4% in electrons held and in every energy.
+
+Two short local runs of that deck at 96 cells (0.52 mm; diagnostic only), one of them with the conducting rings
+around the coils removed (`my_constants.rm=0`), compared the charge the field implies inside a sphere three
+cells in from the wall with the charge the particles carry there:
+
+| Time | No rings: field implies / particles carry | With rings: field implies / particles carry |
+|---|---|---|
+| 1 ns | +3.83e12 e / +3.87e12 e | +4.97e12 e / +3.26e12 e |
+| 3 ns | +3.45e12 e / +3.52e12 e | +5.72e12 e / −0.21e12 e |
+| 4 ns | +3.19e12 e / +3.26e12 e | +5.51e12 e / −2.31e12 e |
+
+- **The spherical wall keeps Gauss's law to 2%.** There is no leftover layer of the 2D kind in the 3D runs.
+- **The rings charge up.** With rings the field sees 1.7e12, 5.9e12 and 7.8e12 elementary charges more than the
+  particles carry, at 1, 3 and 4 ns. That charge is on the rings: they are conductors joined to nothing, more
+  ions than electrons reach them, and nothing carries the charge away. This is what a metal ring on insulating
+  legs would do, so it is a property of the model and not a numerical fault, but nobody chose it.
+- **It changes the plasma.** At 4 ns the run with rings holds 22% more electrons (3.86e13 against 3.15e13), is
+  net negative (−1.9e12 e against +4.0e12 e) and has 2.4 times the electric field energy (0.117 J against
+  0.048 J, still rising). The drift toward negative charge in the 512-cell runs (−4.5% by 14.5 ns in
+  `h_78k_f2.4e23`) has the same sign.
+- From the charge and the capacitance of a bare ring this size (about 0.8 pF) the rings would be at roughly
+  +250 kV at 4 ns, against ions fed at 100 keV. This is an estimate, not a measurement.
+
+So every 3D six-coil holding time so far is for a cage whose coil casings float to a large positive voltage.
+A real device holds its casings at a chosen voltage. `hr_78k_f2.4e23` in campaign `hw1` repeats the finished
+`h_78k_f2.4e23` at 512 cells without rings, to size the effect at full resolution.
+
 ## What is withdrawn, what stands, what is not yet known
 
 - **Withdrawn:** the picket-fence size-scan exponents (holding time as size^0.7, gap stream as size^0.56) and
@@ -104,8 +137,8 @@ section 1 of [cusp-results.md](cusp-results.md) has not been repeated.
   with them the size of the rise of holding time with pressure.
 - **Stands:** the current-layer width of 2 to 2.5 electron orbits; the widening of the leak streams with
   pressure; two-coil numbers at the lowest pressure ratios, within a few percent.
-- **Not yet known:** the corrected size scan beyond 0.5× (1×, 2×, 4× running in `pw1`); the effect in the 3D
-  six-coil runs (two twins of `hot1` cases running as `hw1`); whether the published-case check in
+- **Not yet known:** the corrected size scan beyond 0.5× (1×, 2×, 4× running in `pw1`); how much the floating rings change the 3D
+  six-coil holding times at full resolution (`hr_78k_f2.4e23` queued); whether the published-case check in
   [picket-park.md](picket-park.md) still agrees.
 
 Runs from now on use the two settings. Campaigns finished before this date have not been rerun except where
