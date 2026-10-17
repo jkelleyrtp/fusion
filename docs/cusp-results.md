@@ -214,6 +214,49 @@ either sign from run to run.
   current is still growing when the run stops at 200 crossings. Electrons end at 71, 70, 66, 64 and 54 keV
   down the table, against 38 to 44 keV in every mirrored case, so the rows differ in how much the current
   has heated them. The table is the best the repeating deck gives, not a like-for-like scan.
+- **Mirrored runs pile charge up on the axis (23:05 UTC, 17 October). None of them is a clean result.**
+  The 0.25× mirrored case at twice the length (`pw_s0.25_h1.0_long2_ppc8_mirror`, complete) agrees with the
+  66 ns case to 72 ns, then loses plasma (5.82 → 4.96 ×10^14 electrons by 128 ns) while its electrons heat from
+  43 to 70 keV and its electric field energy grows fourfold. The field snapshots show why:
+
+  | Case (all complete unless marked) | Ends | Electric field energy density within four cells of the axis ÷ mesh mean, at the end | Holding time (electron crossings) |
+  |---|---|---|---|
+  | 0.125× | mirrors | 0.1 | 38.8 |
+  | 0.125×, two periods | mirrors | 116 | 29.6 |
+  | 0.25×, 4× particles | mirrors | 14 | 42.4 |
+  | 0.25×, 4× particles, twice as long | mirrors | 417 | 36.9 |
+  | 0.375×, 5.3× particles | mirrors | 27 | 50.2 |
+  | 0.5×, baseline particles | mirrors | 197 | 63.7 |
+  | 0.5×, 4× particles (two seeds) | mirrors | 4.2, 4.5 | 60.8, 58.6 |
+  | 0.25×, 4× particles | repeat | 1.9 | 34.2 |
+  | 0.5×, 4× particles | repeat | 2.1 | 52.5 |
+  | 0.5×, baseline particles | repeat | 7.4 | 71.3 |
+
+  - Between mirrors, charge gathers in the one column of cells on the axis, inside the coil throats, and grows
+    all run: the electron density there over that three cells out goes 2 → 10 by 63 ns → 50 by 125 ns at
+    0.25×. Repeating runs stay at 2 for 132 ns. By the end the field in the corner cell is 6×10^10 V/m, more
+    than light speed times the magnetic field there, which no plasma can hold. So the late state is a fault of
+    the run, not physics.
+  - It is not a few stray heavy particles and not particle noise. A restart file of the two-period 0.25× case
+    at 39 ns (in progress) holds hundreds to a thousand simulation particles per axis cell: ions 2 to 7 times
+    over-dense on the axis in one period, electrons 2 to 7 times over-dense in the other, and the cells next
+    out depleted of the same species. Sixteen times the particles grows it at the same rate (9 at 50 ns,
+    in progress, against 9 at 47 ns).
+  - It is not at the mirror plane only: in the two-period case one pile sits by the middle coil, which is not
+    a boundary. So it comes with the mirrored state, not from the boundary cells.
+  - What I do not know: why it starts, whether its early stage is physical, and whether it is what cools the
+    electrons between mirrors. It is one cell wide, so the mesh does not resolve it; the same case on a mesh
+    twice as fine is queued (`pw25_mirror_mesh.txt`).
+  - What it does to the table below: the two-period 0.125× row and the baseline 0.5× row are spoiled outright.
+    The 0.25× and 0.375× rows carry the pile at a level that has not yet moved the totals (the 0.25× case
+    matches its double-length repeat to 72 ns). The 0.125× one-period row and the two 0.5× rows at four times
+    the particles are clean by this measure. Every picket row in the table now carries the measure
+    (`electric_field_crowding_on_axis_at_end`, `crowding_on_axis` in `analyze_picket.py`).
+  - The earlier check below ("Gauss's law holds row by row") left out the inner tenth of the radius, which is
+    where this is. It did not test the axis.
+  - **Two periods at 0.125× (complete): 29.6 crossings between mirrors against 38.8 for one period.** With a
+    crowding of 116 that difference cannot be read as the effect of freeing the middle plane.
+
 - **Mirror planes: first two cases (21:45 UTC, complete), and they change more than the current.**
 
 | Case | Ends | Holding time (crossings) | Change over last fifth | Electron / ion mean energy (keV) | Edge thickness (electron orbits) | Current over coil current, at end / largest |
@@ -241,7 +284,7 @@ either sign from run to run.
     those between mirrors go on cooling (42 keV at the end and still falling, plasma still rising), and the
     magnetic energy is steady between mirrors (0.69 to 0.73 J) where it swings between 0.82 and 1.03 J in the
     repeating run. So the wandering current keeps the electrons hot. Neither mirrored case has settled.
-  - The mirror planes pass the check that caught the wall fault: Gauss's law holds row by row along the axis
+  - (Superseded by the entry above: this check skipped the inner tenth of the radius.) The mirror planes pass the check that caught the wall fault: Gauss's law holds row by row along the axis
     as well as in the repeating run, and no electric field piles up at the end rows.
   - Which is nearer a real device is not established. The repeat lets a net current close on itself, which a
     row of finite length cannot. Mirrors forbid every motion that is not symmetric about each coil plane,
