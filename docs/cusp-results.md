@@ -108,10 +108,15 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
   with +0.2% over its last fifth. It holds 1.24, 1.28, 1.30 and 1.32 ×10^15 electrons at 20, 66, 100 and
   131 ns: a gain of 6% over 110 ns that has stopped by the end. So the middle size is settled near 54.
 - **Fill at 0.25× with four times the particles.** `pw_s0.25_h0.7_long_ppc8` gives 34.2 crossings, the same as
-  fill 1.0 (34.2) and as fill 1.4 at the baseline count (`pw_s0.25_h1.4_long`, 34.2). The radius in electron
+  fill 1.0 (34.2); fill 1.4 gives 33.6 (`pw_s0.25_h1.4_long_ppc8`; 34.2 at the baseline count). The radius in electron
   orbits at the plasma edge is 49, 56 and 64 in those three, because a fuller plasma sits against a stronger
   field. So at one physical size the holding time does not follow that number; it is a poor size axis, and the
   scan should be read against the physical size.
+- **2× at the highest fill, baseline particles:** `pw_s2_h1.4` gives 179.3 crossings, the same as fill 1.0,
+  and both are flat over the last fifth. Still an upper limit until `pw_s2_h1.0_ppc1` finishes.
+- **Sizes in between (queued 18:24 UTC, `pw17_sizes_between.txt`):** 0.125×, 0.375× and 0.75× at the particles
+  per cell of the four-times cases, with the sustaining feed interpolated between the neighbouring sizes.
+  They test whether the step from 0.25× to 0.5× (1.6 times the holding time) carries on above and below.
 
 What the three sizes show at the baseline particle count:
 - **Holding time in electron crossings rises about in proportion to the radius in electron orbits.** A fit of
