@@ -30,6 +30,7 @@ Read in this order.
 
 | | |
 |---|---|
+| [size-scan-blog.md](size-scan-blog.md) | Plain-language account of the size scan: the question, how the runs work, the current along the axis, the mirror fault, and where the answer stands |
 | [cusp-blog.md](cusp-blog.md) | Six-coil cage with electrodes and electron emitters: wells, losses, and why electrons alone were not enough |
 | [pops-writeup.md](pops-writeup.md), [pops-results.md](pops-results.md), [pops-blog.md](pops-blog.md) | Electron wells and ion focusing in a sphere with no magnetic field |
 | `artifacts/` | The HTML pages built for those two studies |
