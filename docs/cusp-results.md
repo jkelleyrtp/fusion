@@ -107,20 +107,32 @@ What limits this:
   (four times the particles, about 880 per cell against 270) holds for 52.5 crossings against 71.3, with a
   1.83-orbit current layer against 2.42 and 66 keV electrons against 73. The two runs agree to 10 ns; after
   that the standard run gains plasma (1.36 → 1.71 × 10^15 electrons from 20 to 65 ns) and the finer one stays
-  flat (1.24 → 1.27 × 10^15). The slow rise in the number held, here and at 1×, is therefore at least partly
-  particle noise. The standard runs have about 320, 270 and 210 electrons per cell at 0.25×, 0.5× and 1×, so
+  flat (1.24 → 1.27 × 10^15). The slow rise in the number held, here and at 1×, therefore depends on a
+  numerical setting; the table below shows it is not simply fewer particles. The standard runs have about 320, 270 and 210 electrons per cell at 0.25×, 0.5× and 1×, so
   the error need not be the same at each size. `pw3_particles.txt` repeats all three sizes with more particles.
 - Another seed changes little: `pw_s0.5_h1.0_seed2` gives 73.3 crossings and a 0.67-orbit gap stream against
   71.3 and 0.66.
 - Ion mass, at 0.5×: 49.3, 71.3 and 110.2 crossings and a gap stream of 0.040, 0.066 and 0.146 mm at 16, 64
   and 256 electron masses. The gap stream goes as about mass^0.46.
-- Half the time step (`pw_s0.5_h1.0_half_dt`) gives 55.9 crossings, a 2.17-orbit layer and a 0.74-orbit gap
-  stream, and holds a flat 1.30 to 1.35 × 10^15 electrons. This is not a clean time-step test: the feed adds a
-  fixed number of particles per cell per step, so the run ends with 1.65 times the baseline's particles (16.0
-  against 9.7 million; `ppc4` ends with 31.3 million). Holding time against particles is 71.3, 55.9, 52.5 for
-  9.7, 16.0, 31.3 million, which particle count alone could explain. `pw_s0.5_h1.0_half_dt_ppc0.5` (half the
-  step with the baseline's particle count) separates the two and is running.
-- The finer-mesh repeat is running.
+- Numerical repeats at 0.5× split into two groups, and we do not know why (17 October):
+
+  | Case | Cells across the radius | Time step | Electrons per cell ÷ baseline's | Holding time (electron crossings) | Electrons held at 20 → 65.9 ns (10^15) | Current layer (orbits) | Gap stream (orbits) |
+  |---|---|---|---|---|---|---|---|
+  | `pw_s0.5_h1.0` | 192 | 0.156 ps | 1 | 71.3 | 1.36 → 1.71 | 2.42 | 0.66 |
+  | `pw_s0.5_h1.0_seed2` | 192 | 0.156 ps | 1 | 73.3 | 1.36 → 1.75 | 2.43 | 0.67 |
+  | `pw_s0.5_h1.0_nr384` | 384 | 0.078 ps | 0.5 | 72.2 | 1.34 → 1.72 | 2.12 | 0.75 |
+  | `pw_s0.5_h1.0_half_dt` | 192 | 0.078 ps | 1.6 to 1.9 | 55.9 | 1.27 → 1.35 | 2.17 | 0.74 |
+  | `pw_s0.5_h1.0_ppc4` | 192 | 0.156 ps | 3.2 to 4.8 | 52.5 | 1.24 → 1.27 | 1.83 | 0.79 |
+
+  - All five agree to 10 ns. The first three then gain plasma; the last two stay flat.
+  - Neither the time step nor the mesh separates the groups: `nr384` has half the step and twice the mesh and
+    reproduces the baseline. What the two flat runs share is more particles per cell on the baseline mesh
+    (`half_dt` has more because the feed adds a fixed number per cell per step).
+  - At 0.25× the same change does nothing: `pw_s0.25_h1.0_long_ppc8` (4.3 times the particles) holds for 34.2
+    crossings against 33.9, with a 2.06-orbit layer against 2.10. The 0.25× baseline does not gain plasma late.
+  - Running to separate the causes: `pw_s0.5_h1.0_half_dt_ppc0.5` (half the step at the baseline's particles),
+    `pw_s0.5_h1.0_ppc2`, `pw_s0.5_h1.0_nr384_ppc2` (finer mesh with four times its particles), and
+    `pw_s0.5_h1.0_ppc16`.
 - Against the uncorrected twins (`pm1`), holding time at 1× is higher, not lower: 123 → 142 at fill 1.0 and
   101 → 130 at fill 1.4. The uncorrected runs peak near 140 at 50 to 100 crossings and then fall as the wall
   layer grows.
