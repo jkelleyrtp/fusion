@@ -79,7 +79,7 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
 | Size | Case | Particles against the table above | Coil radius (electron orbits) | Holding time (electron crossings) | Change over the last fifth | Current layer (orbits) | Electron gap stream (orbits) | Standing |
 |---|---|---|---|---|---|---|---|---|
 | 0.25× | `pw_s0.25_h1.0_long_ppc8` | 4× | 56 | 34.2 | +0.8% | 2.06 | 1.07 | same at 1×, 4× and 16× the particles, and on a mesh twice as fine (`pw_s0.25_h1.0_long_nr192`: 34.0 crossings, layer 1.88, gap stream 1.11) |
-| 0.5× | `pw_s0.5_h1.0_ppc4`, `_ppc4_seed2`, `_nr384_ppc2`, `_ppc16` | 4× to 16× | 96 to 103 | 52.5 to 58.2 | +1.0 to +4.9% | 1.83 to 2.02 | 0.78 to 0.87 | same on two meshes; 11% spread |
+| 0.5× | `pw_s0.5_h1.0_ppc4`, `_ppc4_seed2`, `_nr384_ppc2`, `_ppc16`, `_ppc4_long` | 4× to 16× | 96 to 103 | 52.5 to 58.2 | +0.2 to +4.9% | 1.83 to 2.10 | 0.78 to 0.87 | same on two meshes; 11% spread; at twice the length 54.3 and flat (+0.2%) |
 | 1× | `pw_s1_h1.0_ppc2` | 4× | 216 | 113.9 | +5.6% | 2.76 | 1.19 | not settled; 16× running |
 | 2× | `pw_s2_h1.0` | 1× | 396 | 179.3 | +0.2% | 3.08 | 1.64 | baseline particles only: an upper limit |
 
@@ -104,6 +104,14 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
   its electrons heat to 85 keV against 66 to 70 keV in the other two. Its 79 is not a result. The same case
   for twice the length is queued (`pw16_fill_at_converged_particles.txt`), with the two outer fills at 0.25× at
   four times the particles.
+- **Twice the length at 0.5× (17:50 UTC).** `pw_s0.5_h1.0_ppc4_long` runs to 800 crossings and gives 54.3,
+  with +0.2% over its last fifth. It holds 1.24, 1.28, 1.30 and 1.32 ×10^15 electrons at 20, 66, 100 and
+  131 ns: a gain of 6% over 110 ns that has stopped by the end. So the middle size is settled near 54.
+- **Fill at 0.25× with four times the particles.** `pw_s0.25_h0.7_long_ppc8` gives 34.2 crossings, the same as
+  fill 1.0 (34.2) and as fill 1.4 at the baseline count (`pw_s0.25_h1.4_long`, 34.2). The radius in electron
+  orbits at the plasma edge is 49, 56 and 64 in those three, because a fuller plasma sits against a stronger
+  field. So at one physical size the holding time does not follow that number; it is a poor size axis, and the
+  scan should be read against the physical size.
 
 What the three sizes show at the baseline particle count:
 - **Holding time in electron crossings rises about in proportion to the radius in electron orbits.** A fit of
