@@ -209,6 +209,11 @@ either sign from run to run.
   orbits at the plasma's edge the stream thickens by 1.7 times over a factor of four in size, and faster at
   the large end. The 0.75× and 1× cases have no repeat with another seed or particle count that also stays
   free of the current.
+  These rows are not free of the current either: it wandered up to 0.44, 0.40, 0.23 and 0.29 of the coil
+  current in the first four, and in the 1× row its 0.18 is the largest value and comes at the end, so that
+  current is still growing when the run stops at 200 crossings. Electrons end at 71, 70, 66, 64 and 54 keV
+  down the table, against 38 to 44 keV in every mirrored case, so the rows differ in how much the current
+  has heated them. The table is the best the repeating deck gives, not a like-for-like scan.
 - **Mirror planes: first two cases (21:45 UTC, complete), and they change more than the current.**
 
 | Case | Ends | Holding time (crossings) | Change over last fifth | Electron / ion mean energy (keV) | Edge thickness (electron orbits) | Current over coil current, at end / largest |
