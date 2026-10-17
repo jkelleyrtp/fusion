@@ -131,7 +131,7 @@ What limits this:
     count of simulation electrons within one screening length or one cell of each other, whichever is larger,
     `N_c = (electrons per unit area of the r-z plane at half the coil radius) × (screening length² + cell²)`.
     It sets how often simulation particles scatter off each other, which real particles at this density and
-    temperature do a million times less often. The finer mesh has smaller cells and fewer particles per cell,
+    temperature do about a hundred thousand times less often (textbook estimates of both rates, not measured). The finer mesh has smaller cells and fewer particles per cell,
     and the two cancel.
 
     | Case | `N_c` | Holding time (electron crossings) | Electrons held at the end ÷ most held |
