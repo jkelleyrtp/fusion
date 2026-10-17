@@ -136,8 +136,27 @@ What limits this:
   the error need not be the same at each size. `pw3_particles.txt` repeats all three sizes with more particles.
 - Another seed changes little: `pw_s0.5_h1.0_seed2` gives 73.3 crossings and a 0.67-orbit gap stream against
   71.3 and 0.66.
-- Ion mass, at 0.5×: 49.3, 71.3 and 110.2 crossings and a gap stream of 0.040, 0.066 and 0.146 mm at 16, 64
-  and 256 electron masses. The gap stream goes as about mass^0.46.
+- Ion mass, at 0.5×, at the baseline particle count: 49.3, 71.3 and 110.2 crossings and a gap stream of 0.040,
+  0.066 and 0.146 mm at 16, 64 and 256 electron masses, about mass^0.46. **That exponent does not survive more
+  particles.** With four times the particles (`pw_s0.5_h1.0_m16_ppc4`, `_ppc4`, `_m256_ppc4`; 17 October):
+
+  | Ion mass (electron masses) | Holding time (electron crossings) | Change over the last fifth | Electron gap stream (mm) | Ion gap stream (mm) | Current layer (mm) | Electron orbit at the edge (mm) | Electron gap stream (orbits at the edge) | Electron / ion energy (keV) |
+  |---|---|---|---|---|---|---|---|---|
+  | 16 | 33.2 | +0.9% | 0.075 | 0.228 | 0.59 | 0.149 | 0.50 | 84 / 108 |
+  | 64 | 52.5 | +1.0% | 0.082 | 0.232 | 0.48 | 0.104 | 0.79 | 66 / 120 |
+  | 256 | 95.5 | +3.5% | 0.121 | 0.248 | 0.34 | 0.068 | 1.79 | 51 / 136 |
+
+  - In millimetres the electron stream goes as mass^0.17 (0.06 from 16 to 64, 0.28 from 64 to 256) and the ion
+    stream as mass^0.03. The ion orbit at the edge grows 2.6 times over this range (0.68, 1.12, 1.76 mm from
+    the columns above), so neither stream follows it.
+  - In electron orbits at the edge the electron stream still goes as mass^0.46, but that is the orbit
+    shrinking, not the stream widening: the heavier-ion plasma holds 2.8 times as much, sits against a stronger
+    field and has colder electrons.
+  - The holding time goes as mass^0.38 (0.33, then 0.43). A stream of fixed width emptied at the ion speed
+    would give mass^0.5; with the measured widths, mass^0.33 to 0.47. So the reading that fits is a hole of
+    nearly fixed size that plasma leaves through at the speed of its ions, not a hole an ion orbit wide.
+  - The baseline count overstated the holding time by 49%, 36% and 15% at 16, 64 and 256 electron masses.
+    Only the middle mass has a 16× repeat; `pw_s0.5_h1.0_m16_ppc16` is running.
 - Numerical repeats at 0.5× split into two groups, and we do not know why (17 October):
 
   | Case | Cells across the radius | Time step | Electrons per cell ÷ baseline's | Holding time (electron crossings) | Electrons held at 20 → 65.9 ns (10^15) | Current layer (orbits) | Gap stream (orbits) |
