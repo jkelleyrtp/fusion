@@ -111,6 +111,20 @@ class WorkerTest(unittest.TestCase):
         self.assertIn("amr.restart=diags/chk000020", (self.camp / "stopped/attempts.log").read_text())
         self.assertEqual(self.rows("stopped"), [str(step) for step in range(1, 31)])
 
+    def test_checkpoints_past_step_999999_are_ordered_by_step_and_not_as_text(self) -> None:
+        diags = self.camp / "far_along/diags"
+        for step in (999990, 1000000, 1000010):
+            (diags / f"chk{step}").mkdir(parents=True)
+        (self.camp / "far_along/run.log").write_text("STEP 999991 ends\nSTEP 1000001 ends\nSTEP 1000011 ends\n")
+        self.work("far_along deck\n")
+        self.assertIn("amr.restart=diags/chk1000010", (self.camp / "far_along/attempts.log").read_text())
+
+        diags = self.camp / "pruned/diags"
+        for step in (999990, 1000000, 1000010):
+            (diags / f"chk{step}").mkdir(parents=True)
+        self.work("pruned deck slow_after=5\n", stall=3)
+        self.assertEqual(sorted(path.name for path in diags.glob("chk*")), ["chk1000000", "chk1000010"])
+
     def test_a_job_started_again_takes_back_the_cases_its_earlier_start_had_claimed(self) -> None:
         self.work("stopped deck stop_at=25\n", starts=2)  # the claim is seconds old when the job starts again
         self.assertEqual((self.camp / "stopped/DONE").read_text().strip(), "complete")

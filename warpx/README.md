@@ -40,6 +40,10 @@ python3 campaign.py sync em4      # fetches finished cases into results/em4 and 
   A worker that finds another worker's name in the `CLAIM` of a case it is running stops that run at once:
   two runs in one directory mix their output, and the reducers refuse tables whose steps repeat.
   The decks checkpoint every `chk_every` steps.
+  The worker keeps the two newest checkpoints, ordered by step number. Until 17 October it ordered them as
+  text, so past step 999,999 it kept the two last six-digit ones and deleted every later one, sometimes while
+  WarpX was writing it (`Couldn't open file: diags/chk1640000/Level_0/DM`). Five cases of `pw1` lost up to 22 ns
+  of progress to that; their results are unaffected, since a restart repeats the lost steps.
 - Each finished case is reduced on the node to `measured.json` by the script `REDUCERS` names for
   its deck.
 

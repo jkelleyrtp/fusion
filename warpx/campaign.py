@@ -108,7 +108,7 @@ run_case() {
   cd "$camp/$name"; local start=$(date +%s)
   local restart=""
   # Restart from the newest checkpoint that was written to the end, which the log shows by the next step finishing.
-  for chk in $(ls -d diags/chk[0-9]* 2>/dev/null | sort -r); do
+  for chk in $(ls -d diags/chk[0-9]* 2>/dev/null | sort -rV); do
     grep -q "^STEP $(( 10#${chk##*chk} + 1 )) ends" run.log && { restart="amr.restart=$chk"; break; }
   done
   # The stopped try wrote diagnostics past its last checkpoint; drop those rows so the restart does not repeat them.
@@ -126,13 +126,14 @@ run_case() {
   local exe=$warpx; [[ $deck == inputs_rz_* ]] && exe=$warpx_rz
   CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __LAUNCH__ "$exe" "$files/$deck" "$@" $restart >> run.log 2>&1 &
   local run=$!
-  # While the case runs, keep its claim fresh, keep only the two newest checkpoints, and stop it if its log has
+  # While the case runs, keep its claim fresh, keep only the two newest checkpoints (by step number: WarpX
+  # writes six digits and then seven, so the names do not sort as text past step 999999), and stop it if its log has
   # not grown for __STALL__ seconds: a hung case would otherwise hold its GPU until the time limit.
   # If the claim is no longer this worker's, another worker has taken the case and is writing to this directory:
   # stop at once and leave everything to it.
   ( while sleep $(( __STALL__ < 60 ? __STALL__ : 60 )); do
       [ "$(cat CLAIM 2>/dev/null)" = "$me" ] || { touch "$files/lost.$gpu"; kill $run; break; }
-      touch CLAIM; ls -d diags/chk[0-9]* 2>/dev/null | sort | head -n -2 | xargs -r rm -rf
+      touch CLAIM; ls -d diags/chk[0-9]* 2>/dev/null | sort -V | head -n -2 | xargs -r rm -rf
       [ $(( $(date +%s) - $(stat -c %Y run.log) )) -gt __STALL__ ] && { touch STALLED; kill $run; }; done ) &
   local beat=$!
   wait $run; local code=$?
@@ -148,7 +149,7 @@ run_case() {
   elif [ $code -eq 124 ]; then
     # Out of time. If it left a later checkpoint than the one it started from, another try carries on from there.
     local reached=0
-    for chk in $(ls -d diags/chk[0-9]* 2>/dev/null | sort -r); do
+    for chk in $(ls -d diags/chk[0-9]* 2>/dev/null | sort -rV); do
       grep -q "^STEP $(( 10#${chk##*chk} + 1 )) ends" run.log && { reached=$((10#${chk##*chk})); break; }
     done
     if [ $reached -gt $step ]; then rm -f CLAIM; else echo "failed: time limit" > DONE; fi
