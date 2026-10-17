@@ -92,6 +92,10 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
   size^0.2, far slower than the device.
 - The pressure ratio is 0.63, 0.69 to 0.75, 0.76 and 1.05 from the smallest size up, so the sizes are still not
   in the same state.
+- The electron gap stream is about one cell thick on the standard meshes (0.8 to 1.4 cells), which made it the
+  least trusted width here. Halving the cell leaves it where it was in millimetres: 0.192 → 0.195 mm at 0.25×
+  (`_ppc8` against `_nr192`) and 0.082 → 0.084 mm at 0.5× (`_ppc4` against `_nr384_ppc2`). So at the two
+  smaller sizes the width is not set by the mesh. No finer-mesh case exists at 1× or 2×.
 
 What the three sizes show at the baseline particle count:
 - **Holding time in electron crossings rises about in proportion to the radius in electron orbits.** A fit of
