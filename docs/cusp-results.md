@@ -73,7 +73,27 @@ not in the table.
 | `pw_s0.5_h1.4` | 118 | 0.67 | 75 | +0.021 | 2.31 | 0.96 | 1.63 | 69 | 5.7 |
 | `pw_s1_h1.4` | 227 | 0.89 | 130 | +0.046 | 2.88 | 1.55 | 1.17 | 64 | 6.6 |
 
-What the three sizes show:
+**Where the scan stands (17 October, 14:30 UTC).** The table above is at the baseline particle count, which
+is too low at 0.5× and 1× (below). Best finished case at each size, middle fill:
+
+| Size | Case | Particles against the table above | Coil radius (electron orbits) | Holding time (electron crossings) | Change over the last fifth | Current layer (orbits) | Electron gap stream (orbits) | Standing |
+|---|---|---|---|---|---|---|---|---|
+| 0.25× | `pw_s0.25_h1.0_long_ppc8` | 4× | 56 | 34.2 | +0.8% | 2.06 | 1.07 | same at 1×, 4× and 16× the particles |
+| 0.5× | `pw_s0.5_h1.0_ppc4`, `_ppc4_seed2`, `_nr384_ppc2`, `_ppc16` | 4× to 16× | 96 to 103 | 52.5 to 58.2 | +1.0 to +4.9% | 1.83 to 2.02 | 0.78 to 0.87 | same on two meshes; 11% spread |
+| 1× | `pw_s1_h1.0_ppc2` | 4× | 216 | 113.9 | +5.6% | 2.76 | 1.19 | not settled; 16× running |
+| 2× | `pw_s2_h1.0` | 1× | 396 | 179.3 | +0.2% | 3.08 | 1.64 | baseline particles only: an upper limit |
+
+- Between 0.25× and 0.5× the holding time goes as radius^0.7 to 0.9, and between 0.5× and 1× as radius^0.9 to
+  1.0 if the 1× number stands. With four smoothing passes at all three sizes (32.8, 50.7, 100.2 crossings at
+  54, 95 and 210 orbits) the same two steps give 0.77 and 0.86. Neither is a result yet: the 1× case is still
+  gaining plasma and is not shown to have enough particles.
+- The current layer is 2.0 orbits at 0.25× and 0.5×, 2.8 at 1× and 3.1 at 2×. The electron gap stream is 1.1,
+  0.8, 1.2 and 1.6 orbits. Both are wider at the two larger sizes; over a factor of 7 in size that is about
+  size^0.2, far slower than the device.
+- The pressure ratio is 0.63, 0.69 to 0.75, 0.76 and 1.05 from the smallest size up, so the sizes are still not
+  in the same state.
+
+What the three sizes show at the baseline particle count:
 - **Holding time in electron crossings rises about in proportion to the radius in electron orbits.** A fit of
   holding time against radius in orbits gives exponents of 1.01, 1.16 and 1.05 at the three fills (0.93, 1.17
   and 1.02 if the crossing time is taken at the measured electron energy instead of the fed temperature).
@@ -170,9 +190,21 @@ What limits this:
     - Four smoothing passes on top of four times the particles leaves the holding time where it was (52.8
       against 52.5 and 54.7) and thins the electron gap stream (0.63 against 0.78 to 0.79 orbits).
     - `pw_s0.5_h1.0_nr384_ppc2` is still running.
-  - At 1×, in progress: `pw_s1_h1.0_ppc2` (four times the particles of `pw_s1_h1.0`) holds 5.96, 6.10, 6.38 and
-    6.67×10^15 electrons at 20, 30, 40 and 50 ns against 7.11, 7.37, 7.66 and 8.04, and `pw_s1_h1.0_smooth4`
-    holds 6.03, 6.17, 6.30 and 6.36. All three are rising.
+    - The finer mesh with four times its particles, `pw_s0.5_h1.0_nr384_ppc2` (`N_c` 2210), gives 56.2
+      crossings, a 1.93-orbit layer and an electron gap stream of 0.86 orbits, inside the range of the runs
+      above. So at 0.5× the many-particle answer does not depend on the mesh.
+  - At 1× (complete 17 October, 14:25 UTC), four times the particles and four smoothing passes both lower the
+    holding time, by different amounts, and the first has not settled:
+
+    | Case | `N_c` | Holding time (electron crossings) | Electrons held at 30 → 65 ns (10^15) | Change over the last fifth | Pressure inside ÷ magnetic pressure outside | Current layer (orbits) | Gap stream, electrons / ions (orbits) |
+    |---|---|---|---|---|---|---|---|
+    | `pw_s1_h1.0` | about 340 | 141.8 | 7.37 → 8.63 | +6.3% | 0.87 | 2.84 | 0.79 / 0.90 |
+    | `pw_s1_h1.0_ppc2` (four times the particles) | 1372 | 113.9 | 6.10 → 7.10 | +5.6% | 0.76 | 2.76 | 1.19 / 1.50 |
+    | `pw_s1_h1.0_smooth4` | 298 | 100.2 | 6.17 → 6.49 | +1.5% | 0.82 | 2.75 | 0.86 / 1.27 |
+
+    `pw_s1_h1.0_ppc2` gains plasma as fast as the baseline (14% between 30 and 60 ns in both), from a level 17%
+    lower. `pw_s1_h1.0_ppc8_half` (16 times the particles, 200 crossings) is running to say whether four
+    times is enough here.
   - It does not explain 0.25×, where `N_c` of 610, 2591 and 10561 gives 33.9, 34.2 and 35.4 crossings. The 0.25×
     runs last half as many plasma oscillations as 0.5× and a quarter as many per holding time; whether that is
     enough to remove the effect is not shown.
@@ -226,15 +258,19 @@ What limits this:
       remove it. Why noisy fields make the run hold more is not known.
     - The electron gap stream is 0.6 to 1.2 cells in every run on this mesh (1.95 cells and 0.75 orbits on the
       mesh twice as fine), so it is the least resolved number in the table, and smoothing along z thins it.
-    - Running: `pw_s1_h1.0_smooth4` and `pw_s2_h1.0_smooth4`.
+    - At 2× the smoothed run is numerically unstable. In `pw_s2_h1.0_smooth4` the electric field energy grows
+      from 17 J at 5 ns to 1,455 J at 20 ns (it falls from 50 J to 11 J in the unsmoothed `pw_s2_h1.0`), the
+      mean electron energy reaches 3 MeV and nine tenths of the plasma is lost. Stopped by hand at 32 ns and
+      recorded as failed; it is not a result. The smoothed runs at 0.25×, 0.5× and 1× show no such growth
+      (their electric field energy falls and levels off). The cause is not known, so smoothing is not usable
+      at 2× and its results at the smaller sizes are estimates only.
     - Cost at 0.5×: 2,763 s for `smooth4` against 5,588 s for `ppc4`.
   - The 1× case run twice as long does not settle (complete 17 October): `pw_s1_h1.0_long` holds for 153.9
     crossings measured at 800, against 141.8 at 400 in `pw_s1_h1.0`, and its number held is still rising 6.1%
     over the last fifth (6.65, 8.12, 9.13 and 9.79×10^15 electrons at 20, 65, 100 and 130 ns). Its pressure
     ratio is 0.70, its current layer 3.24 orbits and its electron gap stream 1.31 orbits, against 0.87, 2.84
-    and 0.79 at 400 crossings. `pw_s1_h1.0_ppc2`, in progress, holds 14 to 17% less than `pw_s1_h1.0` from
-    15 ns on and is also rising (5.96, 6.10, 6.38 and 6.67×10^15 at 20, 30, 40 and 50 ns), so four times the
-    particles is not shown to be enough at 1×.
+    and 0.79 at 400 crossings. `pw_s1_h1.0_ppc2` (table above) holds 17% less and
+    rises as fast.
   - In every finished case the particle count closes: feed = loss + change in the number held, to 1%, for both
     species in every time window. Over the last fifth the loss is 0.96 to 1.00 of the feed in the 0.25× and 0.5×
     cases and 0.90 in `pw_s1_h1.0`. So the holding time is the number held divided by a feed we chose, and the
