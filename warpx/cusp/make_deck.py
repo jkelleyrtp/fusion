@@ -545,7 +545,10 @@ boundary.particle_lo = none absorbing
 boundary.particle_hi = absorbing absorbing
 algo.maxwell_solver = yee
 algo.particle_shape = 2
-warpx.filter_npass_each_dir = 0 1    # WarpX cannot smooth along the radius in this geometry
+# WarpX leaves current smoothing off in this geometry unless warpx.use_filter=1 is given, and then smooths only
+# along z. Every run before 17 October 2026 10:40 UTC ran without it, whatever this line says.
+my_constants.npass_z = 1
+warpx.filter_npass_each_dir = 0 npass_z
 warpx.serialize_initial_conditions = 1
 
 particles.species_names = electrons ions
@@ -694,6 +697,19 @@ def picket_deck() -> str:
     return text + lines + "warpx.reduced_diags_names = number energy fields " + " ".join(names) + "\n"
 
 
+COLLISIONS = """
+# Coulomb collisions with a chosen logarithm, to measure what a known collision rate does to the holding time.
+my_constants.clog = 1.
+collisions.collision_names = cee cei cii
+cee.species = electrons electrons
+cei.species = electrons ions
+cii.species = ions ions
+cee.CoulombLog = clog
+cei.CoulombLog = clog
+cii.CoulombLog = clog
+"""
+
+
 if __name__ == "__main__":
     here = Path(__file__)
     here.with_name("inputs_3d_cusp_cage").write_text(deck())
@@ -706,3 +722,4 @@ if __name__ == "__main__":
     here.with_name("inputs_3d_cusp_jets").write_text(beta_deck(jets=True))
     here.with_name("inputs_rz_spindle_fed").write_text(spindle_deck())
     here.with_name("inputs_rz_picket_fed").write_text(picket_deck())
+    here.with_name("inputs_rz_picket_fed_collisions").write_text(picket_deck() + COLLISIONS)
