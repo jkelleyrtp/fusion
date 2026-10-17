@@ -196,7 +196,7 @@ def reduce(run: Path) -> dict:
         "end_in_electron_crossings": round(float(time[-1] / crossing["electrons"]), 1),
         "filling_in_electron_crossings": round(c["tfill"] / crossing["electrons"], 1),
     }
-    pressure = 0.0
+    pressures = []
     # A mesh of several periods folds them onto one in lines 1 and 3 (make_deck.two_periods).
     periods = round(c["zw"] / c["h"])
     slab = 2 * 0.02 * c["a"] * periods
@@ -221,7 +221,7 @@ def reduce(run: Path) -> dict:
             out[f"{species}_density_inside_per_m3"] = float(f"{density:.4g}")
             out[f"{species[:-1]}_edge_at_over_coil_radius"] = round(found["middle"] / c["rc"], 4)
             out[f"{species[:-1]}_edge_thickness_mm"] = round(found["thickness"] * 1e3, 4)
-            pressure += density * pressure_per_particle(mean_energy, mass)
+            pressures.append(density * pressure_per_particle(mean_energy, mass))
         if index == 0:
             electron_edge, electron_pressure_each = found, pressure_per_particle(mean_energy, M_E)
             if found:
@@ -239,7 +239,9 @@ def reduce(run: Path) -> dict:
             slab_height, speed = gap_stream(profile / periods, lost / periods, band, 2 * np.pi * c["rc"] * band, density)
             out[f"{species[:-1]}_stream_height_at_inside_density_mm"] = round(slab_height * 1e3, 4)
             out[f"{species}_mean_speed_through_gap_over_light"] = round(speed / C_LIGHT, 4)
-    out["pressure_inside_Pa"] = float(f"{pressure:.4g}")
+    # Both species or nothing: one species' edge not being found must not pass for a low pressure.
+    pressure = sum(pressures) if len(pressures) == len(masses) else None
+    out["pressure_inside_Pa"] = float(f"{pressure:.4g}") if pressure is not None else None
     out.update(field_and_charge(run, 0.8 * time[-1], time[-1]))
     axial = along_axis(run, c["rw"])
     if axial is not None:
@@ -258,7 +260,8 @@ def reduce(run: Path) -> dict:
         out["electron_orbit_at_edge_mm"] = round(float(momentum / (Q_E * at_edge) * 1e3), 4)
         out["edge_thickness_in_electron_orbits"] = round(float(thickness * Q_E * at_edge / momentum), 2)
         out["coil_radius_in_electron_orbits_at_edge"] = round(float(c["rc"] * Q_E * at_edge / momentum), 1)
-        out["pressure_inside_over_magnetic_outside_edge"] = float(f"{pressure / (outside**2 / (2 * MU0)):.3g}")
+        if pressure is not None:
+            out["pressure_inside_over_magnetic_outside_edge"] = float(f"{pressure / (outside**2 / (2 * MU0)):.3g}")
         layer = current_layer(radius, current, middle, 0.1 * c["rc"])
         if layer:
             inside = (radius >= layer["from"]) & (radius <= layer["to"])
