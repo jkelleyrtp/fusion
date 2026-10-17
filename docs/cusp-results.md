@@ -184,6 +184,13 @@ either sign from run to run.
   double-length run, 77 kA and rising in `pw_s1_h1.0_ppc2` (coils 157 kA), but 12 kA in `pw_s1_h0.7_ppc2`,
   which is also the 1× case that settles (94.5 crossings, +1.2% over the last fifth). 2× at baseline particles:
   101 to 146 kA (coils 314). The two cases with strong collisions reach 170 kA.
+- **Three more cases (21:15 UTC).** `pw_s0.375_h1.0_ppc5.33_seed2`: 44.9 crossings against 45.2, with 0.16
+  and 0.24 of the coil current, so 0.375× repeats between seeds. `pw_s1_h1.0_ppc2_seed2`: 117.7 crossings,
+  +8.3% over the last fifth, 0.70 of the coil current and rising. `pw_s1_h1.4_ppc2`: 126.2, +5.2%, 0.63. Both 1×
+  cases carry the current and neither settles.
+- **0.25× is not free of it.** There the current swings to 0.4 to 1.0 of the coil current in single snapshots
+  and back; it does not grow steadily as at the larger sizes. The two short baseline cases that end with 0.34
+  and 0.78 of the coil current read 36.4 and 37.1 crossings against 34.
 - **What is and is not known.** This is a correlation over finished cases. That the current causes the extra
   plasma is not tested, why it starts is not known, and neither is whether a real device could carry it: it
   needs the repeat along the axis, which a row of coils of finite length or a cage does not have. The two-coil
