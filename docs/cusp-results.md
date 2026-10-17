@@ -88,8 +88,19 @@ What limits this:
 - **The pressure ratio is not matched:** 0.63–0.67 at the two smaller sizes, 0.87–0.90 at 1×.
 - **The 1× cases are not steady at 400 crossings.** The number held is still rising 2 to 6% over the last fifth
   and the holding time with it: at fill 1.0 it is 117, 119, 129 and 141 crossings over 100–150, 150–200, 200–300
-  and 300–400 crossings. The 1× holding times are therefore lower bounds, which would raise the exponent.
-- No repeat with another seed, a finer mesh or more particles has been done with the correction.
+  and 300–400 crossings.
+- **The result is not converged in particle number, so the exponent is not established.** `pw_s0.5_h1.0_ppc4`
+  (four times the particles, about 880 per cell against 270) holds for 52.5 crossings against 71.3, with a
+  1.83-orbit current layer against 2.42 and 66 keV electrons against 73. The two runs agree to 10 ns; after
+  that the standard run gains plasma (1.36 → 1.71 × 10^15 electrons from 20 to 65 ns) and the finer one stays
+  flat (1.24 → 1.27 × 10^15). The slow rise in the number held, here and at 1×, is therefore at least partly
+  particle noise. The standard runs have about 320, 270 and 210 electrons per cell at 0.25×, 0.5× and 1×, so
+  the error need not be the same at each size. `pw3_particles.txt` repeats all three sizes with more particles.
+- Another seed changes little: `pw_s0.5_h1.0_seed2` gives 73.3 crossings and a 0.67-orbit gap stream against
+  71.3 and 0.66.
+- Ion mass, at 0.5×: 49.3, 71.3 and 110.2 crossings and a gap stream of 0.040, 0.066 and 0.146 mm at 16, 64
+  and 256 electron masses. The gap stream goes as about mass^0.46.
+- The finer-mesh and half-time-step repeats are running.
 - Against the uncorrected twins (`pm1`), holding time at 1× is higher, not lower: 123 → 142 at fill 1.0 and
   101 → 130 at fill 1.4. The uncorrected runs peak near 140 at 50 to 100 crossings and then fall as the wall
   layer grows.
