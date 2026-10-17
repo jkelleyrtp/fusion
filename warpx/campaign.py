@@ -131,10 +131,15 @@ run_case() {
   # not grown for __STALL__ seconds: a hung case would otherwise hold its GPU until the time limit.
   # If the claim is no longer this worker's, another worker has taken the case and is writing to this directory:
   # stop at once and leave everything to it.
-  ( while sleep $(( __STALL__ < 60 ? __STALL__ : 60 )); do
+  # Growth is judged by the log's size changing between looks, not by one reading of its modification time: a
+  # case was once stopped as hung in the same second its log was last written (cause not found), and with sizes
+  # it takes __STALL__ seconds of looks that all agree to stop a case.
+  ( local size="" grew=$start now
+    while sleep $(( __STALL__ < 60 ? __STALL__ : 60 )); do
       [ "$(cat CLAIM 2>/dev/null)" = "$me" ] || { touch "$files/lost.$gpu"; kill $run; break; }
       touch CLAIM; ls -d diags/chk[0-9]* 2>/dev/null | sort -V | head -n -2 | xargs -r rm -rf
-      [ $(( $(date +%s) - $(stat -c %Y run.log) )) -gt __STALL__ ] && { touch STALLED; kill $run; }; done ) &
+      now=$(stat -c %s run.log 2>/dev/null) && [ "$now" != "$size" ] && { size=$now; grew=$(date +%s); }
+      [ $(( $(date +%s) - grew )) -gt __STALL__ ] && { touch STALLED; kill $run; }; done ) &
   local beat=$!
   wait $run; local code=$?
   kill $beat 2>/dev/null
