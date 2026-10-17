@@ -132,8 +132,24 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
   point does not belong on the same line as the larger sizes. The feed after filling was my extrapolation
   (0.38 of the filling rate); half and twice that are queued (`pw19_seeds_and_small_feed.txt`) to see whether
   the holding time there is set by the feed.
+- **At 0.125× the holding time is whatever the feed makes it (20:10 UTC).** Three feeds after filling, all
+  complete:
+
+  | Case | Feed after filling (per s) | Electrons held (×10^14) | Change over the last fifth | Holding time (electron crossings) |
+  |---|---|---|---|---|
+  | `pw_s0.125_h1.0_ppc16_sus0.19` | 1.64e22 | 4.13 | +15.9% | 209.5 (not settled) |
+  | `pw_s0.125_h1.0_ppc16` | 3.28e22 | 4.42 | +2.3% | 82.8 |
+  | `pw_s0.125_h1.0_ppc16_sus0.76` | 6.56e22 | 5.17 | -0.5% | 47.5 |
+
+  Four times the feed changes the plasma held by 25%, so the holding time is just that nearly fixed amount
+  divided by the feed. The device fills to about 4 to 5 ×10^14 and passes on whatever more arrives. At 0.25×
+  the opposite holds: the amount held follows the feed (0.7, 1.0 and 1.4 times) and the holding time stays at
+  34. So 0.125× gives no holding time to put in the scan, and it is left out. Why it behaves as a full
+  container and the larger sizes do not is not known.
 - **Three more seeds at 0.5× with four times the particles** are queued in the same file, to measure the
   spread between seeds at one particle count.
+- **Checks at 0.375× (queued 20:04 UTC, `pw20_checks_at_0.375.txt`):** a second seed, four times the
+  particles again, and fills 0.7 and 1.4, since the size^0.65 below leans on that one case.
 - **0.375× with 5.3 times the particles (19:25 UTC):** `pw_s0.375_h1.0_ppc5.33` gives 45.2 crossings, +1.4%
   over the last fifth. With 34.2 at 0.25× and 52.5 to 54.7 at 0.5× at four times the particles, three sizes
   lie on size^0.65.
