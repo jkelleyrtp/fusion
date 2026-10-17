@@ -216,8 +216,10 @@ function Report() {
         current to go.
       </P>
       <P>
-        The field snapshots show exactly such a current. It starts at zero, grows near the plasma's edge, and
-        points either way depending on the random numbers. At the middle size it sorts the repeats:
+        The field snapshots show exactly such a current. It starts at zero and points either way depending on
+        the random numbers. Most of it is a thin sheet on the plasma's boundary. The chart shows the net current:
+        a run with no net current still carries layers of current that cancel, and what it lacks is that sheet.
+        At the middle size the net current sorts the repeats:
       </P>
       <Text size={12} weight="medium" className="block text-text-secondary">Holding time (electron crossings) against the current along the axis</Text>
       <ChartContainer config={{ hold: { label: "Holding time (electron crossings)", color: chartColors[0] } }}

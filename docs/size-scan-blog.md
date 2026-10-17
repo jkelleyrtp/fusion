@@ -79,8 +79,14 @@ The simulated stack of coils repeats forever along its axis: what leaves the top
 That is a standard way to model a long row, and it is what Park did. But it lets a current flow along the axis
 and close on itself through the repeat. A real, finite row of coils has nowhere for that current to go.
 
-The field snapshots show exactly such a current. It starts at zero, grows near the plasma's edge, and points
-either way depending on the random numbers. At the middle size it sorts the repeats:
+The field snapshots show exactly such a current. It starts at zero and points either way depending on the random
+numbers. Most of it is a thin sheet on the plasma's boundary:
+
+![Maps of electron density, the field around the axis and the current along the axis in two runs](images/picket-axial-current-map.png)
+
+The numbers below are the net current. The maps show that a run with no net current still carries layers of
+current that cancel; what it lacks is the sheet on the boundary. At the middle size the net current sorts the
+repeats:
 
 | Current along the axis ÷ coil current | Holding time (crossings), 15 repeats at 0.5× |
 |---|---|
