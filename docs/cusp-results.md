@@ -134,6 +134,60 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
   the holding time there is set by the feed.
 - **Three more seeds at 0.5× with four times the particles** are queued in the same file, to measure the
   spread between seeds at one particle count.
+- **0.375× with 5.3 times the particles (19:25 UTC):** `pw_s0.375_h1.0_ppc5.33` gives 45.2 crossings, +1.4%
+  over the last fifth. With 34.2 at 0.25× and 52.5 to 54.7 at 0.5× at four times the particles, three sizes
+  lie on size^0.65.
+
+**What the leak carries (added 19:30 UTC).** The half-height of the stream, which the tables above call the gap
+stream, is not what sets the loss. Two numbers that do are now in every row of the table:
+
+- *Stream height at the inside density*: the particles in one gap's stream, per unit length of the ring,
+  divided by the density inside. It is the height of the slot that would pass the same stream if the stream
+  were as dense as the plasma inside.
+- *Mean speed through the gap*: particles lost per second divided by the particles in the stream per metre of
+  travel.
+
+| Case | Holding time (electron crossings) | Stream height at inside density (mm) | The same in electron orbits at the edge | Half-height (mm) | Peak stream density ÷ inside | Mean speed through the gap ÷ light, electrons / ions |
+|---|---|---|---|---|---|---|
+| 0.25×, fill 0.7, `pw_s0.25_h0.7_long_ppc8` | 34.2 | 0.206 | 1.00 | | | 0.058 / 0.056 |
+| 0.25×, `pw_s0.25_h1.0_long_ppc8` | 34.2 | 0.221 | 1.24 | 0.192 | 0.55 | 0.058 / 0.055 |
+| 0.25×, 16× particles, `_ppc32` | 35.4 | 0.218 | 1.24 | 0.192 | 0.54 | 0.058 / 0.055 |
+| 0.25×, finer mesh, `_nr192` | 34.0 | 0.221 | 1.26 | 0.195 | 0.54 | 0.058 / 0.055 |
+| 0.25×, fill 1.4, `pw_s0.25_h1.4_long_ppc8` | 33.6 | 0.240 | 1.55 | | | 0.058 / 0.054 |
+| 0.375×, `pw_s0.375_h1.0_ppc5.33` | 45.2 | 0.169 | 1.30 | 0.120 | 0.66 | 0.056 / 0.056 |
+| 0.5×, `pw_s0.5_h1.0_ppc4` | 52.5 | 0.143 | 1.37 | 0.082 | 0.82 | 0.055 / 0.056 |
+| 0.5×, finer mesh, `_nr384_ppc2` | 56.2 | 0.139 | 1.42 | 0.084 | 0.78 | 0.054 / 0.055 |
+| 0.5×, twice as long, `_ppc4_long` | 54.3 | 0.140 | 1.35 | 0.084 | 0.79 | 0.055 / 0.055 |
+| 0.5×, 16× particles, `_ppc16` | 58.2 | 0.130 | 1.28 | 0.088 | 0.69 | 0.056 / 0.056 |
+| 0.5×, 16× particles, seed 2 | 67.5 | 0.130 | 1.29 | 0.069 | 0.84 | 0.050 / 0.051 |
+| 1×, `pw_s1_h1.0_ppc2` (not settled) | 113.9 | 0.070 | 1.50 | 0.055 | 0.65 | 0.047 / 0.048 |
+| 2×, `pw_s2_h1.0` (upper limit) | 179.3 | 0.053 | 2.10 | 0.041 | 0.71 | 0.035 / 0.035 |
+| 0.5×, 16 electron masses, `_m16_ppc4` / `_m16_ppc16` | 33.2 / 35.3 | 0.107 / 0.102 | 0.72 / 0.68 | 0.075 / 0.082 | 0.63 | 0.102 / 0.104 |
+| 0.5×, 256 electron masses, `_m256_ppc4` | 95.5 | 0.174 | 2.59 | 0.121 | 0.72 | 0.028 / 0.027 |
+
+- **The plasma leaves at one speed, set by the ions.** Electrons and ions go through the gap at the same mean
+  speed, 0.055 to 0.058 of light at the three settled sizes, and 0.102, 0.055 and 0.028 at 16, 64 and 256
+  electron masses: mass^-0.47. That is measured now, where the ion-mass paragraph below only inferred it.
+- **So the holding time is the stream height and nothing else.** Holding time × stream height is 7.6, 7.6 and
+  7.5 at 0.25×, 0.375× and 0.5×. The height falls as size^-0.63 over those three (0.221, 0.169, 0.143 mm),
+  which is the size^0.65 of the holding time seen from the other side. It is the same on the finer mesh at
+  both sizes and at 4 and 16 times the particles at 0.25×.
+- **The half-height misled.** It falls as size^-1.2, which reads as a leak getting narrower in orbits (1.07,
+  0.92, 0.80). But the stream gets denser as it narrows, from 0.55 to 0.82 of the inside density at its peak.
+  Statements above that rest on the half-height ("the leak stays 1 to 1.6 orbits") should be read against the
+  stream height.
+- **In orbits at the plasma edge the stream height is 1.24, 1.30 and 1.37** at the middle fill: nearly fixed,
+  rising 10% over a doubling. That unit moves with fill, though: at 0.25× the height is 0.206, 0.221 and
+  0.240 mm at the three fills while the edge orbit goes 0.206, 0.179, 0.155 mm, so the same leak reads 1.00,
+  1.24 or 1.55 orbits. The height in millimetres follows the device far more closely than it follows the edge
+  orbit.
+- **Against the question.** Here the device keeps its physical size and the coil current grows, so a leak a
+  fixed number of orbits high in the coils' field falls as size^-1 and a leak that grows with the device stays
+  the same in millimetres. The three settled sizes give size^-0.63; taking the two 16× cases at 0.5× (0.130 mm)
+  instead gives size^-0.77. Both lie between the two answers, nearer the fixed-orbit one. From 0.5× to the
+  unsettled 1× case the height halves (size^-1.0).
+- **Ion mass:** the stream height goes 0.107, 0.143, 0.174 mm, mass^0.17, steadier than the half-height (0.06
+  then 0.28 in the exponent).
 
 What the three sizes show at the baseline particle count:
 - **Holding time in electron crossings rises about in proportion to the radius in electron orbits.** A fit of

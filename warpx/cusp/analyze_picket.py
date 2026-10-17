@@ -139,6 +139,13 @@ def crowding(density: float, temperature_J: float, weight: float, radius: float,
     return float(density * 2 * np.pi * radius / weight * (screening + cell**2)), float(np.sqrt(screening) / cell)
 
 
+def gap_stream(count: np.ndarray, lost: float, band: float, ring: float, inside: float) -> tuple[float, float]:
+    """(height of a slab at the inside density that carries one gap's stream, mean outward speed in the stream).
+    `count` is the particles in a band `band` thick around the coil radius, binned along the axis with both gaps
+    folded together; `ring` is the band's area seen along the axis; `lost` is particles leaving per second."""
+    return float(count.sum() / (2 * ring * inside)), float(lost * band / count.sum())
+
+
 def reduce(run: Path) -> dict:
     c = constants(run)
     number, energy = table(run, "number"), table(run, "energy")
@@ -195,6 +202,11 @@ def reduce(run: Path) -> dict:
         # The gap is centred half-way between the coils; fold the profile about that plane.
         folded = 0.5 * (profile + profile[::-1])[len(profile) // 2 :]
         out[f"{species[:-1]}_stream_half_height_in_gap_mm"] = round(half_width(height[: len(folded)], folded) * 1e3, 4)
+        if found and lost > 0:
+            band = 2 * 0.02 * c["a"]
+            slab_height, speed = gap_stream(profile, lost, band, 2 * np.pi * c["rc"] * band, density)
+            out[f"{species[:-1]}_stream_height_at_inside_density_mm"] = round(slab_height * 1e3, 4)
+            out[f"{species}_mean_speed_through_gap_over_light"] = round(speed / C_LIGHT, 4)
     out["pressure_inside_Pa"] = float(f"{pressure:.4g}")
     out.update(field_and_charge(run, 0.8 * time[-1], time[-1]))
     profiles = on_coil_plane(run, 0.8 * time[-1])

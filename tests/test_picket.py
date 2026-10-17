@@ -97,6 +97,17 @@ class PicketTest(unittest.TestCase):
         self.assertAlmostEqual(found["thickness"], 0.0008, places=5)
 
 
+    def test_a_slab_stream_gives_back_its_height_and_speed(self) -> None:
+        # Two gaps, each a slab 0.2 mm high at 3e20 per m3 (half the density inside) leaving at 1e7 m/s through
+        # a band 0.4 mm thick at a coil radius of 10 mm.
+        band, ring = 4e-4, 2 * np.pi * 0.01 * 4e-4
+        count = np.zeros(400)
+        count[190:210] = 2 * 3e20 * ring * 2e-4 / 20
+        lost = 2 * 3e20 * 2 * np.pi * 0.01 * 2e-4 * 1e7
+        height, speed = analyze_picket.gap_stream(count, lost, band, ring, 6e20)
+        self.assertAlmostEqual(height, 1e-4, places=9)
+        self.assertAlmostEqual(speed / 1e7, 1.0, places=9)
+
 
 if __name__ == "__main__":
     unittest.main()
