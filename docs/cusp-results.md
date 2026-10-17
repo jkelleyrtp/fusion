@@ -191,6 +191,48 @@ either sign from run to run.
 - **0.25× is not free of it.** There the current swings to 0.4 to 1.0 of the coil current in single snapshots
   and back; it does not grow steadily as at the larger sizes. The two short baseline cases that end with 0.34
   and 0.78 of the coil current read 36.4 and 37.1 crossings against 34.
+- **More sizes with little current (21:45 UTC, all complete).** 0.375× at fills 0.7, 1.0 and 1.4: 44.5, 45.2
+  and 45.3 crossings, so fill does not matter there either. `pw_s0.75_h1.0_ppc2.67`: 73.0 crossings, +1.5% over
+  the last fifth, 0.16 of the coil current. `pw_s1_h1.0_ppc8_half` (1×, sixteen times the particles, 200
+  crossings long): 91.2 crossings, +0.6%, 0.18 of the coil current; the 1× case at fill 0.7 with little current
+  gave 94.5.
+
+| Size, repeat along the axis, cases ending with under 0.25 of the coil current | Holding time (electron crossings) | Stream height at the inside density (mm) | The same in electron orbits at the plasma's edge |
+|---|---|---|---|
+| 0.25×, `pw_s0.25_h1.0_long_ppc8` | 34.2 | 0.221 | 1.24 |
+| 0.375×, `pw_s0.375_h1.0_ppc5.33` | 45.2 | 0.169 | 1.30 |
+| 0.5×, `pw_s0.5_h1.0_ppc4` | 52.5 | 0.143 | 1.37 |
+| 0.75×, `pw_s0.75_h1.0_ppc2.67` | 73.0 | 0.105 | 1.72 |
+| 1×, `pw_s1_h1.0_ppc8_half` | 91.2 | 0.090 | 2.13 |
+
+  End to end the holding time goes as size^0.71 and the stream height as size^-0.65. Counted in electron
+  orbits at the plasma's edge the stream thickens by 1.7 times over a factor of four in size, and faster at
+  the large end. The 0.75× and 1× cases have no repeat with another seed or particle count that also stays
+  free of the current.
+- **Mirror planes: first two cases (21:45 UTC, complete), and they change more than the current.**
+
+| Case | Ends | Holding time (crossings) | Change over last fifth | Electron / ion mean energy (keV) | Edge thickness (electron orbits) | Current over coil current, at end / largest |
+|---|---|---|---|---|---|---|
+| 0.125× | repeat | 82.8 | +2.3% | 122 / 140 | 6.7 | 2.72 / 3.75 |
+| 0.125× | mirrors | 38.8 | +3.9% | 38 / 193 | 2.3 | 0.001 / 0.004 |
+| 0.25×, 4× particles | repeat | 34.2 | +0.8% | 71 / 144 | 2.7 | 0.22 / 0.44 |
+| 0.25×, 4× particles | mirrors | 42.4 | +2.3% | 43 / 133 | 2.5 | 0.003 / 0.006 |
+
+  - At 0.125× the current was the cause of the different state: without it the thin boundary forms and the
+    holding time halves.
+  - At 0.25×, where the current only wandered, mirrors still change the answer by a quarter. Both pairs
+    agree to 2% for the first 3 ns. After that the electrons in the repeating run level off at 71 keV while
+    those between mirrors go on cooling (42 keV at the end and still falling, plasma still rising), and the
+    magnetic energy is steady between mirrors (0.69 to 0.73 J) where it swings between 0.82 and 1.03 J in the
+    repeating run. So the wandering current keeps the electrons hot. Neither mirrored case has settled.
+  - The mirror planes pass the check that caught the wall fault: Gauss's law holds row by row along the axis
+    as well as in the repeating run, and no electric field piles up at the end rows.
+  - Which is nearer a real device is not established. The repeat lets a net current close on itself, which a
+    row of finite length cannot. Mirrors forbid every motion that is not symmetric about each coil plane,
+    which is stricter than a real device. A longer stretch of coils between two mirrors would sit between the
+    two and is the next control.
+  - Queued (`pw22_mirror_checks_at_0.25.txt`): the 0.25× mirrored case at twice the length, and with sixteen
+    times the particles.
 - **What is and is not known.** This is a correlation over finished cases. That the current causes the extra
   plasma is not tested, why it starts is not known, and neither is whether a real device could carry it: it
   needs the repeat along the axis, which a row of coils of finite length or a cage does not have. The two-coil
