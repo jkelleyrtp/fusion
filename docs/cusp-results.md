@@ -79,7 +79,7 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
 | Size | Case | Particles against the table above | Coil radius (electron orbits) | Holding time (electron crossings) | Change over the last fifth | Current layer (orbits) | Electron gap stream (orbits) | Standing |
 |---|---|---|---|---|---|---|---|---|
 | 0.25× | `pw_s0.25_h1.0_long_ppc8` | 4× | 56 | 34.2 | +0.8% | 2.06 | 1.07 | same at 1×, 4× and 16× the particles, and on a mesh twice as fine (`pw_s0.25_h1.0_long_nr192`: 34.0 crossings, layer 1.88, gap stream 1.11) |
-| 0.5× | `pw_s0.5_h1.0_ppc4`, `_ppc4_seed2`, `_nr384_ppc2`, `_ppc16`, `_ppc4_long` | 4× to 16× | 96 to 103 | 52.5 to 58.2 | +0.2 to +4.9% | 1.83 to 2.10 | 0.78 to 0.87 | same on two meshes; 11% spread; at twice the length 54.3 and flat (+0.2%) |
+| 0.5× | `pw_s0.5_h1.0_ppc4`, `_ppc4_seed2`, `_nr384_ppc2`, `_ppc16`, `_ppc4_long`, `_ppc16_seed2` | 4× to 16× | 96 to 103 | 52.5 to 67.5 | +0.2 to +9.1% | 1.83 to 2.15 | 0.69 to 0.87 | not settled: the two seeds at 16× give 58.2 and 67.5 and both still gain plasma |
 | 1× | `pw_s1_h1.0_ppc2` | 4× | 216 | 113.9 | +5.6% | 2.76 | 1.19 | not settled; 16× running |
 | 2× | `pw_s2_h1.0` | 1× | 396 | 179.3 | +0.2% | 3.08 | 1.64 | baseline particles only: an upper limit |
 
@@ -106,7 +106,14 @@ is too low at 0.5× and 1× (below). Best finished case at each size, middle fil
   four times the particles.
 - **Twice the length at 0.5× (17:50 UTC).** `pw_s0.5_h1.0_ppc4_long` runs to 800 crossings and gives 54.3,
   with +0.2% over its last fifth. It holds 1.24, 1.28, 1.30 and 1.32 ×10^15 electrons at 20, 66, 100 and
-  131 ns: a gain of 6% over 110 ns that has stopped by the end. So the middle size is settled near 54.
+  131 ns: a gain of 6% over 110 ns that has stopped by the end.
+- **A second seed at 16 times the particles does not agree (18:50 UTC).** `pw_s0.5_h1.0_ppc16_seed2` gives
+  67.5 crossings and gains 9.1% over its last fifth; the first seed gave 58.2 and +4.9%. Electrons held at 20
+  and 60 ns, in 10^15: 1.24 → 1.27 at four times the particles, 1.29 → 1.37 and 1.30 → 1.53 for the two seeds
+  at 16 times, 1.36 → 1.71 at the baseline. So the slow gain is not removed by more particles, it differs
+  between seeds by more than between particle counts, and the middle size is 52 to 68 crossings, not "settled
+  near 54" as this page said for an hour. The 16-times case at twice the length is queued
+  (`pw18_long_16x.txt`) to see where it stops.
 - **Fill at 0.25× with four times the particles.** `pw_s0.25_h0.7_long_ppc8` gives 34.2 crossings, the same as
   fill 1.0 (34.2); fill 1.4 gives 33.6 (`pw_s0.25_h1.4_long_ppc8`; 34.2 at the baseline count). The radius in electron
   orbits at the plasma edge is 49, 56 and 64 in those three, because a fuller plasma sits against a stronger
