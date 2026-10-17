@@ -185,9 +185,9 @@ What limits this:
     `warpx.use_filter=1` is given, and the deck's `warpx.filter_npass_each_dir = 0 1` did nothing without it
     (checked locally: 1, 4 and 16 passes give identical output without the switch, different output with it).
     Smoothing along the radius is refused outright, so these runs smooth along z only.
-  - Smoothing the currents at the baseline particle count gives the many-particle answer (17 October, 11:40 UTC,
-    all five complete). `smooth1` and `smooth4` are one and four passes along z; `shape3` is wider particles
-    with no smoothing.
+  - Smoothing the currents lowers the holding time, and keeps lowering it with more passes, so it is not a
+    substitute for particles (17 October, 12:25 UTC; every row complete). `smooth1`, `smooth4` and `smooth16`
+    are one, four and sixteen passes along z; `shape3` is wider particles with no smoothing.
 
     | Case | Holding time (electron crossings) | Electrons held, late mean (10^15) | Change over the last fifth | Mean energy, electrons / ions (keV) | Current layer (orbits) | Gap stream, electrons / ions (electron orbits) | Field energy ÷ plasma energy | Ions minus electrons ÷ electrons |
     |---|---|---|---|---|---|---|---|---|
@@ -195,21 +195,36 @@ What limits this:
     | `pw_s0.5_h1.0_shape3` | 66.1 | 1.559 | +3.0% | 71 / 103 | 2.34 | 0.61 / 1.70 | 0.95% | +0.16% |
     | `pw_s0.5_h1.0_smooth1` | 62.8 | 1.471 | +4.3% | 70 / 106 | 2.33 | 0.52 / 1.85 | 0.88% | +0.17% |
     | `pw_s0.5_h1.0_smooth4` | 50.7 | 1.218 | +1.1% | 69 / 117 | 2.18 | 0.46 / 2.37 | 0.94% | +0.23% |
+    | `pw_s0.5_h1.0_smooth16` | 43.1 | 1.040 | +0.9% | 72 / 124 | 1.97 | 0.43 / 3.02 | 0.91% | +0.28% |
     | `pw_s0.5_h1.0_ppc4` (no smoothing) | 52.5 | 1.265 | +1.0% | 66 / 120 | 1.83 | 0.79 / 2.23 | 0.98% | +0.21% |
+    | `pw_s0.25_h1.0_long` (0.25×, no smoothing) | 33.9 | 0.465 | −0.7% | 71 / 142 | 2.10 | 1.01 / 2.75 | | |
+    | `pw_s0.25_h1.0_long_ppc8` (0.25×, four times the particles) | 34.2 | 0.467 | +0.8% | 71 / 144 | 2.06 | 1.07 / 2.79 | 1.09% | +0.33% |
+    | `pw_s0.25_h1.0_long_smooth4` (0.25×) | 32.8 | 0.450 | +0.1% | 72 / 145 | 2.13 | 0.90 / 2.98 | 1.03% | +0.35% |
 
     - Four passes at one times the particles and no passes at four times the particles agree in holding time
-      (3%), number held (4%), ion energy, ion gap stream, field energy and charge balance. So the extra plasma
-      held by the baseline runs comes from noise in the fields, and two unrelated ways of lowering that noise
-      remove it. Why noisy fields make the run hold more is not known.
-    - They do not agree on the two electron widths: the smoothed run has a thicker current layer (2.18 against
-      1.83 orbits) and a thinner electron gap stream (0.46 against 0.79). The electron gap stream is 0.6 to 1.2
-      cells in every run on this mesh (1.95 cells and 0.75 orbits on the mesh twice as fine), so it is the least
-      resolved number in the table.
-    - Not yet shown: that four passes is enough, or that smoothing leaves an already converged run alone.
-      `pw8_smoothing_checks.txt` (started 11:33 UTC) runs 16 passes at 0.5×, four passes on the
-      four-times-particle case, four passes at 0.25× (where 33.9, 34.2 and 35.4 crossings already agree
-      without smoothing), and four passes at 1× to set against `pw_s1_h1.0_ppc2`.
+      (3%), number held (4%), ion energy, ion gap stream, field energy and charge balance. That agreement is
+      partly a coincidence of the pass count: sixteen passes gives 43.1, 18% below the four-times-particle run,
+      with no sign of levelling off (71.3, 62.8, 50.7, 43.1 at 0, 1, 4, 16 passes).
+    - At 0.25×, where the answer does not depend on the particle count, four passes lowers it from 33.9 to 34.2
+      down to 32.8 (3 to 4%), narrows the electron gap stream (0.90 against 1.01 to 1.07 orbits) and widens the
+      ion one. So smoothing changes the answer by itself, by a few percent at four passes.
+    - What survives: lowering the field noise by either route stops the slow gain of plasma (change over the last
+      fifth of about 1% in `ppc4`, `smooth4` and `smooth16` against a number held that climbs 26% between 20 and
+      65 ns in the baseline). Why noisy fields make the run hold more is not known.
+    - The electron gap stream is 0.6 to 1.2 cells in every run on this mesh (1.95 cells and 0.75 orbits on the
+      mesh twice as fine), so it is the least resolved number in the table, and smoothing along z thins it.
+    - Running: `pw_s0.5_h1.0_ppc4_smooth4` (does four passes change a run that already has enough particles;
+      at 30 ns it holds 1.168×10^15 against 1.232 without smoothing, a reading of a run in progress),
+      `pw_s0.5_h1.0_ppc4_seed2` (how much two seeds differ at four times the particles),
+      `pw_s1_h1.0_smooth4` and `pw_s2_h1.0_smooth4`.
     - Cost at 0.5×: 2,763 s for `smooth4` against 5,588 s for `ppc4`.
+  - The 1× case run twice as long does not settle (complete 17 October): `pw_s1_h1.0_long` holds for 153.9
+    crossings measured at 800, against 141.8 at 400 in `pw_s1_h1.0`, and its number held is still rising 6.1%
+    over the last fifth (6.65, 8.12, 9.13 and 9.79×10^15 electrons at 20, 65, 100 and 130 ns). Its pressure
+    ratio is 0.70, its current layer 3.24 orbits and its electron gap stream 1.31 orbits, against 0.87, 2.84
+    and 0.79 at 400 crossings. `pw_s1_h1.0_ppc2`, in progress, holds 14 to 17% less than `pw_s1_h1.0` from
+    15 ns on and is also rising (5.96, 6.10, 6.38 and 6.67×10^15 at 20, 30, 40 and 50 ns), so four times the
+    particles is not shown to be enough at 1×.
   - In every finished case the particle count closes: feed = loss + change in the number held, to 1%, for both
     species in every time window. Over the last fifth the loss is 0.96 to 1.00 of the feed in the 0.25× and 0.5×
     cases and 0.90 in `pw_s1_h1.0`. So the holding time is the number held divided by a feed we chose, and the
