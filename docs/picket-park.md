@@ -51,7 +51,12 @@ Same inputs as `pf_x0.7`, `pf_x1.0`, `pf_x1.4` plus the two wall settings; campa
     says nothing about what the paper's code does at its boundary.
   - The wall was left at 1.5 coil radii in these runs. The audit asked for 1.4 (the paper's 42 against our 45
     code units), which is not yet run.
-  - `pk_ppc_paper` (8 times the particles) is running.
+  - `pk_ppc_paper` (8 times the feed particles, 10 times as many at the end; complete) holds for 75.2 crossings
+    at 40–50 crossings against 84.6, with a 2.44-orbit layer against 2.46 and ions at 160 keV against 106
+    (electrons 70 against 72). More particles moves away from the paper's number, and it changes how hot the
+    ions get, which the 0.5× repeats in [cusp-results.md](cusp-results.md) also show.
+  - With all four in, no change we could make to boundary, protocol or particle count reaches 135. We treat the
+    paper's holding time as not reproduced, and its layer width as reproduced.
 - At 1.4× the fill the layer is still intact here (pressure ratio 0.81, the same as at 1.0×, with a wider gap
   stream), so we do not see the paper's sudden failure of the wall in the gap; the plasma instead leaks until
   the pressure ratio is back near 0.8.
