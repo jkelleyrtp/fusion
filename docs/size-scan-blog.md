@@ -135,7 +135,9 @@ while the device grows 4 times. So the answer so far is in between, nearer the h
 hopeful toward the large end.
 
 That is not a final exponent. The two largest rows are single runs, none of the rows is free of the current,
-and the mirrored runs (now in doubt) read lower, near a power of 0.5.
+and the mirrored runs (now in doubt) read lower, near a power of 0.5. The 0.375× row is also less firm than it
+looks: a run with four times the particles, finished after this table was made, gives 50 crossings and is
+still gaining plasma.
 
 ## Two things that did come out clean
 
