@@ -677,13 +677,14 @@ particles.B_ext_particle_on_grid = 1
 """
 
 
-def picket_deck() -> str:
+def picket_deck(each_side: int = PICKET_COILS) -> str:
+    """`each_side` is the number of coils kept on each side of the middle one."""
     text = spindle_deck() + PICKET
     for component in AXES:
         coils = []
-        for k in range(-PICKET_COILS, PICKET_COILS + 1):
+        for k in range(-each_side, each_side + 1):
             # Half weight for the two end coils: the row then ends on a whole number of opposed pairs.
-            share = (0.5 if abs(k) == PICKET_COILS else 1.0) * (-1) ** k
+            share = (0.5 if abs(k) == each_side else 1.0) * (-1) ** k
             coils.append(loop_at("z", f"({k})*h", f"({share})")[component])
         text += f'particles.B{component}_external_particle_function(x,y,z,t) = "' + "+".join(coils) + '"\n'
     text += fed_at_centre("0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*((t<tfill)+sustain*(t>=tfill))")
@@ -714,11 +715,11 @@ cii.CoulombLog = clog
 
 
 def periods(count: int) -> str:
-    """Appended to the picket deck: `count` periods (2 or 4) on one mesh. The feeds move to the planes of every
+    """Appended to the picket deck: `count` periods (2, 4 or 8) on one mesh. The feeds move to the planes of every
     second coil (+h and -h for two periods), so each stretch of the mesh is the one-period deck again and only
     the plasma ties them together. Lines 1 and 3 fold the periods onto one, so they count `count` times what one
     period would."""
-    words = {2: "Two", 4: "Four"}
+    words = {2: "Two", 4: "Four", 8: "Eight"}
     text = f"\n# {words[count]} periods on one mesh, each fed on the plane of its own middle coil.\nmy_constants.zw = {count}*h\n"
     flux = "0.5*feed/(pi*rf*rf)*(x*x+y*y<rf*rf)*((t<tfill)+sustain*(t>=tfill))"
     places = [f"{sign}{'' if k == 1 else f'{k}*'}h" for k in range(1, count, 2) for sign in ("", "-")]
@@ -726,7 +727,7 @@ def periods(count: int) -> str:
                for n, place in enumerate(places) for way, direction in (("up", "+1"), ("down", "-1"))]
     # Distance along the axis to the nearest fed plane.
     fold = "abs(z)"
-    for half in ([2, 1] if count == 4 else [1]):
+    for half in [half for half in (4, 2, 1) if half < count]:
         fold = f"abs({fold}-{'' if half == 1 else f'{half}*'}h)"
     for name in ("electrons", "ions"):
         text += f"{name}.injection_sources = ball {' '.join(source for source, _, _ in sources)}\n"
@@ -757,3 +758,4 @@ if __name__ == "__main__":
     here.with_name("inputs_rz_picket_fed_collisions").write_text(picket_deck() + COLLISIONS)
     here.with_name("inputs_rz_picket_two").write_text(picket_deck() + periods(2))
     here.with_name("inputs_rz_picket_four").write_text(picket_deck() + periods(4))
+    here.with_name("inputs_rz_picket_eight").write_text(picket_deck(PICKET_COILS + 8) + periods(8))
