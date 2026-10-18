@@ -1,0 +1,96 @@
+diff --git a/Source/Particles/Pusher/ImplicitPushPX.cpp b/Source/Particles/Pusher/ImplicitPushPX.cpp
+index 43b32d9..78d8c4f 100644
+--- a/Source/Particles/Pusher/ImplicitPushPX.cpp
++++ b/Source/Particles/Pusher/ImplicitPushPX.cpp
+@@ -485,11 +485,19 @@ PhysicalParticleContainer::ImplicitPushXP (WarpXParIter & pti,
+         do_cropping[idim][0] = m_crop_on_PEC_boundary &&
+                                 (box.smallEnd(idim) <= domain_box.smallEnd(idim) &&
+                                  (field_boundary_lo[idim] == FieldBoundaryType::PEC
+-                               || field_boundary_lo[idim] == FieldBoundaryType::PEC_Insulator));
++                               || field_boundary_lo[idim] == FieldBoundaryType::PEC_Insulator)) &&
++                             // A particle sent back by the wall keeps moving: the part of its step beyond the wall is
++                             // folded back by ApplyReflectiveBoundarytoJfield, and cropping it would leave charge behind.
++                             WarpX::particle_boundary_lo[idim] != ParticleBoundaryType::Reflecting &&
++                             WarpX::particle_boundary_lo[idim] != ParticleBoundaryType::Thermal;
+         do_cropping[idim][1] = m_crop_on_PEC_boundary &&
+                                 (box.bigEnd(idim) >= domain_box.bigEnd(idim) &&
+                                  (field_boundary_hi[idim] == FieldBoundaryType::PEC
+-                               || field_boundary_hi[idim] == FieldBoundaryType::PEC_Insulator));
++                               || field_boundary_hi[idim] == FieldBoundaryType::PEC_Insulator)) &&
++                             // A particle sent back by the wall keeps moving: the part of its step beyond the wall is
++                             // folded back by ApplyReflectiveBoundarytoJfield, and cropping it would leave charge behind.
++                             WarpX::particle_boundary_hi[idim] != ParticleBoundaryType::Reflecting &&
++                             WarpX::particle_boundary_hi[idim] != ParticleBoundaryType::Thermal;
+ 
+         domain_double[idim][0] = static_cast<double>(domain_box.smallEnd(idim) - box.smallEnd(idim));
+         domain_double[idim][1] = static_cast<double>(domain_box.bigEnd(idim) - box.smallEnd(idim));
+@@ -824,11 +832,19 @@ PhysicalParticleContainer::ImplicitPushXPSubOrbits (WarpXParIter& pti,
+         do_cropping[idim][0] = m_crop_on_PEC_boundary &&
+                                 (box.smallEnd(idim) <= domain_box.smallEnd(idim) &&
+                                  (field_boundary_lo[idim] == FieldBoundaryType::PEC
+-                               || field_boundary_lo[idim] == FieldBoundaryType::PEC_Insulator));
++                               || field_boundary_lo[idim] == FieldBoundaryType::PEC_Insulator)) &&
++                             // A particle sent back by the wall keeps moving: the part of its step beyond the wall is
++                             // folded back by ApplyReflectiveBoundarytoJfield, and cropping it would leave charge behind.
++                             WarpX::particle_boundary_lo[idim] != ParticleBoundaryType::Reflecting &&
++                             WarpX::particle_boundary_lo[idim] != ParticleBoundaryType::Thermal;
+         do_cropping[idim][1] = m_crop_on_PEC_boundary &&
+                                 (box.bigEnd(idim) >= domain_box.bigEnd(idim) &&
+                                  (field_boundary_hi[idim] == FieldBoundaryType::PEC
+-                               || field_boundary_hi[idim] == FieldBoundaryType::PEC_Insulator));
++                               || field_boundary_hi[idim] == FieldBoundaryType::PEC_Insulator)) &&
++                             // A particle sent back by the wall keeps moving: the part of its step beyond the wall is
++                             // folded back by ApplyReflectiveBoundarytoJfield, and cropping it would leave charge behind.
++                             WarpX::particle_boundary_hi[idim] != ParticleBoundaryType::Reflecting &&
++                             WarpX::particle_boundary_hi[idim] != ParticleBoundaryType::Thermal;
+ 
+         domain_double[idim][0] = static_cast<double>(domain_box.smallEnd(idim) - box.smallEnd(idim));
+         domain_double[idim][1] = static_cast<double>(domain_box.bigEnd(idim) - box.smallEnd(idim));
+diff --git a/Source/Particles/WarpXParticleContainer.cpp b/Source/Particles/WarpXParticleContainer.cpp
+index 6029822..d65aaf2 100644
+--- a/Source/Particles/WarpXParticleContainer.cpp
++++ b/Source/Particles/WarpXParticleContainer.cpp
+@@ -620,11 +620,19 @@ WarpXParticleContainer::DepositCurrent (WarpXParIter& pti,
+         do_cropping[idim][0] = m_crop_on_PEC_boundary &&
+                                 (tilebox.smallEnd(idim) <= domain_box.smallEnd(idim) &&
+                                  (field_boundary_lo[idim] == FieldBoundaryType::PEC
+-                               || field_boundary_lo[idim] == FieldBoundaryType::PEC_Insulator));
++                               || field_boundary_lo[idim] == FieldBoundaryType::PEC_Insulator)) &&
++                             // A particle sent back by the wall keeps moving: the part of its step beyond the wall is
++                             // folded back by ApplyReflectiveBoundarytoJfield, and cropping it would leave charge behind.
++                             WarpX::particle_boundary_lo[idim] != ParticleBoundaryType::Reflecting &&
++                             WarpX::particle_boundary_lo[idim] != ParticleBoundaryType::Thermal;
+         do_cropping[idim][1] = m_crop_on_PEC_boundary &&
+                                 (tilebox.bigEnd(idim) >= domain_box.bigEnd(idim) &&
+                                  (field_boundary_hi[idim] == FieldBoundaryType::PEC
+-                               || field_boundary_hi[idim] == FieldBoundaryType::PEC_Insulator));
++                               || field_boundary_hi[idim] == FieldBoundaryType::PEC_Insulator)) &&
++                             // A particle sent back by the wall keeps moving: the part of its step beyond the wall is
++                             // folded back by ApplyReflectiveBoundarytoJfield, and cropping it would leave charge behind.
++                             WarpX::particle_boundary_hi[idim] != ParticleBoundaryType::Reflecting &&
++                             WarpX::particle_boundary_hi[idim] != ParticleBoundaryType::Thermal;
+ 
+         domain_double[idim][0] = static_cast<double>(domain_box.smallEnd(idim) - tilebox.smallEnd(idim));
+         domain_double[idim][1] = static_cast<double>(domain_box.bigEnd(idim) - tilebox.smallEnd(idim));
+@@ -1153,11 +1161,19 @@ WarpXParticleContainer::DepositMassMatrices (WarpXParIter& pti, const RealVector
+         do_cropping[idim][0] = m_crop_on_PEC_boundary &&
+                                 (tilebox.smallEnd(idim) <= domain_box.smallEnd(idim) &&
+                                  (field_boundary_lo[idim] == FieldBoundaryType::PEC
+-                               || field_boundary_lo[idim] == FieldBoundaryType::PEC_Insulator));
++                               || field_boundary_lo[idim] == FieldBoundaryType::PEC_Insulator)) &&
++                             // A particle sent back by the wall keeps moving: the part of its step beyond the wall is
++                             // folded back by ApplyReflectiveBoundarytoJfield, and cropping it would leave charge behind.
++                             WarpX::particle_boundary_lo[idim] != ParticleBoundaryType::Reflecting &&
++                             WarpX::particle_boundary_lo[idim] != ParticleBoundaryType::Thermal;
+         do_cropping[idim][1] = m_crop_on_PEC_boundary &&
+                                 (tilebox.bigEnd(idim) >= domain_box.bigEnd(idim) &&
+                                  (field_boundary_hi[idim] == FieldBoundaryType::PEC
+-                               || field_boundary_hi[idim] == FieldBoundaryType::PEC_Insulator));
++                               || field_boundary_hi[idim] == FieldBoundaryType::PEC_Insulator)) &&
++                             // A particle sent back by the wall keeps moving: the part of its step beyond the wall is
++                             // folded back by ApplyReflectiveBoundarytoJfield, and cropping it would leave charge behind.
++                             WarpX::particle_boundary_hi[idim] != ParticleBoundaryType::Reflecting &&
++                             WarpX::particle_boundary_hi[idim] != ParticleBoundaryType::Thermal;
+ 
+         domain_double[idim][0] = static_cast<double>(domain_box.smallEnd(idim) - tilebox.smallEnd(idim));
+         domain_double[idim][1] = static_cast<double>(domain_box.bigEnd(idim) - tilebox.smallEnd(idim));

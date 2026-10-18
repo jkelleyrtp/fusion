@@ -153,3 +153,7 @@ A real device holds its casings at a chosen voltage. `hr_78k_f2.4e23` in campaig
 
 Runs from now on use the two settings. Campaigns finished before this date have not been rerun except where
 listed above.
+
+**2026-10-18: walls that send particles back.** The cropping setting is wrong at a reflecting wall and leaves
+false charge there, the opposite fault to the one above. Runs with a reflecting wall need
+`crop-absorbing-walls-only.patch` ([warpx-patches.md](warpx-patches.md)); those finished before it do not count.

@@ -1,7 +1,8 @@
 # Patches to WarpX 26.10
 
 The cluster build applies every file in `warpx/patches/` to the WarpX 26.10 tag. Each changes what the particles
-feel, so each has its check recorded here. All are off unless a deck asks for them.
+feel, so each has its check recorded here. All are off unless a deck asks for them, except
+`crop-absorbing-walls-only.patch`, which changes what an existing setting does at walls that send particles back.
 
 ## `ionization-secondary-energy.patch`
 
@@ -85,3 +86,36 @@ the fields can never remove. The fault, the evidence and the checks are in `flux
 **Status.** Not reviewed. Gauss's law at the source goes from an error of a quarter of the charge density to
 round-off in 3D and in 2D. On full GPU runs the plasma stuck at the gun mouths goes from 3.4% of what was fired
 to 0.1%, and centre-fed holding times are unchanged within 1%.
+
+## `crop-absorbing-walls-only.patch`
+
+**What it changes.** `particles.crop_on_PEC_boundary = 1` cuts each particle's step off at a conducting wall
+before its current is laid down ([wall-charge.md](wall-charge.md)). That is right at a wall that absorbs: the
+particle is gone. At a wall that sends particles back (`reflecting` or `thermal`) it is wrong: the particle
+reappears inside, the part of its step beyond the wall is never laid down, and the fields keep a charge at the
+wall that no particle carries. WarpX already folds that part of the step back into the mesh for such walls
+(`ApplyReflectiveBoundarytoJfield`), so the patch only stops the cropping there. Walls that absorb are untouched.
+
+**How the fault was found.** The closed-leak cases of `iso2` (two-coil device, one wall reflecting). In
+`coils_z15_x27` at 48 ns the electric field holds +6.0e14 e in the last six cells at the reflecting side wall
+and the particles there carry −2.5e14 e; at the absorbing end walls of the same run the two agree to 5%. The
+false charge is positive (electrons reach the wall more often than ions), draws electrons onto the wall and
+pushes ions off it.
+
+**Check.** The same case run three ways on this machine's CPUs to 2 ns (128 radial cells). Charge in the last
+six cells at each wall, in electron charges: what the particles carry / what the divergence of the electric
+field gives. The divergence is taken by centred differences of the cell-centred snapshot and is good to 5 to 8%
+where the books balance (the "elsewhere" row is the reference).
+
+| | Cropping on, unpatched | Cropping off | Cropping on, patched |
+|---|---|---|---|
+| Reflecting side wall | +3.7e12 / +1.50e13 | +5.1e12 / +5.4e12 | +3.6e12 / +3.8e12 |
+| Absorbing end walls | +1.6e12 / +1.7e12 | −2.9e12 / +1.31e13 | +1.5e12 / +1.6e12 |
+| Elsewhere | +5.11e12 / +5.11e12 | +6.76e12 / +6.75e12 | +5.36e12 / +5.36e12 |
+
+Only the patched run balances at both kinds of wall.
+
+**Status.** Not reviewed. Checked in 2D cylindrical geometry only, on CPUs, to 2 ns; the GPU check is the
+first finished cases of `iso3`. Every finished run with a reflecting wall and cropping on is affected and does
+not count: the closed-leak cases of `iso1` and `iso2`, and the mirror-end picket cases of `pw21` to `pw25`
+(whether the fault explains what spoiled those is not yet tested).

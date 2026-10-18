@@ -41,7 +41,7 @@ show anything that varies around the axis, and the coil field is a fixed formula
 | `warpx/pops/` | Decks and reducers for the electron-well study |
 | `warpx/campaigns/` | The case list of every campaign, by study, and `registry.json`: each campaign's question, cases and jobs |
 | `warpx/results/` | One reduced table per campaign, one line per finished case, as last fetched |
-| `warpx/patches/` | The three patches applied to WarpX 26.10, how to apply and build |
+| `warpx/patches/` | The four patches applied to WarpX 26.10, how to apply and build |
 | `tests/` | Tests of the campaign runner, deck writer and reducers |
 | `docs/` | Results, methods and prior work. Start at [docs/README.md](docs/README.md) |
 | `legacy/` | The in-house particle code this project used before WarpX, with its tests, results, viewer and notes. Not used by anything above. See [legacy/README.md](legacy/README.md) |
