@@ -3,6 +3,8 @@
 
     archive.py push NAME [--only PREFIX] [--running]    copy each finished case not yet archived, and the campaign's own files
     archive.py check NAME [--sample N]                  list the bucket against every manifest; re-read and hash N files
+    archive.py scrub NAME [--only PREFIX] [--running]   delete archived snapshots and checkpoints from shared storage, each
+                                                        only after its copy in the bucket is read back and its hash matches
     archive.py status NAME                              what is archived and how large it is
 
 The copy runs on a cluster node (`archive_on_node.py`), straight from shared storage to the bucket, so it needs
@@ -59,8 +61,8 @@ def listing(prefix: str) -> dict[str, int]:
     return {key: size for key, size in (json.loads(out) or [])}
 
 
-def on_node(directory: str, prefix: str, top: bool = False) -> dict:
-    command = f"python3 {HELPER} {shlex.quote(directory)} {BUCKET} {shlex.quote(prefix)} {ENDPOINT}{' --top' if top else ''}"
+def on_node(directory: str, prefix: str, flag: str = "") -> dict:
+    command = f"python3 {HELPER} {shlex.quote(directory)} {BUCKET} {shlex.quote(prefix)} {ENDPOINT} {flag}"
     pods = [pod for pod in campaign.my_pods() if "Running" in campaign.shell(f"kubectl --context {campaign.CONTEXT} get pod {pod} --no-headers")]
     assert pods, "no job of ours is running, so shared storage cannot be read right now"
     done = subprocess.run(f"kubectl --context {campaign.CONTEXT} exec -i {pods[0]} -- bash -c {shlex.quote(command)}", shell=True,
@@ -79,14 +81,32 @@ def push(args: argparse.Namespace) -> None:
         name, done, archived, measured, when = line.split("|")
         if not name.startswith(args.only or "") or (not done and not args.running):
             continue
-        if archived and not args.again and int(measured or 0) <= int(when or 0):
+        if archived and not args.again and not args.resend and int(measured or 0) <= int(when or 0):
             continue
-        report = on_node(f"{camp}/{name}", f"{BASE}/{args.name}/{name}")
+        report = on_node(f"{camp}/{name}", f"{BASE}/{args.name}/{name}", "--resend" if args.resend else "")
         print(f"{name}: {report['files']} files, {report['bytes'] / 1e9:.2f} GB, {report['uploaded']} uploaded"
               + (f", NOT ARCHIVED, wrong size in bucket: {report['wrong']}" if report["wrong"] else ""), flush=True)
-    report = on_node(camp, f"{BASE}/{args.name}", top=True)
+    report = on_node(camp, f"{BASE}/{args.name}", "--top")
     print(f"campaign files: {report['files']} files, {report['bytes'] / 1e6:.1f} MB, {report['uploaded']} uploaded")
     index(args.name)
+
+
+def scrub(args: argparse.Namespace) -> None:
+    camp = f"{campaign.SHARED}/campaigns/{args.name}"
+    campaign.on_cluster(f"cat > {HELPER}", given=(campaign.ROOT / "archive_on_node.py").read_text())
+    states = campaign.on_cluster(f"cd {camp} && while read -r name rest; do echo \"$name|$(cat $name/DONE 2>/dev/null)|"
+                                 f"$(cat $name/ARCHIVED 2>/dev/null)|$(find $name/CLAIM -mmin -10 2>/dev/null)\"; done < all_cases.txt")
+    freed = 0
+    for line in states.strip().split("\n"):
+        name, done, archived, worked_on = line.split("|")  # a worker touches CLAIM every minute while it runs a case
+        if not name.startswith(args.only or "") or not archived or worked_on or (not done and not args.running):
+            continue
+        report = on_node(f"{camp}/{name}", f"{BASE}/{args.name}/{name}", "--scrub")
+        freed += report["bytes"]
+        print(f"{name}: {report['checked']} files read back, {report['deleted']} deleted, {report['bytes'] / 1e9:.2f} GB freed"
+              + (f", {report['left_in_diags']} files not in the archive left in place" if report["left_in_diags"] and not report["wrong"] else "")
+              + (f", NOTHING DELETED, copies differ: {report['wrong']}" if report["wrong"] else ""), flush=True)
+    print(f"{args.name}: {freed / 1e9:.2f} GB freed")
 
 
 def index(name: str) -> None:
@@ -141,13 +161,15 @@ def status(args: argparse.Namespace) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
-    for function in (push, check, status):
+    for function in (push, scrub, check, status):
         sub = commands.add_parser(function.__name__)
         sub.add_argument("name")
         sub.set_defaults(run=function)
-    commands.choices["push"].add_argument("--only")
-    commands.choices["push"].add_argument("--running", action="store_true", help="also copy what unfinished cases have written so far")
+    for name in ("push", "scrub"):
+        commands.choices[name].add_argument("--only")
+        commands.choices[name].add_argument("--running", action="store_true", help="also take cases that never finished")
     commands.choices["push"].add_argument("--again", action="store_true", help="hash and compare cases already marked archived")
+    commands.choices["push"].add_argument("--resend", action="store_true", help="upload every file again, whatever the manifest says")
     commands.choices["check"].add_argument("--sample", type=int, default=20)
     commands.choices["check"].add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
