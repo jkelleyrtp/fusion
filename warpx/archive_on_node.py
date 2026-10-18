@@ -15,10 +15,14 @@ import hashlib
 import json
 import socket
 import sys
+import time
 from pathlib import Path
 
 import boto3
+from boto3.exceptions import S3UploadFailedError
+from boto3.s3.transfer import TransferConfig
 from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
 
 SKIP = {"CLAIM", "ARCHIVED", "MANIFEST.json", "lock"}
 
@@ -58,9 +62,22 @@ def main() -> None:
     except s3.exceptions.NoSuchKey:
         before = {}
     changed = [name for name, entry in now.items() if before.get(name) != entry]
-    with concurrent.futures.ThreadPoolExecutor(32) as pool:
-        list(pool.map(lambda name: s3.upload_file(str(root / name), bucket, f"{prefix}/{name}",
-                                                  ExtraArgs={"Metadata": {"sha256": now[name][1]}}), changed))
+
+    def upload(name: str) -> None:
+        """The bucket drops a connection now and then in the middle of a large file; the file is then sent again."""
+        for attempt in range(5):
+            try:
+                s3.upload_file(str(root / name), bucket, f"{prefix}/{name}", ExtraArgs={"Metadata": {"sha256": now[name][1]}},
+                               Config=TransferConfig(max_concurrency=4, multipart_chunksize=64 << 20))
+                return
+            except (BotoCoreError, ClientError, S3UploadFailedError) as error:
+                print(f"{name}: try {attempt + 1} failed: {str(error)[-200:]}", file=sys.stderr)
+                if attempt == 4:
+                    raise
+                time.sleep(10)
+
+    with concurrent.futures.ThreadPoolExecutor(12) as pool:
+        list(pool.map(upload, changed))
     held = {}
     for page in s3.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=prefix + "/"):
         for item in page.get("Contents", []):

@@ -820,5 +820,41 @@
     "submitted": "2026-10-18T09:46:32+00:00"
    }
   ]
+ },
+ "iso1": {
+  "question": "Checks before the single-leak grid, one GPU per case: does a wall that sends particles back (side wall for the gap, end walls for the coils) run without charge building up; does holding the coil field on the mesh change the result against working it out per particle; how far apart are two seeds; and how long does a size-60 case take.",
+  "cases": [
+   "t15_both_per_particle inputs_rz_spindle_leak my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=29294. my_constants.feed=5.4e+22 my_constants.nr=128 my_constants.ppc_feed=1 my_constants.tmax=16.e-9 my_constants.hist_every=256 my_constants.plot_every=3200 my_constants.chk_every=25600 particles.B_ext_particle_on_grid=0",
+   "t15_both inputs_rz_spindle_leak my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=29294. my_constants.feed=5.4e+22 my_constants.nr=128 my_constants.ppc_feed=1 my_constants.tmax=16.e-9 my_constants.hist_every=256 my_constants.plot_every=3200 my_constants.chk_every=25600",
+   "t15_both_seed2 inputs_rz_spindle_leak my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=29294. my_constants.feed=5.4e+22 my_constants.nr=128 my_constants.ppc_feed=1 my_constants.tmax=16.e-9 my_constants.hist_every=256 my_constants.plot_every=3200 my_constants.chk_every=25600 warpx.random_seed=2",
+   "t15_coils inputs_rz_spindle_leak my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=29294. my_constants.feed=5.4e+22 my_constants.nr=128 my_constants.ppc_feed=1 my_constants.tmax=16.e-9 my_constants.hist_every=256 my_constants.plot_every=3200 my_constants.chk_every=25600 boundary.particle_hi=reflecting absorbing",
+   "t15_gap inputs_rz_spindle_leak my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=29294. my_constants.feed=5.4e+22 my_constants.nr=128 my_constants.ppc_feed=1 my_constants.tmax=16.e-9 my_constants.hist_every=256 my_constants.plot_every=3200 my_constants.chk_every=25600 boundary.particle_lo=none reflecting boundary.particle_hi=absorbing reflecting",
+   "t60_both_per_particle inputs_rz_spindle_leak my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=117176. my_constants.feed=3.3e+23 my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.tmax=6.e-9 my_constants.hist_every=1024 my_constants.plot_every=12800 my_constants.chk_every=38400 particles.B_ext_particle_on_grid=0",
+   "t60_both inputs_rz_spindle_leak my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=117176. my_constants.feed=3.3e+23 my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.tmax=6.e-9 my_constants.hist_every=1024 my_constants.plot_every=12800 my_constants.chk_every=38400",
+   "t60_both_boxes inputs_rz_spindle_leak my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=117176. my_constants.feed=3.3e+23 my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.tmax=6.e-9 my_constants.hist_every=1024 my_constants.plot_every=12800 my_constants.chk_every=38400 amr.max_grid_size=128 algo.load_balance_intervals=500 algo.load_balance_with_sfc=0"
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-74e4dd305b52",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-18T17:46:36+00:00"
+   }
+  ]
+ },
+ "iso1m": {
+  "question": "Check before the single-leak grid: does a size-60 two-coil case split over 2, 4 and 8 GPUs give the same result as on one GPU (iso1 t60_both and t60_both_boxes), and how much faster is it.",
+  "cases": [
+   "t60_both_np8 inputs_rz_spindle_leak np=8 my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=117176. my_constants.feed=3.3e+23 my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.tmax=6.e-9 my_constants.hist_every=1024 my_constants.plot_every=12800 my_constants.chk_every=38400 amr.max_grid_size=128 algo.load_balance_intervals=500 algo.load_balance_with_sfc=0",
+   "t60_both_np4 inputs_rz_spindle_leak np=4 my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=117176. my_constants.feed=3.3e+23 my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.tmax=6.e-9 my_constants.hist_every=1024 my_constants.plot_every=12800 my_constants.chk_every=38400 amr.max_grid_size=128 algo.load_balance_intervals=500 algo.load_balance_with_sfc=0",
+   "t60_both_np2 inputs_rz_spindle_leak np=2 my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=117176. my_constants.feed=3.3e+23 my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.tmax=6.e-9 my_constants.hist_every=1024 my_constants.plot_every=12800 my_constants.chk_every=38400 amr.max_grid_size=128 algo.load_balance_intervals=500 algo.load_balance_with_sfc=0",
+   "t60_both_np8_small inputs_rz_spindle_leak np=8 my_constants.n0=0. my_constants.ppd=2 my_constants.te=1.e5 my_constants.ti=1.e4 my_constants.coil_at=117176. my_constants.feed=3.3e+23 my_constants.nr=512 my_constants.ppc_feed=0.25 my_constants.tmax=6.e-9 my_constants.hist_every=1024 my_constants.plot_every=12800 my_constants.chk_every=38400 amr.max_grid_size=64 algo.load_balance_intervals=500 algo.load_balance_with_sfc=0"
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-06573e9863a1",
+    "gpus_per_case": 8,
+    "submitted": "2026-10-18T17:47:36+00:00"
+   }
+  ]
  }
 }
