@@ -76,10 +76,11 @@ def push(args: argparse.Namespace) -> None:
     campaign.on_cluster(f"cat > {HELPER}", given=(campaign.ROOT / "archive_on_node.py").read_text())
     states = campaign.on_cluster(
         f"cd {camp} && while read -r name rest; do echo \"$name|$(cat $name/DONE 2>/dev/null)|$(cat $name/ARCHIVED 2>/dev/null)|"
-        f"$(stat -c %Y $name/measured.json 2>/dev/null)|$(stat -c %Y $name/ARCHIVED 2>/dev/null)\"; done < all_cases.txt")
+        f"$(stat -c %Y $name/measured.json 2>/dev/null)|$(stat -c %Y $name/ARCHIVED 2>/dev/null)|$(ls -d $name 2>/dev/null)\"; done < all_cases.txt")
     for line in states.strip().split("\n"):
-        name, done, archived, measured, when = line.split("|")
-        if not name.startswith(args.only or "") or (not done and not args.running):
+        name, done, archived, measured, when, started = line.split("|")
+        # A case no worker has taken yet has no folder.
+        if not name.startswith(args.only or "") or not started or (not done and not args.running):
             continue
         if archived and not args.again and not args.resend and int(measured or 0) <= int(when or 0):
             continue
