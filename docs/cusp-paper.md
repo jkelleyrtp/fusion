@@ -263,10 +263,27 @@ joining them along the edges between coils.
 no rings bottom.*
 
 **How wide and how fast (measured).** The stream through a coil has a half-width of 2.3 mm. The electron
-orbit there is 0.39 mm. That is 6 electron orbits, against about 1 in the 2D devices. The plasma is held for
+orbit there is 0.39 mm. That is 6 electron orbits. The 2D figure to set beside it is the stream through a coil of the two-coil
+device, 2 to 6 orbits (next table), not the sheet between its coils, which is about 1. The plasma is held for
 2.0 ns, which is about 12 electron crossings (arithmetic). The two-coil device at a comparable size holds
 for 24 to 36. So the cage is two to three times leakier, and its leak is not electron-orbit sized. The cells
 are a quarter of an orbit, so I would not put weight on the exact width.
+
+**Point leaks against ring leaks (measured, two-coil device, campaign `sp2`).** A cusp has two kinds of leak: a
+point leak through the middle of a coil and a ring-shaped leak between neighbouring coils. The two-coil device
+has both, the row of coils has only ring leaks, and the cage's main leak is the point kind. Electrons, last
+fifth of each run, each width in electron orbits at the coils' own field at that leak:
+
+| Size (electron orbits) | Leaving through the coils | Stream through a coil, half-radius (mm) | In orbits | Sheet between the coils, half-height (mm) | In orbits |
+|---|---|---|---|---|---|
+| 15 | 37% | 1.39 | 2.1 | 1.03 | 0.62 |
+| 30 | 30% | 1.12 | 3.4 | 0.74 | 0.88 |
+| 60 | 25% | 0.95 | 5.7 | 0.54 | 1.29 |
+
+The point leak is three to four times the ring leak in orbits and grows faster with size, in 2D as well as
+in 3D. The cage's 4, 6 and 12 orbits at coil radii of 13, 25 and 51 orbits are about twice the two-coil
+device's point leak, not six times its ring leak. The two widths are not taken the same way: the 2D one leaves
+out the two cells nearest the axis.
 
 **What the rings do.** This is the part I had reported as "floating rings help by 10%". The figures show it
 needs restating.
