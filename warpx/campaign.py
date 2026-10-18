@@ -297,6 +297,7 @@ def submit(args: argparse.Namespace) -> None:
     assert not clash, f"campaign {args.name} already has cases {clash}"
     assert len({line.split()[0] for line in new}) == len(new), "case names repeat within the file"
     assert new or entry["cases"], "no cases to run: give --cases"
+    assert args.nodes >= 1, "submit starts nodes; `add` puts cases on the queue of the nodes already running"
     # A job's entrypoint is started by a small launcher pod on one of a few CPU nodes. While one of ours waits for
     # a place there, its GPU node is held idle, and another job would only join the wait.
     waiting = [line.split()[0] for line in shell(f"kubectl --context {CONTEXT} get pods --no-headers").splitlines()
