@@ -8,6 +8,11 @@ sys.path.insert(0, str(next(Path("/public/jonathan/cusp/campaigns/rv2").glob("fi
 from analyze_beta import constants, inside_cage
 from analyze_ringv import ring_voltages
 
+def near(series: np.ndarray, clock: np.ndarray, t: float) -> float:
+    """Mean of a history within half a nanosecond of `t` (ns)."""
+    return float(series[np.abs(clock * 1e9 - t) < 0.5].mean())
+
+
 ROOT = Path("/public/jonathan/cusp/campaigns")
 RUNS = [("rv1", "rv_78k_norings"), ("rv1", "rv_78k_stub"), ("rv1", "rv_78k_0kV"), ("rv1", "rv_78k_float"), ("rv2", "rv_78k_50kV"),
         ("rv2", "rv_78k_100kV"), ("rv2", "rv_78k_200kV"), ("rv2", "rv_78k_400kV"), ("rv1", "rv_78k_norings_seed2"),
@@ -29,7 +34,6 @@ for camp, name in RUNS:
         if number[-1, 1] * 1e9 < t + 0.5:
             cells.append("-")
             continue
-        near = lambda series, clock: series[np.abs(clock * 1e9 - t) < 0.5].mean()
-        ring = np.mean([near(v, t_v) for v in volts]) / 1e3 if len(t_v) else float("nan")
-        cells.append(f"{near(number[:, 6], number[:, 1]) / 1e14:5.3f} {near(e_in, when) / 1e14:5.3f} {near(i_in, when) / 1e14:5.3f} {ring:5.0f}")
+        ring = np.mean([near(v, t_v, t) for v in volts]) / 1e3 if len(t_v) else float("nan")
+        cells.append(f"{near(number[:, 6], number[:, 1], t) / 1e14:5.3f} {near(e_in, when, t) / 1e14:5.3f} {near(i_in, when, t) / 1e14:5.3f} {ring:5.0f}")
     print(f"{name:22s} {done:9s} {number[-1, 1] * 1e9:6.2f} | " + " | ".join(cells))
