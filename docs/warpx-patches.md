@@ -135,5 +135,8 @@ is 3 to 5% of the plasma's at all four feeds (4 to 7% with both leaks open), and
 **Status.** Not reviewed. Checked in 2D cylindrical geometry only, with the explicit pusher; the implicit
 pusher's copy of the same test is changed the same way and not run. Every run with a reflecting wall and
 cropping on that finished before the patch is affected and does not count: the closed-leak cases of `iso1` and
-`iso2`, and the mirror-end picket cases of `pw21` to `pw25` (three of those are run again in `iso3` to see
-whether the fault explains what spoiled them).
+`iso2`. The mirror-end picket cases turned out not to be: three of `pw21` run again in `iso3` on the patched
+build (`pw_s0.125_h1.0_ppc16_mirror`, `pw_s0.25_h1.0_long_ppc8_mirror`, `pw_s0.5_h1.0_mirror`) give holding
+times of 6.43, 6.99 and 10.58 ns against 6.40, 6.99 and 10.50 ns before, so the fault was not what troubled
+those. A both-open case run again (`both_z15_x3_patched`) agrees with `both_z15_x3` to 2% in everything but the
+on-axis density ratios, which are noisy.
