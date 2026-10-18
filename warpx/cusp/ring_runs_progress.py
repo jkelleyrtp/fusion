@@ -29,7 +29,7 @@ for camp, name in RUNS:
         if number[-1, 1] * 1e9 < t + 0.5:
             cells.append("-")
             continue
-        near = lambda series, clock: series[np.abs(clock * 1e9 - t) < 0.5].mean()  # noqa: E731
+        near = lambda series, clock: series[np.abs(clock * 1e9 - t) < 0.5].mean()
         ring = np.mean([near(v, t_v) for v in volts]) / 1e3 if len(t_v) else float("nan")
         cells.append(f"{near(number[:, 6], number[:, 1]) / 1e14:5.3f} {near(e_in, when) / 1e14:5.3f} {near(i_in, when) / 1e14:5.3f} {ring:5.0f}")
     print(f"{name:22s} {done:9s} {number[-1, 1] * 1e9:6.2f} | " + " | ".join(cells))
