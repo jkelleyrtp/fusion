@@ -7,6 +7,7 @@ Read in this order.
 | | |
 |---|---|
 | [cusp-results.md](cusp-results.md) | The current tables: pressure scan, six-coil scalings, and the size scan in progress |
+| [progress-2026-10-18.md](progress-2026-10-18.md) | Overnight results of 18 October: end treatments, size exponents by model, faults |
 | [wall-charge.md](wall-charge.md) | Charge left at the conducting walls in every run before 2026-10-17: the evidence, the fix, and which results are withdrawn |
 | [picket-park.md](picket-park.md) | Check of our setup against the published picket-fence cusp of Park et al. 2019 |
 | [gun-fed-cusp.md](gun-fed-cusp.md) | Plasma fired into the six-coil cusp from outside |
