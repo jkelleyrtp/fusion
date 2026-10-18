@@ -23,9 +23,9 @@ numbers), or **reading** (my interpretation). Case names and full tables are in
   when the run ended.
 - **We do not reproduce the one published holding time we tried to match** (Park et al. 2019). Over their own
   time window we get 58 to 63 electron crossings against their 135 to 174. I cannot say which side is right.
-- **Holding the rings at a chosen voltage barely helps.** From +50 to +400 kV the plasma inside the cage is 2 to
-  5% above no rings, best near +200 kV, which is where a floating ring sits anyway. Other electrode shapes are
-  untested.
+- **Holding the rings at a chosen voltage barely helps.** From 0 to +400 kV the plasma inside the cage is 1%
+  below to 4% above no rings, best near +200 kV, which is where a floating ring sits anyway. Other electrode
+  shapes are untested.
 
 ## 1. What I was curious about
 
@@ -316,39 +316,45 @@ voltage the losses give it and it sits beside the leak, not across it. The hones
 ring holds electrons near itself, and has a small effect on the plasma inside. Whether a ring at a chosen,
 higher voltage does better is exactly what the runs submitted today ask.
 
-### Rings held at set voltages (added 09:40 UTC, 18 October)
+### Rings held at set voltages (18 October, campaigns `rv1` and `rv2`)
 
-Four runs with the rings joined to the wall by thin rods and held at a chosen voltage, by adding the vacuum
-field of that voltage to the plasma's own (campaign `rv2`; method in
-[ring-voltage-design.md](ring-voltage-design.md)). Same coils and feed as the pair above. All finished.
-Averages over the last fifth of each run. "None" and "floating" are the earlier pair, from a different deck
-with the same physics; the matching controls in the new deck are still running.
+Rings joined to the wall by thin rods and held at a chosen voltage, by adding the vacuum field of that voltage
+to the plasma's own (method in [ring-voltage-design.md](ring-voltage-design.md)), beside controls in the same
+deck: no rings, grounded rings, floating rings, and floating rings with rods that stop short of them. Same
+coils and feed as the pair above. All finished. Averages over the last fifth of each run.
 
-| Rings | Plasma inside the cage ÷ feed (ns) | Against no rings | All electrons in the vessel ÷ feed (ns) | Ring voltage read back (kV) |
+| Rings | Plasma inside the cage ÷ feed (ns) | Against no rings | All electrons in the vessel ÷ feed (ns) | Ring voltage late in the run (kV) |
 |---|---|---|---|---|
-| None | 1.283 | | 1.84 | |
-| Floating | 1.323 | +3% | 2.01 | not measured in that run |
-| +50 kV | 1.305 | +2% | 1.85 | 42 to 49 |
-| +100 kV | 1.327 | +3% | 1.91 | 100 to 106 |
-| +200 kV | 1.347 | +5% | 2.02 | 198 to 205 |
-| +400 kV | 1.312 | +2% | 2.20 | 390 to 399 |
+| None | 1.295 | | 1.86 | |
+| Grounded, 0 kV | 1.279 | −1.2% | 1.79 | −4 to +2 |
+| Grounded, second seed | 1.279 | −1.2% | 1.79 | −4 to +4 |
+| +50 kV | 1.305 | +0.8% | 1.85 | 42 to 49 |
+| +100 kV | 1.327 | +2.5% | 1.91 | 100 to 106 |
+| +200 kV | 1.347 | +4.0% | 2.02 | 198 to 205 |
+| +400 kV | 1.312 | +1.3% | 2.20 | 390 to 399 |
+| Floating | 1.331 | +2.8% | 2.02 | 173 to 240 |
+| Floating, rods stopping short | 1.337 | +3.2% | 2.02 | 174 to 223 |
 
 | Rings | Ions onto the rings (MW) | Electrons onto rings and rods (MW) | Electrons less ions onto rings and rods (A, arithmetic) |
 |---|---|---|---|
+| Grounded | 334 | 3 | ions dominate |
 | +50 kV | 240 | 4 | ions dominate |
 | +100 kV | 170 | 8 | ions dominate |
 | +200 kV | 80 | 29 | about 20 |
 | +400 kV | 15 | 157 | about 780 |
+| Floating | 79 | 4 | ions dominate (the rings are still charging) |
 
-- **Measured:** inside the cage the gain peaks at +5% near 200 kV and is back to +2% at 400 kV. The total in
-  the vessel keeps rising with voltage only because more electrons gather at the rings: at 400 kV there are 15%
-  more electrons than ions in the vessel.
-- **Measured:** in the runs still going, floating rings sit at 190 to 200 kV, and at 200 kV set the electron
-  and ion currents onto the metal nearly cancel. So 200 kV is the voltage the plasma chooses.
-- **Reading:** below that voltage the rings are a sink for ions; above it they draw electrons, about 780 A at
-  400 kV, which a supply would pay for at up to that voltage. Ring voltage is a weak knob and its best setting
-  is about where a floating ring sits anyway. One run per voltage, so differences of 2 to 5% have no error bar
-  yet.
+- **Measured:** ring voltage changes the plasma inside the cage by −1% to +4%. The gain peaks near 200 kV and
+  is back to +1% at 400 kV. The total in the vessel keeps rising with voltage only because more electrons
+  gather at the rings: at 400 kV there are 15% more electrons than ions in the vessel.
+- **Measured:** the two seeds of the grounded case agree to 0.1%, so differences of a percent are not scatter.
+  Floating rings with and without rods nearby agree to 0.5%, so the rods are not responsible.
+- **Measured:** floating rings were at 170 to 240 kV late in the run and still charging (79, 137, 188, 234 nC
+  at 6, 10, 14, 18 ns). At 200 kV set, the electron and ion currents onto the metal nearly cancel. So about
+  200 kV is the voltage the plasma chooses by 18 ns; where it ends is not known.
+- **Reading:** below that voltage the rings are a sink for ions, and grounded rings are slightly worse than no
+  rings. Above it they draw electrons, about 780 A at 400 kV, which a supply would pay for at up to that
+  voltage. Ring voltage is a weak knob and its best setting is about where a floating ring sits anyway.
 
 ## 8. Ways the performance might be improved
 
@@ -390,7 +396,7 @@ In rough order of how much evidence there is. Only the first two have any measur
 | The 3D cage leaks mainly through the coils, in streams about 6 orbits wide | Measured in one configuration at one resolution |
 | Floating rings improve confinement by 10% | Restated: 3% inside the cage; the rest is electrons parked at the rings, not settled |
 | Our code reproduces Park et al. 2019 | Boundary thickness yes. Holding time no, by a factor of 2.2 to 3 |
-| Rings around the coils at a set voltage plug the leaks | No, at this pressure: +2 to +5% inside the cage from +50 to +400 kV, best near the floating voltage. Matching controls still running |
+| Rings around the coils at a set voltage plug the leaks | No, at this pressure: −1% to +4% inside the cage from 0 to +400 kV, best near the floating voltage. Controls in the same deck; one seed repeated |
 | Any of this extrapolates to reactor size, real ion mass or 10 keV | Unknown |
 
 ## 10. What is next
