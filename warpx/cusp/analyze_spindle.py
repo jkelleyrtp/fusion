@@ -158,10 +158,12 @@ def pushed_out(run: Path, c: dict) -> dict:
     }
 
 
-def each_leak(run: Path, c: dict, fed_until: float, lost_per_s: dict[str, float]) -> dict:
+def each_leak(run: Path, c: dict, fed_until: float, toward: dict[str, dict[str, float]]) -> dict:
     """For runs of inputs_rz_spindle_leak: which leaks are open, the plasma held inside the coils (a closed leak
-    parks plasma between itself and its wall, which the vessel total counts), the holding time that gives, the
-    net rate crossing each leak at the leak, and whether the run has settled."""
+    parks plasma between itself and its wall, which the vessel total counts), the rate lost, the holding time
+    that gives, the net rate crossing each leak at the leak, and whether the run has settled. `toward` is the
+    rate heading for each wall near it; only a wall that absorbs loses those particles, so the rate lost is the
+    sum over the open leaks. It is given a second time as the feed less the growth of the number in the vessel."""
     text = (run / "warpx_used_inputs").read_text()
     low, high = (re.search(rf"^boundary\.particle_{side} = (\S+) (\S+)", text, re.MULTILINE).groups() for side in ("lo", "hi"))
     out = {"open_leaks": {("absorbing", "absorbing"): "both", ("reflecting", "absorbing"): "coils", ("absorbing", "reflecting"): "gap"}[(high[0], high[1])]}
@@ -175,8 +177,13 @@ def each_leak(run: Path, c: dict, fed_until: float, lost_per_s: dict[str, float]
         out[f"{species}_held_inside_coils"] = float(f"{inside[late].mean():.4g}")
         out[f"{species}_inside_coils_over_fifth_before"] = round(float(inside[late].mean() / inside[before].mean()), 3)
         out[f"{species}_mean_energy_inside_coils_eV"] = round(float((data[late, 2:] * energy).sum() / inside[late].sum()), 1)
-        lost = lost_per_s[species]
-        out[f"{species}_leaving_over_feed"] = round(lost / c["feed"], 3)
+        lost = sum(rate for route, rate in toward[species].items() if out["open_leaks"] in ("both", route))
+        number = table(run, "number")
+        recent = (number[:, 1] >= 0.8 * fed_until) & (number[:, 1] <= fed_until)
+        growth = float(np.polyfit(number[recent, 1], number[recent, 6 if letter == "e" else 7], 1)[0])
+        out[f"{species}_lost_per_s"] = float(f"{lost:.4g}")
+        out[f"{species}_lost_over_feed"] = round(lost / c["feed"], 3)
+        out[f"{species}_feed_less_growth_over_feed"] = round(1 - growth / c["feed"], 3)
         out[f"{species}_holding_time_inside_coils_ns"] = round(inside[late].mean() / lost * 1e9, 2) if lost > 0 else None
         for route in ("coils", "gap"):
             when, rate = leaving(run, f"{letter}_at_{route}", c["shell"])
@@ -210,10 +217,11 @@ def reduce(run: Path) -> dict:
         "electron_orbit_in_gap_mm": round(float(orbit / max(field_in_gap, 1e-30) * 1e3), 4) if c["coil_at"] else None,
         "cell_mm": round(c["rw"] / c["nr"] * 1e3, 4),
     }
+    toward = {}
     for index, (species, counts) in enumerate(held.items()):
         letter = species[0]
         out[f"{species}_held_late_in_feed"] = float(f"{counts[late].mean():.4g}")
-        rates = {}
+        rates = toward[species] = {}
         for route in ("coils", "gap"):
             when, rate = leaving(run, f"{letter}_through_{route}", c["shell"])
             rates[route] = float(rate[(when >= 0.8 * fed_until) & (when <= fed_until)].mean())
@@ -244,7 +252,7 @@ def reduce(run: Path) -> dict:
         out.update(pushed_out(run, c))
     out["core_pressure_Pa"] = float(f"{out['core_pressure_Pa']:.4g}")
     if (run / "diags/reducedfiles/e_core.txt").exists():
-        out.update(each_leak(run, c, fed_until, {species: out[f"{species}_leaving_per_s"] for species in held}))
+        out.update(each_leak(run, c, fed_until, toward))
     out.update(field_and_charge(run, 0.8 * fed_until, fed_until))
     return out
 
