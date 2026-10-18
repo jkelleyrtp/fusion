@@ -8,6 +8,7 @@ sys.path.insert(0, str(next(Path("/public/jonathan/cusp/campaigns/rv2").glob("fi
 from analyze_beta import constants, inside_cage
 from analyze_ringv import ring_voltages
 
+
 def near(series: np.ndarray, clock: np.ndarray, t: float) -> float:
     """Mean of a history within half a nanosecond of `t` (ns)."""
     return float(series[np.abs(clock * 1e9 - t) < 0.5].mean())
