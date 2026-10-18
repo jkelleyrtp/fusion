@@ -67,5 +67,13 @@ class RingVoltageTest(unittest.TestCase):
         self.assertEqual(analyze_ringv.surface(points, c, 5 * A / 512).tolist(), [0, 1, 2])
 
 
+
+class EchoedSizes(unittest.TestCase):
+    def test_sizes_are_read_from_a_deck_without_rods(self) -> None:
+        # WarpX echoes only the constants a deck uses; the floating-ring deck has no rods, so no rod radius.
+        text = "my_constants.rm = 0.12*a  # 0.0012\nmy_constants.rw = 2.4*a  # 0.024\nmy_constants.scr_keep = 0.1  # 0.1\n"
+        self.assertEqual(analyze_ringv.echoed(text), {"rm": 0.0012, "rw": 0.024, "scr_keep": 0.1})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -116,6 +116,13 @@ def fix_unit_map(run: Path) -> dict:
     return {"map": str(path.resolve()), "cells": shape, "ring_V_read_by_probes": [round(float(v[-1]), 4) for v in volts]}
 
 
+def echoed(text: str) -> dict[str, float]:
+    """The sizes the landing counts need, from the inputs WarpX echoes with each constant's value after a #.
+    WarpX echoes only the constants a deck uses, so the rod radius, which nothing here needs, is not asked for:
+    decks without rods do not have it."""
+    return {name: float(re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE).group(1)) for name in ("rm", "rw", "scr_keep")}
+
+
 def reduce(run: Path) -> dict:
     text = (run / "warpx_used_inputs").read_text()
     complete = (run / "DONE").exists() and (run / "DONE").read_text().strip() == "complete"
@@ -125,8 +132,7 @@ def reduce(run: Path) -> dict:
 
     out = analyze_beta.reduce(run)
     c = constants(run)
-    for name in ("rm", "rw", "rs", "scr_keep"):
-        c[name] = float(re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE).group(1))
+    c.update(echoed(text))
     applied = re.search(r"^particles\.read_fields_E_dependency\(t\) = (\S+)", text, re.MULTILINE)
     out["rings_set_to_kV"] = float(applied.group(1)) / 1e3 if applied else None
     out["rods"] = "none" if "min(rs*rs" not in text else ("stop short of the rings" if "(dc+rm+" in text else "join rings to wall")
