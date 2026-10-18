@@ -6,6 +6,7 @@ Read in this order.
 
 | | |
 |---|---|
+| [cusp-paper.md](cusp-paper.md) | Informal paper of 18 October: the question, what the runs show about the leak, size scaling and the 3D cage with and without rings, what failed, and ways to do better. With figures |
 | [cusp-results.md](cusp-results.md) | The current tables: pressure scan, six-coil scalings, and the size scan in progress |
 | [progress-2026-10-18.md](progress-2026-10-18.md) | Overnight results of 18 October: end treatments, size exponents by model, faults |
 | [wall-charge.md](wall-charge.md) | Charge left at the conducting walls in every run before 2026-10-17: the evidence, the fix, and which results are withdrawn |

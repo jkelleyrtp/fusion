@@ -726,7 +726,10 @@
    "pw_s0.25_h1.0_long_ppc8_two_seed2 inputs_rz_picket_two warpx.random_seed=2 my_constants.te=1e+05 my_constants.coil_at=39210 my_constants.feed=3.451e+23 my_constants.tfill=1.649e-09 my_constants.sustain=0.2405 my_constants.tmax=6.5962e-08 my_constants.nr=96 my_constants.ppc_feed=8 my_constants.hist_every=250 my_constants.plot_every=5000 my_constants.chk_every=5000 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor",
    "pw_s0.375_h1.0_ppc5.33_four inputs_rz_picket_four my_constants.te=1e+05 my_constants.coil_at=58815 my_constants.feed=7.765e+23 my_constants.tfill=1.649e-09 my_constants.sustain=0.1493 my_constants.tmax=6.5962e-08 my_constants.nr=144 my_constants.ppc_feed=5.333 my_constants.hist_every=375 my_constants.plot_every=10000 my_constants.chk_every=5000 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor",
    "pw_s0.5_h1.0_ppc4_four inputs_rz_picket_four my_constants.te=1e+05 my_constants.coil_at=78419 my_constants.feed=1.381e+24 my_constants.tfill=1.649e-09 my_constants.sustain=0.1064 my_constants.tmax=6.5962e-08 my_constants.nr=192 my_constants.ppc_feed=4 my_constants.hist_every=500 my_constants.plot_every=20000 my_constants.chk_every=10000 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor",
-   "pw_s0.5_h1.0_ppc4_two_seed2 inputs_rz_picket_two warpx.random_seed=2 my_constants.te=1e+05 my_constants.coil_at=78419 my_constants.feed=1.381e+24 my_constants.tfill=1.649e-09 my_constants.sustain=0.1064 my_constants.tmax=6.5962e-08 my_constants.nr=192 my_constants.ppc_feed=4 my_constants.hist_every=500 my_constants.plot_every=20000 my_constants.chk_every=10000 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor"
+   "pw_s0.5_h1.0_ppc4_two_seed2 inputs_rz_picket_two warpx.random_seed=2 my_constants.te=1e+05 my_constants.coil_at=78419 my_constants.feed=1.381e+24 my_constants.tfill=1.649e-09 my_constants.sustain=0.1064 my_constants.tmax=6.5962e-08 my_constants.nr=192 my_constants.ppc_feed=4 my_constants.hist_every=500 my_constants.plot_every=20000 my_constants.chk_every=10000 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor",
+   "im_explicit_x1.0 inputs_rz_picket_fed my_constants.te=1e+05 my_constants.coil_at=1.5684e+05 my_constants.feed=6.903e+24 my_constants.tfill=1.649e-09 my_constants.tmax=4.617e-09 my_constants.ppc_feed=0.5 my_constants.hist_every=1000 my_constants.plot_every=10000 my_constants.chk_every=20000 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor",
+   "im_semi_x1.0 inputs_rz_picket_fed my_constants.te=1e+05 my_constants.coil_at=1.5684e+05 my_constants.feed=6.903e+24 my_constants.tfill=1.649e-09 my_constants.tmax=4.617e-09 my_constants.ppc_feed=0.5 my_constants.hist_every=1000 my_constants.plot_every=10000 my_constants.chk_every=20000 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor algo.evolve_scheme=semi_implicit_em implicit_evolve.nonlinear_solver=newton newton.max_iterations=20 newton.relative_tolerance=1e-8 newton.require_convergence=0 newton.verbose=0 gmres.verbose_int=0 newton.diagnostic_file=diags/reducedfiles/newton.txt newton.diagnostic_interval=100",
+   "im_theta_x1.0 inputs_rz_picket_fed my_constants.te=1e+05 my_constants.coil_at=1.5684e+05 my_constants.feed=6.903e+24 my_constants.tfill=1.649e-09 my_constants.tmax=4.617e-09 my_constants.ppc_feed=0.5 my_constants.hist_every=1000 my_constants.plot_every=10000 my_constants.chk_every=20000 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor algo.evolve_scheme=theta_implicit_em implicit_evolve.theta=0.5 implicit_evolve.nonlinear_solver=newton newton.max_iterations=20 newton.relative_tolerance=1e-8 newton.require_convergence=0 newton.verbose=0 gmres.verbose_int=0 newton.diagnostic_file=diags/reducedfiles/newton.txt newton.diagnostic_interval=100"
   ],
   "jobs": [
    {
@@ -753,6 +756,23 @@
     "job": "jonathan-warpx-5b3b13f3aad4",
     "gpus_per_case": 8,
     "submitted": "2026-10-17T04:10:43+00:00"
+   }
+  ]
+ },
+ "rv1": {
+  "question": "At high plasma pressure in the six-coil 3D cage, how does the holding time change with the voltage of the metal rings around the coils: floating, grounded through rods, held at +50 to +400 kV, against no rings and against rods that stop short of the rings?",
+  "cases": [
+   "rv_unit inputs_3d_cusp_ringv_unit my_constants.ncell=512 my_constants.dt=1.5e-13",
+   "rv_78k_float inputs_3d_cusp_ringv my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.25 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 my_constants.plot_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=78420 my_constants.feed=2.4e+23 my_constants.tmax=1.8e-08 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor",
+   "rv_78k_0kV inputs_3d_cusp_ringv_stalks my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.25 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 my_constants.plot_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=78420 my_constants.feed=2.4e+23 my_constants.tmax=1.8e-08 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor",
+   "rv_78k_stub inputs_3d_cusp_ringv_stubs my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.25 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 my_constants.plot_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=78420 my_constants.feed=2.4e+23 my_constants.tmax=1.8e-08 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor",
+   "rv_78k_norings inputs_3d_cusp_ringv my_constants.n0=1.e18 my_constants.te=1e5 my_constants.ti=1e5 my_constants.mass_amu=0.035109 my_constants.ncell=512 my_constants.dt=1.5e-13 my_constants.ppc_feed=0.25 my_constants.hist_every=500 my_constants.probe_every=10000 my_constants.chk_every=20000 my_constants.plot_every=40000 particles.B_ext_particle_on_grid=1 my_constants.coil_at=78420 my_constants.feed=2.4e+23 my_constants.tmax=1.8e-08 particles.crop_on_PEC_boundary=1 algo.current_deposition=villasenor my_constants.rm=0."
+  ],
+  "jobs": [
+   {
+    "job": "jonathan-warpx-4613782219f3",
+    "gpus_per_case": 1,
+    "submitted": "2026-10-18T06:51:30+00:00"
    }
   ]
  }

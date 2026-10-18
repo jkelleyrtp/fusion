@@ -43,12 +43,18 @@ PATCHES = sorted((ROOT / "patches").glob("*.patch"))
 # The build directory is named after the patches applied to WarpX 26.10, so a changed patch gets a fresh build.
 BUILD = f"{SHARED}/warpx-26.10-cuda-" + hashlib.sha256(b"".join(patch.read_bytes() for patch in PATCHES)).hexdigest()[:8]
 # Which script reduces a finished case, by the deck it ran.
-REDUCERS = {"inputs_rz_spindle_fed": "analyze_spindle.py", "inputs_rz_picket_fed": "analyze_picket.py", "inputs_rz_picket_fed_collisions": "analyze_picket.py", "inputs_rz_picket_two": "analyze_picket.py", "inputs_rz_picket_four": "analyze_picket.py", "inputs_rz_picket_eight": "analyze_picket.py", "inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_jets": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
+REDUCERS = {**{f"inputs_3d_cusp_ringv{kind}": "analyze_ringv.py" for kind in ("", "_stalks", "_stubs", "_unit")}, "inputs_rz_spindle_fed": "analyze_spindle.py", "inputs_rz_picket_fed": "analyze_picket.py", "inputs_rz_picket_fed_collisions": "analyze_picket.py", "inputs_rz_picket_two": "analyze_picket.py", "inputs_rz_picket_four": "analyze_picket.py", "inputs_rz_picket_eight": "analyze_picket.py", "inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_jets": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
             "inputs_3d_cusp_cage_gas": "analyze_cage.py"}
 
 # Two executables are built from one source tree: the 3D one with conducting boundaries inside the box, and the
 # cylindrical (r, z) one, which WarpX's electromagnetic solver does not support them in.
-BUILD_STEPS = r"""if [ ! -x "$warpx" ] || [ ! -x "$warpx_rz" ]; then
+# The decks named here read a field from a file and write the particles that land on metal, which WarpX does
+# through openPMD; they run a third executable, built with it and with an HDF5 library built beside it.
+OPENPMD_DECKS = "inputs_3d_cusp_ringv"
+HDF5 = "hdf5_1.14.6"
+BUILD_STEPS = r"""kinds=("3 ON build $warpx OFF" "RZ OFF build-rz $warpx_rz OFF"__OPENPMD__)
+missing=0; for kind in "${kinds[@]}"; do read -r dims eb dir exe openpmd <<< "$kind"; [ -x "$exe" ] || missing=1; done
+if [ $missing = 1 ]; then
   # One build at a time: a job on another node may have found the same executables missing.
   mkdir -p __BUILD__
   ( flock 9; cd __BUILD__ || exit 1
@@ -56,19 +62,35 @@ BUILD_STEPS = r"""if [ ! -x "$warpx" ] || [ ! -x "$warpx_rz" ]; then
     export PATH=__BUILD__/tools/bin:$PATH PYTHONPATH=__BUILD__/tools
     [ -d src ] || { git clone -q --depth 1 --branch 26.10 https://github.com/BLAST-WarpX/warpx.git src \
       && for patch in "$files"/*.patch; do git -C src apply "$patch" || { echo patch-failed; exit 1; }; done; }
-    for kind in "3 ON build $warpx" "RZ OFF build-rz $warpx_rz"; do
-      read -r dims eb dir exe <<< "$kind"
+    for kind in "${kinds[@]}"; do
+      read -r dims eb dir exe openpmd <<< "$kind"
       [ -x "$exe" ] && continue
+      local_hdf5=""
+      if [ $openpmd = ON ]; then
+        [ -f hdf5/lib/libhdf5.a ] || { rm -rf hdf5 hdf5-src hdf5-build
+          git clone -q --depth 1 --branch __HDF5__ https://github.com/HDFGroup/hdf5.git hdf5-src \
+          && cmake -S hdf5-src -B hdf5-build -G Ninja -DCMAKE_INSTALL_PREFIX=__BUILD__/hdf5 -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF -DHDF5_ENABLE_PARALLEL=__MPI__ -DHDF5_BUILD_TOOLS=OFF -DHDF5_BUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF \
+            -DHDF5_BUILD_HL_LIB=OFF -DHDF5_BUILD_CPP_LIB=OFF -DHDF5_ENABLE_Z_LIB_SUPPORT=OFF -DHDF5_ENABLE_SZIP_SUPPORT=OFF > hdf5.log 2>&1 \
+          && cmake --build hdf5-build -j 32 >> hdf5.log 2>&1 && cmake --install hdf5-build >> hdf5.log 2>&1 \
+          || { tail -30 hdf5.log; echo build-failed; exit 1; }; }
+        local_hdf5="-DCMAKE_PREFIX_PATH=__BUILD__/hdf5 -DHDF5_ROOT=__BUILD__/hdf5 -DHDF5_USE_STATIC_LIBRARIES=ON -DopenPMD_USE_ADIOS2=OFF"
+      fi
       cmake -S src -B $dir -G Ninja -DWarpX_DIMS=$dims -DWarpX_COMPUTE=CUDA -DWarpX_MPI=__MPI__ -DWarpX_EB=$eb \
-        -DWarpX_OPENPMD=OFF -DWarpX_FFT=OFF -DWarpX_QED=OFF -DWarpX_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release > configure-$dir.log 2>&1 \
+        -DWarpX_OPENPMD=$openpmd $local_hdf5 -DWarpX_FFT=OFF -DWarpX_QED=OFF -DWarpX_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release > configure-$dir.log 2>&1 \
         && cmake --build $dir -j 32 > $dir.log 2>&1 || { tail -30 configure-$dir.log $dir.log; echo build-failed; exit 1; }
     done ) 9> __BUILD__/build.lock || exit 0
 fi"""
+# The reducers of those decks read the HDF5 files with h5py, which the image does not have.
+H5PY = r"""
+python3 -c "import h5py" 2> /dev/null || python3 -m pip install -q --no-deps --target __BUILD__/tools h5py
+export PYTHONPATH=__BUILD__/tools${PYTHONPATH:+:$PYTHONPATH}"""
 
 WORKER = r"""
 set -uo pipefail
 export camp=__CAMP__ job=__JOB__; files=$camp/files-$job; warpx=${WARPX:-__BUILD__/build/bin/warpx.3d}
 warpx_rz=${WARPX:-__BUILD__/build-rz/bin/warpx.rz}
+warpx_openpmd=${WARPX:-__BUILD__/build-openpmd/bin/warpx.3d}
 # The broker starts a job again after taking its node away. Each start is a new run of this script, told apart
 # by `me`, which every claim it makes carries.
 export me="$job $(hostname) $$ $(date +%s)"
@@ -124,6 +146,7 @@ run_case() {
   if [ "$(cat CRASHES 2>/dev/null || echo 0)" -ge 3 ]; then echo "failed after 3 tries" > DONE; return; fi
   echo "$job gpu $gpu ${restart:-fresh}" >> attempts.log
   local exe=$warpx; [[ $deck == inputs_rz_* ]] && exe=$warpx_rz
+  [[ $deck == __OPENPMD_DECKS__* ]] && exe=$warpx_openpmd
   CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __LAUNCH__ "$exe" "$files/$deck" "$@" $restart >> run.log 2>&1 &
   local run=$!
   # While the case runs, keep its claim fresh, keep only the two newest checkpoints (by step number: WarpX
@@ -243,7 +266,10 @@ def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 18
     assert gpus in (1, 2, 4, 8), "a node's 8 GPUs must divide evenly between cases"
     build, launch = (BUILD, "") if gpus == 1 else (BUILD + "-mpi", "mpirun --allow-run-as-root --bind-to none -np $np")
     token = uuid.uuid4().hex[:12]
-    worker = (WORKER.replace("__BUILD_STEPS__", BUILD_STEPS).replace("__CAMP__", f"{SHARED}/campaigns/{name}")
+    needs_openpmd = any(line.split()[1].startswith(OPENPMD_DECKS) for line in cases.splitlines() if line.strip())
+    steps = BUILD_STEPS.replace("__OPENPMD__", ' "3 ON build-openpmd $warpx_openpmd ON"' if needs_openpmd else "").replace("__HDF5__", HDF5)
+    steps += H5PY if needs_openpmd else ""
+    worker = (WORKER.replace("__BUILD_STEPS__", steps).replace("__OPENPMD_DECKS__", OPENPMD_DECKS).replace("__CAMP__", f"{SHARED}/campaigns/{name}")
               .replace("__JOB__", token).replace("__BUILD__", build).replace("__TIMEOUT__", str(timeout)).replace("__STALL__", str(stall))
               .replace("__PAUSE__", str(pause)).replace("__LOOK__", str(look))
               .replace("__MPI__", "OFF" if gpus == 1 else "ON").replace("__LAUNCH__", launch).replace("__GPUS__", str(gpus))

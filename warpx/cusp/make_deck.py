@@ -442,6 +442,73 @@ my_constants.ppc_feed = 0.5           # particles made per cell of the mouth, pe
 """
 
 
+def stalks(gap: str = "0") -> str:
+    """The rings and wall with a rod of radius rs from each ring out through the wall, parallel to the coil's axis
+    and 22.5 degrees round the ring, on the side away from the plasma. With `gap` zero the rods join the rings
+    to the wall, which grounds them; with a gap the same rods stop short of the rings and leave them floating."""
+    cos, sin = 0.9238795325, 0.3826834324
+    text = "x*x+y*y+z*z-rw*rw"
+    for axis, sign in FACES:
+        u, v = {"x": ("y", "z"), "y": ("z", "x"), "z": ("x", "y")}[axis]
+        start = "dc" if gap == "0" else f"(dc+rm+{gap})"
+        rod = f"min(rs*rs-({u}-{cos}*rc)**2-({v}-{sin}*rc)**2,({sign})*{axis}-{start})"
+        text = f"max(max({text},{ring(axis, sign)}),{rod})"
+    return text
+
+
+# Appended to the fed deck (docs/ring-voltage-design.md): the voltage of the rings above the wall, read along a
+# line from inside each of three rings to inside the wall; the charge the plasma puts on the rings; and every
+# particle that lands on metal, written every scr_every steps (a divisor of chk_every, so a restart loses none).
+RINGV = """
+my_constants.rs = 0.06*a              # radius of the rods joining rings to wall, where a deck has them (m)
+my_constants.scr_every = 2000
+my_constants.scr_keep = 0.1          # share of the landed particles written; all of them is about 36 GB a run
+warpx.reduced_diags_names = number energy fields axis edge corner erad irad eout iout ethroat ithroat eke qring vxp vyp vzp
+qring.type = ChargeOnEB
+qring.intervals = hist_every
+qring.weighting_function(x,y,z) = "(x*x+y*y+z*z<(0.9*rw)**2)"
+""" + "".join(f"""v{axis}p.type = FieldProbe
+v{axis}p.probe_geometry = Line
+v{axis}p.intervals = hist_every
+v{axis}p.resolution = 401
+""" + "".join(f"v{axis}p.{name}{end}_probe = {value}\n" for end, values in (("", start), ("1", stop)) for name, value in zip("xyz", values))
+              for axis, start, stop in (("x", ("dc", "0.", "rc"), ("2.3*a", "0.", "rc")), ("y", ("rc", "dc", "0."), ("rc", "2.3*a", "0.")),
+                                        ("z", ("0.", "rc", "dc"), ("0.", "rc", "2.3*a")))) + """electrons.save_particles_at_eb = 1
+ions.save_particles_at_eb = 1
+diagnostics.diags_names = diag1 chk scr
+scr.diag_type = BoundaryScraping
+scr.format = openpmd
+scr.openpmd_backend = h5
+scr.intervals = scr_every
+scr.electrons.random_fraction = scr_keep
+scr.ions.random_fraction = scr_keep
+"""
+
+# One step in vacuum with the rings at 1 V and the wall at 0: its electric field, times a voltage, is what the
+# set-voltage cases add to the field on the particles.
+UNIT = """
+my_constants.r0 = 0.
+my_constants.feed = 0.
+warpx.eb_potential(x,y,z,t) = "1.0*(x*x+y*y+z*z<(0.9*rw)**2)"
+diagnostics.diags_names = unit
+unit.diag_type = Full
+unit.format = openpmd
+unit.openpmd_backend = h5
+unit.intervals = 1
+unit.write_species = 0
+unit.fields_to_plot = Ex Ey Ez
+max_step = 1
+"""
+
+
+def ringv_deck(conductor: str = CONDUCTOR) -> str:
+    text = beta_deck(fed=True) + RINGV
+    if conductor != CONDUCTOR:
+        assert text.count(CONDUCTOR) == 1
+        text = text.replace(CONDUCTOR, conductor) + "eb2.cover_multiple_cuts = 1\n"
+    return text
+
+
 def beta_deck(fed: bool = False, jets: bool = False) -> str:
     text = BETA + "particles.B_ext_particle_init_style = parse_B_ext_particle_function\n"
     if jets:
@@ -753,6 +820,10 @@ if __name__ == "__main__":
     here.with_name("inputs_3d_cusp_beta").write_text(beta_deck())
     here.with_name("inputs_3d_cusp_fed").write_text(beta_deck(fed=True))
     here.with_name("inputs_3d_cusp_jets").write_text(beta_deck(jets=True))
+    here.with_name("inputs_3d_cusp_ringv").write_text(ringv_deck())
+    here.with_name("inputs_3d_cusp_ringv_stalks").write_text(ringv_deck(stalks()))
+    here.with_name("inputs_3d_cusp_ringv_stubs").write_text(ringv_deck(stalks("2*rs")))
+    here.with_name("inputs_3d_cusp_ringv_unit").write_text(ringv_deck() + UNIT)
     here.with_name("inputs_rz_spindle_fed").write_text(spindle_deck())
     here.with_name("inputs_rz_picket_fed").write_text(picket_deck())
     here.with_name("inputs_rz_picket_fed_collisions").write_text(picket_deck() + COLLISIONS)
