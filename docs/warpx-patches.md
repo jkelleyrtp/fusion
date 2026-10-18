@@ -115,8 +115,8 @@ where the books balance (the "elsewhere" row is the reference).
 
 Only the patched run balances at both kinds of wall.
 
-**Check on GPUs.** The size-15 closed-leak cases of `iso2` run again as `iso3` on the patched build (256 radial
-cells in the same table's units, last snapshot at 47 ns, and the same step of the unpatched run where both exist).
+**Check on GPUs.** The size-15 closed-leak cases of `iso2` run again as `iso3` on the patched build (128 radial
+cells, same measure as the table above; the last snapshot is at 47 ns).
 
 | Case | Reflecting wall | Absorbing wall | Elsewhere | Electric field energy over plasma energy |
 |---|---|---|---|---|
