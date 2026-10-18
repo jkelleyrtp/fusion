@@ -357,6 +357,31 @@ coils and feed as the pair above. All finished. Averages over the last fifth of 
   rings. Above it they draw electrons, about 780 A at 400 kV, which a supply would pay for at up to that
   voltage. Ring voltage is a weak knob and its best setting is about where a floating ring sits anyway.
 
+### The cage without rings: pressure and size (18 October, campaign `pb1`)
+
+Same deck as the ring controls, no rings, 18 ns, averages over the last fifth. All finished. One seed each.
+
+| Feed (per s), coils 78 kA | Plasma pressure ÷ magnetic at the coil radius | Plasma inside the cage ÷ feed (ns) | Stream through a coil, half-width (mm) | In electron orbits |
+|---|---|---|---|---|
+| 8e22 | 0.2 | 1.353 | 2.03 | 5.2 |
+| 2.4e23 | 0.6 to 0.7 | 1.295 | 2.28 | 5.8 |
+| 8e23 | 2.3 | 1.273 | 3.53 | 9.0 |
+
+| Coils (kA), feed scaled with field squared | Coil radius (electron orbits) | Pressure ratio at the coil radius | Plasma inside the cage ÷ feed (ns) | Stream half-width (mm) | In electron orbits |
+|---|---|---|---|---|---|
+| 39 | 13 | 0.3 to 0.4 | 0.821 | 3.25 | 4.1 |
+| 78 | 25 | 0.6 to 0.7 | 1.295 | 2.28 | 5.8 |
+| 157 | 51 | 1.1 to 1.2 | 2.067 | 2.43 | 12.4 |
+
+- **Measured:** ten times the feed lowers the holding time by 6% and widens the stream through a coil by 74%.
+  In 3D more pressure does not help; in the 2D two-coil device it helped up to a point.
+- **Measured:** holding time goes as size^0.67 (0.66 and 0.67 over the two steps), inside the 2D range of 0.5
+  to 0.7.
+- **Measured:** the stream through a coil stays 2.3 to 3.2 mm while the electron orbit shrinks fourfold, so in
+  orbits it triples.
+- The pressure ratio was not matched across the sizes. At 157 kA the electron orbit is 2 cells; the stream is
+  25 cells wide.
+
 ## 8. Ways the performance might be improved
 
 In rough order of how much evidence there is. Only the first two have any measurement behind them here.
@@ -394,7 +419,8 @@ In rough order of how much evidence there is. Only the first two have any measur
 | The plasma–field boundary is 2 to 3 electron orbits thick | Solid |
 | The leak in the 2D devices is about one electron orbit in half-width at every size run | Solid over a factor of 4 in size |
 | Holding time grows as size^0.5 to 0.7, not size^1 | Probable. Three models agree; largest sizes not clean; two-coil runs not fully settled |
-| The 3D cage leaks mainly through the coils, in streams about 6 orbits wide | Measured in one configuration at one resolution |
+| The 3D cage leaks mainly through the coils, in streams millimetres wide (4 to 12 electron orbits) that do not narrow with field or pressure | Measured at three sizes and three feeds, one resolution |
+| In the 3D cage holding time grows as size^0.67 | Three sizes, pressure ratio not matched, one seed |
 | Floating rings improve confinement by 10% | Restated: 3% inside the cage; the rest is electrons parked at the rings, not settled |
 | Our code reproduces Park et al. 2019 | Boundary thickness yes. Holding time no, by a factor of 2.2 to 3 |
 | Rings around the coils at a set voltage plug the leaks | No, at this pressure: −1% to +4% inside the cage from 0 to +400 kV, best near the floating voltage. Controls in the same deck; one seed repeated |

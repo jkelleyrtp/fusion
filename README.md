@@ -23,7 +23,8 @@ counted. Every result uses WarpX patches that no one but their author has review
 | Pressure scan, 2D two-coil cusp, before the wall correction | Raising the pressure ratio from 0.1 to 37 widens the leak streams (0.6 to 7.7 mm in the gap). Holding time rises until a ratio of about 8, then falls | [cusp-results.md](docs/cusp-results.md) |
 | 3D six-coil cusp at low pressure | Holding time goes as field^0.3, temperature^−0.5, ion mass^0.35, size^1.3 to 1.45: plasma leaves at about the ion sound speed, slowed 1.5 to 5× by the field | [cusp-blog.md](docs/cusp-blog.md) |
 | 3D six-coil cusp at high pressure, with and without floating rings | Leaks mainly through the coils, in streams about 6 electron orbits in half-width; held for about 12 electron crossings. Floating rings add 3% inside the cage; a further cloud of electrons gathers at the charged rings and was still growing at 18 ns | [cusp-paper.md](docs/cusp-paper.md) |
-| Rings held at set voltages, 3D | **Running** (campaigns `rv1`, `rv2`): floating, grounded, rod-only, no rings, +50 to +400 kV | [ring-voltage-design.md](docs/ring-voltage-design.md) |
+| Rings held at set voltages, 3D (`rv1`, `rv2`) | From 0 to +400 kV the plasma inside the cage is 1% below to 4% above no rings, best near +200 kV, where floating rings sit by 18 ns. Second seeds agree to 0.1% | [cusp-paper.md](docs/cusp-paper.md), [ring-voltage-design.md](docs/ring-voltage-design.md) |
+| 3D cage without rings, feed and size (`pb1`) | Ten times the feed lowers holding time 6% and widens the coil stream 74%. Holding time goes as size^0.67 over a factor of 4; the coil stream stays 2.3 to 3.2 mm | [cusp-paper.md](docs/cusp-paper.md) |
 | Plasma fired in from outside, 3D six-coil | Held 45 to 65% as long as plasma born at the centre | [gun-fed-cusp.md](docs/gun-fed-cusp.md) |
 | Electron wells and ion focusing in a sphere (POPS), no magnetic field | Earlier study, finished | [pops-writeup.md](docs/pops-writeup.md) |
 
