@@ -115,7 +115,25 @@ where the books balance (the "elsewhere" row is the reference).
 
 Only the patched run balances at both kinds of wall.
 
-**Status.** Not reviewed. Checked in 2D cylindrical geometry only, on CPUs, to 2 ns; the GPU check is the
-first finished cases of `iso3`. Every finished run with a reflecting wall and cropping on is affected and does
-not count: the closed-leak cases of `iso1` and `iso2`, and the mirror-end picket cases of `pw21` to `pw25`
-(whether the fault explains what spoiled those is not yet tested).
+**Check on GPUs.** The size-15 closed-leak cases of `iso2` run again as `iso3` on the patched build (256 radial
+cells in the same table's units, last snapshot at 47 ns, and the same step of the unpatched run where both exist).
+
+| Case | Reflecting wall | Absorbing wall | Elsewhere | Electric field energy over plasma energy |
+|---|---|---|---|---|
+| `coils_z15_x27`, unpatched, 10 ns | −2.6e13 / +1.24e14 | +1.00e13 / +1.05e13 | −1.15e13 / −1.15e13 | 0.35 at the end |
+| `coils_z15_x27`, patched, 10 ns | +2.1e13 / +2.2e13 | +1.07e13 / +1.12e13 | −9.1e12 / −9.1e12 | |
+| `coils_z15_x27`, patched, 47 ns | +2.1e13 / +2.3e13 | +1.18e13 / +1.27e13 | −9.5e12 / −9.5e12 | 0.028 |
+| `gap_z15_x27`, unpatched, 10 ns | −8.2e12 / +2.9e13 | +8.2e12 / +8.6e12 | +1.79e12 / +1.80e12 | 0.10 at the end |
+| `gap_z15_x27`, patched, 47 ns | +1.43e13 / +1.53e13 | +9.9e12 / +1.04e13 | +1.17e12 / +1.16e12 | 0.050 |
+| `coils_z15_x3`, patched, 47 ns | +6.4e12 / +6.7e12 | +6.6e11 / +6.8e11 | +7.18e12 / +7.19e12 | 0.028 |
+
+Patched, the two columns agree at every wall to the 5 to 8% the differencing allows, the electric field energy
+is 3 to 5% of the plasma's at all four feeds (4 to 7% with both leaks open), and ions outnumber electrons by 1 to
+5%, the same sign as with both leaks open. Turning cropping off everywhere is not a substitute: the four
+`nocrop_*` cases of `iso2` end with electric field energy 0.24 to 3.0 times the plasma's.
+
+**Status.** Not reviewed. Checked in 2D cylindrical geometry only, with the explicit pusher; the implicit
+pusher's copy of the same test is changed the same way and not run. Every run with a reflecting wall and
+cropping on that finished before the patch is affected and does not count: the closed-leak cases of `iso1` and
+`iso2`, and the mirror-end picket cases of `pw21` to `pw25` (three of those are run again in `iso3` to see
+whether the fault explains what spoiled them).
