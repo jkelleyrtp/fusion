@@ -57,8 +57,8 @@ h2, h3 { font-size: 12px; font-weight: 600; }
 #sidebar-resizer { position: absolute; width: 9px; top: 0; right: -5px; bottom: 0; cursor: col-resize; touch-action: none; z-index: 10; }
 #sidebar-resizer:hover, #sidebar-resizer:focus-visible, .resizing-sidebar #sidebar-resizer { background: #83dfbd33; }
 .resizing-sidebar, .resizing-sidebar * { cursor: col-resize !important; user-select: none !important; }
-body[data-page="space-charge"] .workspace { grid-template-columns: minmax(0, 1fr); }
-body[data-page="space-charge"] .sidebar { display: none; }
+body[data-page="space-charge"] .workspace, body[data-page="runs"] .workspace { grid-template-columns: minmax(0, 1fr); }
+body[data-page="space-charge"] .sidebar, body[data-page="runs"] .sidebar { display: none; }
 body[data-page="trajectories"] .plots, body[data-page="trajectories"] .compare-panel { display: none; }
 body[data-page="residence"] .chamber-panel { display: none; }
 body[data-page="residence"] .plots { margin-top: 12px; gap: 24px; }
@@ -377,3 +377,40 @@ body:not([data-page="sweeps"]):not([data-page="trajectories"]):not([data-page="r
 .figure-grid figure { margin: 0; }
 .figure-grid img { width: 100%; background: #fff; border-radius: 4px; display: block; }
 .figure-grid figcaption { color: var(--muted); font-size: 11px; margin-top: 6px; }
+
+/* Runs page */
+.runs-page { max-width: 1320px; padding: 20px 24px 60px; }
+.runs-header { display: flex; justify-content: space-between; gap: 12px 32px; flex-wrap: wrap; align-items: flex-start; }
+.runs-status { color: var(--muted); font-size: 12px; text-align: right; max-width: 460px; }
+.runs-status b { color: var(--mint); }
+.runs-status.job-warning { margin: 0; }
+.runs-status.job-warning b { color: inherit; }
+.runs-tally { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 1px; margin: 18px 0 14px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.runs-tally div { background: var(--panel); padding: 10px 14px; display: flex; flex-direction: column; }
+.runs-tally b { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.runs-tally span { color: var(--muted); font-size: 11px; }
+.runs-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+.runs-controls input { flex: 1 1 240px; }
+.runs-section { margin: 26px 0 8px; font-size: 13px; }
+.runs-table { font-variant-numeric: tabular-nums; }
+.runs-table th, .runs-table td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+.runs-table thead th { color: var(--muted); font-size: 11px; font-weight: 500; white-space: normal; vertical-align: bottom; }
+.runs-table tbody th { font-weight: 500; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.run-row { cursor: pointer; }
+.run-row:hover { background: #ffffff06; }
+.run-detail td { white-space: normal; padding: 10px 0 16px; background: #0d161e; }
+.run-detail p { margin-bottom: 8px; }
+.run-changes code { font-size: 11px; color: #b4c6d3; overflow-wrap: anywhere; }
+.run-measured { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2px 24px; margin: 0; }
+.run-measured div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #26364255; padding: 2px 0; }
+.run-measured dt { color: var(--muted); font-size: 11px; }
+.run-measured dd { margin: 0; font-size: 12px; }
+.run-running { color: var(--mint); }
+.run-queued, .run-unknown, .run-not-started { color: var(--muted); }
+.run-failed, .run-unfinished { color: #f0b57d; }
+.run-thread { border-top: 1px solid var(--line); }
+.run-thread summary { display: flex; justify-content: space-between; gap: 8px 20px; flex-wrap: wrap; padding: 11px 0; font-weight: 600; }
+.run-thread summary small { font-weight: 400; color: var(--muted); }
+.run-question { color: var(--muted); font-size: 12px; margin: 0 0 8px; max-width: 980px; }
+.run-question b { color: #b4c6d3; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 500; }
+@media (max-width: 640px) { .runs-page { padding: 14px 12px 40px; } .runs-status { text-align: left; } }

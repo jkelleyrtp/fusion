@@ -9,6 +9,7 @@ import { renderSpaceCharge } from "./space-charge";
 import { renderFigures } from "./figures";
 import { renderReport } from "./reports";
 import { JobMonitor } from "./jobs";
+import { RunsPage } from "./runs";
 import { FieldView } from "./fields";
 import type { Catalog, Meta, Run, TrajectoryChunk } from "./types";
 
@@ -47,6 +48,7 @@ $("app").innerHTML = `
   </header>
   <nav class="top-nav" aria-label="Analysis pages">
     <a href="#campaigns" data-page="campaigns">Campaigns</a>
+    <a href="#runs" data-page="runs">Runs</a>
     <a href="#pic" data-page="pic">PIC results</a>
     <a href="#jobs" data-page="jobs">Jobs</a>
     <a href="#sweeps" data-page="sweeps">Sweeps</a>
@@ -71,6 +73,7 @@ $("app").innerHTML = `
       <div id="error" class="error" role="alert" hidden></div>
       <div id="campaigns-page" class="document-page" hidden><div id="campaign-jobs"></div><div id="campaign-list"></div></div>
       <div id="jobs-page" class="document-page" hidden></div>
+      <div id="runs-page" class="document-page runs-page" hidden></div>
       <div id="pic-page" class="document-page" hidden></div>
       <div id="campaign-page" class="document-page" hidden>
         <div id="campaign-heading"></div><div id="campaign-job-status" hidden></div><div id="campaign-widget" class="report-widget"></div>
@@ -159,17 +162,19 @@ $("app").innerHTML = `
 
 renderSpaceCharge($("space-charge-page"));
 renderFigures($("pic-page"));
+new RunsPage($("runs-page"));
 const jobMonitor = new JobMonitor($("jobs-page"), $("campaign-jobs"), $("campaign-job-status"));
 setupNavigation(page => {
   $("campaigns-page").hidden = page !== "campaigns";
   $("jobs-page").hidden = page !== "jobs";
+  $("runs-page").hidden = page !== "runs";
   $("pic-page").hidden = page !== "pic";
   $("campaign-page").hidden = page !== "campaign";
   $("sweep-page").hidden = page !== "sweeps";
   $("space-charge-page").hidden = page !== "space-charge";
   $("report-page").hidden = page !== "reports";
   $("run-page").hidden = page !== "trajectories" && page !== "residence";
-  $("model-context").textContent = page === "jobs" ? "One node · priority 1" : page === "pic"
+  $("model-context").textContent = page === "jobs" ? "One node · priority 1" : page === "runs" ? "WarpX campaigns · live from the cluster" : page === "pic"
     ? "Time-dependent electrostatic PIC · imposed B" : page === "space-charge"
     ? "Stationary Poisson feedback · reference pilot"
     : selected?.poisson ? "Stationary Poisson · frozen orbit iteration" : "Fixed fields · no Poisson feedback";
@@ -276,7 +281,9 @@ function renderMetrics(): void {
     if (text?.nodeType === Node.TEXT_NODE) text.textContent = channelNames[i];
   });
   document.querySelector<HTMLElement>(".sphere-toggle")!.hidden = Boolean(poisson);
-  $("model-context").textContent = poisson ? "Stationary Poisson · frozen orbit iteration" : "Fixed fields · no Poisson feedback";
+  if (!["runs", "jobs", "pic", "space-charge"].includes(document.body.dataset.page ?? "")) {
+    $("model-context").textContent = poisson ? "Stationary Poisson · frozen orbit iteration" : "Fixed fields · no Poisson feedback";
+  }
   document.querySelector<HTMLAnchorElement>('a[data-page="reports"]')!.href = reportHref(selected.id);
   renderReport($("report-body"), selected, meta, catalog.studies.find(s => s.id === selected?.study)?.label ?? selected.study);
   renderCampaignReport($("campaign-heading"), $("campaign-details"), catalog, selected, id => { void selectRun(id); });

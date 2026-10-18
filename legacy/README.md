@@ -34,6 +34,20 @@ escape time + channel, survival curve, (r,z) density) and renders a report.
 | `src/export_viewer.py` | compressed, content-addressed trajectory pages and exact ensemble dwell summaries |
 | `src/serve_viewer.py` | local production viewer server with precompressed application assets |
 
+### Runs page
+
+The Runs page lists every WarpX case of every campaign in `warpx/campaigns/registry.json` with its state on the
+cluster, its progress and what it measured. It reads `/api/runs`, which both servers answer from one file that
+`warpx/runs_feed.py` keeps current:
+
+```bash
+python3 warpx/runs_feed.py --every 45        # from the repository root; writes /home/ubuntu/warpx/live/runs.json
+python3 legacy/src/serve_viewer.py --host 0.0.0.0
+```
+
+The feed reads shared storage through a node one of our jobs holds. With no node held it keeps the last results and
+the page says the cluster cannot be read.
+
 ## Browser control room
 
 ```bash
