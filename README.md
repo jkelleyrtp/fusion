@@ -9,27 +9,27 @@ first makes holding time rise fast with size ("cusp plugging"); the second does 
 measures leak width against device size at fixed pressure ratio with a sustained feed
 ([prior work](docs/prior-work.md)).
 
-## Where it stands (2026-10-16)
+## Where it stands (2026-10-18)
 
-**2026-10-17:** every run counted below left charge at the conducting walls, and repeats without that fault
-give holding times 14 to 43% lower at high pressure in the smaller cases. The size scan's earlier exponents are
-withdrawn; its rerun has three of five sizes. See [docs/wall-charge.md](docs/wall-charge.md).
-
-Only finished runs are counted. Every result below uses WarpX patches that no one but their author has reviewed
+The longer account, with figures of the runs, is [docs/cusp-paper.md](docs/cusp-paper.md). Only finished runs are
+counted. Every result uses WarpX patches that no one but their author has reviewed
 ([warpx/patches](warpx/patches/README.md)).
 
 | Study | Result | Write-up |
 |---|---|---|
-| Check against a published case (2D picket fence, Park et al. 2019) | Holding time 141 electron crossings against about 135 published; current layer 2.2 electron orbits wide against about 2.1. Nothing tuned. Baseline only; mesh, seed and time-step repeats are not all in | [picket-park.md](docs/picket-park.md) |
-| Pressure scan, 2D two-coil cusp | Raising the pressure ratio from 0.1 to 37 widens the leak streams (0.6 to 7.7 mm in the gap) instead of narrowing them. Holding time rises until a ratio of about 8, then falls | not written up yet; data in `warpx/results/sp2.jsonl` |
-| Scalings, 3D six-coil cusp at low pressure | Holding time goes as field^0.3, temperature^−0.5, ion mass^0.35, size^1.3 to 1.45: plasma leaves at about the ion sound speed, slowed 2 to 3× by the field | [cusp-blog.md](docs/cusp-blog.md), `warpx/results/fed2.jsonl` |
-| Plasma fired in from outside, 3D six-coil | It gets in and is held about as well as plasma born at the centre if the guns sit close to the coils | [gun-fed-cusp.md](docs/gun-fed-cusp.md) |
-| Size scan, 2D picket fence, with the wall correction | **In progress.** 0.25×, 0.5× and 1× the published size done (50 to 230 electron orbits): holding time rises about in proportion to size and the gap stream stays under 1.6 electron orbits. Pressure ratio not matched (0.63 to 0.90); 2× and 4× running | `warpx/campaigns/picket/` |
-| Electron wells and ion focusing in a sphere (POPS), no magnetic field | Earlier study, finished | [pops-writeup.md](docs/pops-writeup.md), [pops-results.md](docs/pops-results.md) |
+| Boundary between plasma and field, 2D | 1.8 to 3.5 electron orbits thick in 60 of 61 runs, at every size | [progress-2026-10-17.md](docs/progress-2026-10-17.md) |
+| Size scan, 2D, three treatments of the ends | Holding time goes as size^0.71 (row of coils, wrap-around ends), size^0.49 (mirror ends) and size^0.55 (two coils, real end walls), over a factor of 4 in size. Not size^1 (leak of fixed width in orbits), not size^0. The largest sizes still depend on particle count and the two-coil runs had not settled | [progress-2026-10-18.md](docs/progress-2026-10-18.md), [cusp-results.md](docs/cusp-results.md) |
+| Check against a published case (2D row of coils, Park et al. 2019) | Boundary thickness agrees (2.2 against 2.1 orbits). Holding time does not: 58 to 63 electron crossings over the paper's own part of the run against its 135 to 174. An earlier match (141) was made by charge left at the walls | [park-vs-warpx.md](docs/park-vs-warpx.md), [wall-charge.md](docs/wall-charge.md) |
+| Pressure scan, 2D two-coil cusp, before the wall correction | Raising the pressure ratio from 0.1 to 37 widens the leak streams (0.6 to 7.7 mm in the gap). Holding time rises until a ratio of about 8, then falls | [cusp-results.md](docs/cusp-results.md) |
+| 3D six-coil cusp at low pressure | Holding time goes as field^0.3, temperature^−0.5, ion mass^0.35, size^1.3 to 1.45: plasma leaves at about the ion sound speed, slowed 1.5 to 5× by the field | [cusp-blog.md](docs/cusp-blog.md) |
+| 3D six-coil cusp at high pressure, with and without floating rings | Leaks mainly through the coils, in streams about 6 electron orbits in half-width; held for about 12 electron crossings. Floating rings add 3% inside the cage; a further cloud of electrons gathers at the charged rings and was still growing at 18 ns | [cusp-paper.md](docs/cusp-paper.md) |
+| Rings held at set voltages, 3D | **Running** (campaigns `rv1`, `rv2`): floating, grounded, rod-only, no rings, +50 to +400 kV | [ring-voltage-design.md](docs/ring-voltage-design.md) |
+| Plasma fired in from outside, 3D six-coil | Held 45 to 65% as long as plasma born at the centre | [gun-fed-cusp.md](docs/gun-fed-cusp.md) |
+| Electron wells and ion focusing in a sphere (POPS), no magnetic field | Earlier study, finished | [pops-writeup.md](docs/pops-writeup.md) |
 
-What these runs are not: the 3D runs have cells about as large as an electron orbit except at the weakest
-fields, the 2D runs cannot show anything that varies around the axis, the coil field is a fixed formula, and
-most runs use ions of 57 to 64 electron masses.
+What these runs are not: most use ions of 57 to 64 electron masses and electrons at 100 keV, the sizes span 15 to
+about 190 electron orbits, the 3D runs have cells a quarter of an electron orbit at the coils, the 2D runs cannot
+show anything that varies around the axis, and the coil field is a fixed formula.
 
 ## Layout
 
