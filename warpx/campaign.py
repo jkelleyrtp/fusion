@@ -399,11 +399,12 @@ def sync(args: argparse.Namespace) -> None:
     """Fetch the reduced diagnostics of finished cases and write one line per complete case to table.jsonl."""
     target = RESULTS / args.name
     target.mkdir(parents=True, exist_ok=True)
-    # Cases fetched before are not fetched again, apart from what `reduce` may have written since.
+    # Cases fetched before are not fetched again, apart from what `reduce` may have written since. A case withdrawn
+    # before it started has a DONE file and nothing else.
     have = " ".join(path.parent.name for path in target.glob("*/DONE"))
     packed = on_cluster(f"cd {SHARED}/campaigns/{args.name} && tar -czf - all_cases.txt $(for done in */DONE; do case=${{done%/DONE}}; "
-                        f"case ' {have} ' in *\" $case \"*) ;; *) echo $case/DONE $case/WALL_S $case/attempts.log $case/warpx_used_inputs "
-                        "$case/diags/reducedfiles ;; esac; done) "
+                        f"case ' {have} ' in *\" $case \"*) ;; *) ls -d $case/DONE $case/WALL_S $case/attempts.log $case/warpx_used_inputs "
+                        "$case/diags/reducedfiles 2>/dev/null ;; esac; done) "
                         "$(ls */measured.json */diags/reducedfiles/on_coil_plane.txt 2>/dev/null) 2>/dev/null | base64 -w0")
     with tarfile.open(fileobj=io.BytesIO(base64.b64decode(packed)), mode="r:gz") as archive:
         archive.extractall(target, filter="data")
