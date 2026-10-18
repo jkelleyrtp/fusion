@@ -155,5 +155,6 @@ Runs from now on use the two settings. Campaigns finished before this date have 
 listed above.
 
 **2026-10-18: walls that send particles back.** The cropping setting is wrong at a reflecting wall and leaves
-false charge there, the opposite fault to the one above. Runs with a reflecting wall need
+false charge there, the opposite fault to the one above. Runs with a reflecting conducting wall need
 `crop-absorbing-walls-only.patch` ([warpx-patches.md](warpx-patches.md)); those finished before it do not count.
+The mirror-end picket runs are not among them: their reflecting ends are magnetic mirrors, where nothing is cropped.
