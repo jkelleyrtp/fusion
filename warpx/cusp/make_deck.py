@@ -693,7 +693,8 @@ ENERGY = ("{mass}*clight**2/q_e*(sqrt(1+ux*ux+uy*uy+uz*uz)-1)", "1", "0.", "12.*
 THROUGH_SIDE = (f"(ux*x+uy*y)/{RADIUS}{SPEED}", f"({RADIUS}>rw-2*shell)*({RADIUS}<rw-shell)", "-1.", "1.", 200)
 
 
-def spindle_deck() -> str:
+def spindle_deck(more: dict[str, tuple[str, str, str, str, int]] | None = None) -> str:
+    """`more` adds histograms to the ones every two-coil run writes."""
     text = SPINDLE
     for component in AXES:
         text += (f'particles.B{component}_external_particle_function(x,y,z,t) = "'
@@ -706,8 +707,45 @@ def spindle_deck() -> str:
         "through_coils": (f"uz*(2*(z>0)-1){SPEED}", "(abs(z)>zw-2*shell)*(abs(z)<zw-shell)", "-1.", "1.", 200),
         "through_gap": THROUGH_SIDE,
         "energy": ENERGY,
+        **(more or {}),
     })
     return (text + lines).replace("__HISTOGRAMS__", " ".join(names))
+
+
+LEAK = """
+# What follows turns the two-coil deck above into the one for studying each kind of leak by itself, and for
+# keeping what a run produced. A leak is closed by making the wall behind it send particles back: the side wall
+# for the gap between the coils (boundary.particle_hi = reflecting absorbing), the end walls for the holes through
+# the coils (boundary.particle_lo = none reflecting, boundary.particle_hi = absorbing reflecting). The wall is well
+# outside the coils, so a closed leak acts as a plug behind the leak, not as a wall in the plasma.
+# The walls stay conducting for the fields, and the two settings of docs/wall-charge.md are always on.
+particles.crop_on_PEC_boundary = 1
+algo.current_deposition = villasenor
+# The coil field is put on the mesh once (docs/warpx-patches.md), which is several times faster than working it
+# out for every particle on every step. Snapshots then hold the coil field plus the plasma's.
+particles.B_ext_particle_on_grid = 1
+# Every snapshot holds all the fields and currents and this share of the particles of each kind, drawn at random.
+my_constants.sample = 0.1
+diag1.write_species = 1
+diag1.species = electrons ions
+diag1.electrons.random_fraction = sample
+diag1.ions.random_fraction = sample
+diag1.fields_to_plot = Br Bt Bz Er Et Ez jr jt jz rho_electrons rho_ions
+"""
+
+# Counted inside the coils (the plasma that is held, as against plasma parked between a leak and a closed wall),
+# crossing each leak at the leak itself, and arriving at each wall.
+LEAK_HISTOGRAMS = {
+    "core": (ENERGY[0], f"({RADIUS}<rc)*(abs(z)<dc)", "0.", "12.*te", 120),
+    "at_coils": (f"uz*(2*(z>0)-1){SPEED}", f"(abs(abs(z)-dc)<0.5*shell)*({RADIUS}<rc)", "-1.", "1.", 200),
+    "at_gap": (f"(ux*x+uy*y)/{RADIUS}{SPEED}", f"(abs({RADIUS}-rc)<0.5*shell)*(abs(z)<dc)", "-1.", "1.", 200),
+    "to_ends": (RADIUS, "(abs(z)>zw-2*shell)*(abs(z)<zw-shell)*(uz*z>0)", "0.", "rw", 200),
+    "to_side": ("z", f"({RADIUS}>rw-2*shell)*({RADIUS}<rw-shell)*(ux*x+uy*y>0)", "-zw", "zw", 200),
+}
+
+
+def leak_deck() -> str:
+    return spindle_deck(LEAK_HISTOGRAMS) + LEAK
 
 
 PICKET_COILS = 12   # coils kept on each side of the middle one; the field is then within 0.05% of an endless row's
@@ -825,6 +863,7 @@ if __name__ == "__main__":
     here.with_name("inputs_3d_cusp_ringv_stubs").write_text(ringv_deck(stalks("2*rs")))
     here.with_name("inputs_3d_cusp_ringv_unit").write_text(ringv_deck() + UNIT)
     here.with_name("inputs_rz_spindle_fed").write_text(spindle_deck())
+    here.with_name("inputs_rz_spindle_leak").write_text(leak_deck())
     here.with_name("inputs_rz_picket_fed").write_text(picket_deck())
     here.with_name("inputs_rz_picket_fed_collisions").write_text(picket_deck() + COLLISIONS)
     here.with_name("inputs_rz_picket_two").write_text(picket_deck() + periods(2))

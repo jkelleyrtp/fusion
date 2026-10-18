@@ -106,16 +106,21 @@ def leaving(run: Path, name: str, shell: float) -> tuple[np.ndarray, np.ndarray]
 
 
 def field_maps(run: Path) -> dict | None:
-    """The fields in the last snapshot, as arrays over (z, r), or None if the run wrote no snapshot in one box."""
-    files = sorted(p for p in (run / "diags").glob("diag1[0-9]*") if (p / "Level_0/Cell_D_00000").exists())
-    if not files or (run / "diags" / files[-1].name / "Level_0/Cell_D_00001").exists():
+    """The fields in the last snapshot, as arrays over (z, r), or None if the run wrote no snapshot. A run on
+    several GPUs writes its mesh in several boxes, each placed here by the corners it records."""
+    files = sorted((p for p in (run / "diags").glob("diag1[0-9]*") if (p / "Level_0/Cell_H").exists()), key=lambda p: int(p.name[5:]))
+    if not files:
         return None
     header = (files[-1] / "Header").read_text().split("\n")
     names = header[2 : 2 + int(header[1])]
-    with open(files[-1] / "Level_0/Cell_D_00000", "rb") as data:
-        high = data.readline().decode().split(") (")[1].split(")")[0]
-        nr, nz = (int(value) + 1 for value in high.split(","))
-        cube = np.frombuffer(data.read(len(names) * nr * nz * 8), dtype="<f8").reshape(len(names), nz, nr)
+    nr, nz = (int(value) + 1 for value in header[len(names) + 8].split(") (")[1].split(")")[0].split(","))
+    cube = np.empty((len(names), nz, nr))
+    for name, offset in re.findall(r"FabOnDisk: (\S+) (\d+)", (files[-1] / "Level_0/Cell_H").read_text()):
+        with open(files[-1] / "Level_0" / name, "rb") as data:
+            data.seek(int(offset))
+            r0, z0, r1, z1 = (int(edge) for edge in re.search(r"\(\((\d+),(\d+)\) \((\d+),(\d+)\)", data.readline().decode()).groups())
+            shape = (len(names), z1 - z0 + 1, r1 - r0 + 1)
+            cube[:, z0 : z1 + 1, r0 : r1 + 1] = np.frombuffer(data.read(8 * int(np.prod(shape))), dtype="<f8").reshape(shape)
     return dict(zip(names, cube))
 
 
@@ -133,8 +138,11 @@ def pushed_out(run: Path, c: dict) -> dict:
     grid_r, grid_z = np.meshgrid(r, z)
     coil_r, coil_z = coil_field(grid_r, grid_z, c)
     alone = np.hypot(coil_r, coil_z)
-    total = np.sqrt((coil_r + maps["Br"][::stride, ::stride]) ** 2 + (coil_z + maps["Bz"][::stride, ::stride]) ** 2
-                    + maps["Bt"][::stride, ::stride] ** 2)
+    # With the coil field held on the mesh, the snapshot's field is the coils' plus the plasma's; otherwise the plasma's alone.
+    on_mesh = bool(re.search(r"^particles\.B_ext_particle_on_grid = 1", (run / "warpx_used_inputs").read_text(), re.MULTILINE))
+    own_r = maps["Br"][::stride, ::stride] - (coil_r if on_mesh else 0)
+    own_z = maps["Bz"][::stride, ::stride] - (coil_z if on_mesh else 0)
+    total = np.sqrt((coil_r + own_r) ** 2 + (coil_z + own_z) ** 2 + maps["Bt"][::stride, ::stride] ** 2)
     reference = float(np.hypot(*coil_field(np.array([0.0]), np.array([c["dc"]]), c))[0])
     inside = (grid_r < c["rc"]) & (np.abs(grid_z) < c["dc"])
     volume = 2 * np.pi * grid_r * (r[1] - r[0]) * (z[1] - z[0])
@@ -144,9 +152,36 @@ def pushed_out(run: Path, c: dict) -> dict:
     return {
         "weak_field_volume_over_coils_alone": round(float(weak_now / weak_alone), 3),
         "largest_cut_in_field": round(float((1 - total[strong] / alone[strong]).max()), 3),
-        "own_field_max_T": round(float(np.hypot(maps["Br"], maps["Bz"]).max()), 4),
+        # Away from the coil conductors, where the mesh cannot follow the coil field and the difference is not the plasma's.
+        "own_field_max_T": round(float(np.hypot(own_r, own_z)[np.hypot(grid_r - c["rc"], np.abs(grid_z) - c["dc"]) > 0.3 * c["a"]].max()), 4),
         "own_field_around_axis_max_T": round(float(np.abs(maps["Bt"]).max()), 4),
     }
+
+
+def each_leak(run: Path, c: dict, fed_until: float, lost_per_s: dict[str, float]) -> dict:
+    """For runs of inputs_rz_spindle_leak: which leaks are open, the plasma held inside the coils (a closed leak
+    parks plasma between itself and its wall, which the vessel total counts), the holding time that gives, the
+    net rate crossing each leak at the leak, and whether the run has settled."""
+    text = (run / "warpx_used_inputs").read_text()
+    low, high = (re.search(rf"^boundary\.particle_{side} = (\S+) (\S+)", text, re.MULTILINE).groups() for side in ("lo", "hi"))
+    out = {"open_leaks": {("absorbing", "absorbing"): "both", ("reflecting", "absorbing"): "coils", ("absorbing", "reflecting"): "gap"}[(high[0], high[1])]}
+    assert low[1] == high[1], "the two end walls differ"
+    for species in ("electrons", "ions"):
+        letter = species[0]
+        data, energy = table(run, f"{letter}_core"), bin_centres(run, f"{letter}_core")
+        late = (data[:, 1] >= 0.8 * fed_until) & (data[:, 1] <= fed_until)
+        before = (data[:, 1] >= 0.6 * fed_until) & (data[:, 1] < 0.8 * fed_until)
+        inside = data[:, 2:].sum(axis=1)
+        out[f"{species}_held_inside_coils"] = float(f"{inside[late].mean():.4g}")
+        out[f"{species}_inside_coils_over_fifth_before"] = round(float(inside[late].mean() / inside[before].mean()), 3)
+        out[f"{species}_mean_energy_inside_coils_eV"] = round(float((data[late, 2:] * energy).sum() / inside[late].sum()), 1)
+        lost = lost_per_s[species]
+        out[f"{species}_leaving_over_feed"] = round(lost / c["feed"], 3)
+        out[f"{species}_holding_time_inside_coils_ns"] = round(inside[late].mean() / lost * 1e9, 2) if lost > 0 else None
+        for route in ("coils", "gap"):
+            when, rate = leaving(run, f"{letter}_at_{route}", c["shell"])
+            out[f"{species}_net_out_at_{route}_per_s"] = float(f"{rate[(when >= 0.8 * fed_until) & (when <= fed_until)].mean():.4g}")
+    return out
 
 
 def reduce(run: Path) -> dict:
@@ -208,6 +243,8 @@ def reduce(run: Path) -> dict:
         out["core_pressure_over_magnetic_in_gap"] = float(f"{out['core_pressure_Pa'] / (field_in_gap**2 / (2 * MU0)):.3g}")
         out.update(pushed_out(run, c))
     out["core_pressure_Pa"] = float(f"{out['core_pressure_Pa']:.4g}")
+    if (run / "diags/reducedfiles/e_core.txt").exists():
+        out.update(each_leak(run, c, fed_until, {species: out[f"{species}_leaving_per_s"] for species in held}))
     out.update(field_and_charge(run, 0.8 * fed_until, fed_until))
     return out
 

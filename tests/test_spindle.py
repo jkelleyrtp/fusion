@@ -34,6 +34,12 @@ class SpindleTest(unittest.TestCase):
 
     def test_the_deck_on_disk_is_the_one_the_generator_writes(self) -> None:
         self.assertEqual((CUSP / "inputs_rz_spindle_fed").read_text(), make_deck.spindle_deck())
+        self.assertEqual((CUSP / "inputs_rz_spindle_leak").read_text(), make_deck.leak_deck())
+
+    def test_the_leak_deck_is_the_two_coil_deck_with_lines_added(self) -> None:
+        plain, leak = make_deck.spindle_deck().splitlines(), make_deck.leak_deck().splitlines()
+        changed = [line for line in plain if line not in leak]
+        self.assertEqual([line.split(" = ")[0] for line in changed], ["warpx.reduced_diags_names"])
 
     def test_the_reducer_and_the_deck_agree_on_the_coil_field(self) -> None:
         for r, z in ((0.002, 0.001), (0.006, 0.004), (0.009, 0.0), (0.004, 0.012), (0.015, -0.007), (0.0005, 0.018)):

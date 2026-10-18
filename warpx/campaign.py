@@ -43,7 +43,7 @@ PATCHES = sorted((ROOT / "patches").glob("*.patch"))
 # The build directory is named after the patches applied to WarpX 26.10, so a changed patch gets a fresh build.
 BUILD = f"{SHARED}/warpx-26.10-cuda-" + hashlib.sha256(b"".join(patch.read_bytes() for patch in PATCHES)).hexdigest()[:8]
 # Which script reduces a finished case, by the deck it ran.
-REDUCERS = {**{f"inputs_3d_cusp_ringv{kind}": "analyze_ringv.py" for kind in ("", "_stalks", "_stubs", "_unit")}, "inputs_rz_spindle_fed": "analyze_spindle.py", "inputs_rz_picket_fed": "analyze_picket.py", "inputs_rz_picket_fed_collisions": "analyze_picket.py", "inputs_rz_picket_two": "analyze_picket.py", "inputs_rz_picket_four": "analyze_picket.py", "inputs_rz_picket_eight": "analyze_picket.py", "inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_jets": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
+REDUCERS = {**{f"inputs_3d_cusp_ringv{kind}": "analyze_ringv.py" for kind in ("", "_stalks", "_stubs", "_unit")}, "inputs_rz_spindle_fed": "analyze_spindle.py", "inputs_rz_spindle_leak": "analyze_spindle.py", "inputs_rz_picket_fed": "analyze_picket.py", "inputs_rz_picket_fed_collisions": "analyze_picket.py", "inputs_rz_picket_two": "analyze_picket.py", "inputs_rz_picket_four": "analyze_picket.py", "inputs_rz_picket_eight": "analyze_picket.py", "inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_jets": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
             "inputs_3d_cusp_cage_gas": "analyze_cage.py"}
 
 # Two executables are built from one source tree: the 3D one with conducting boundaries inside the box, and the
@@ -172,7 +172,8 @@ run_case() {
     local reducer; reducer=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' "$files/reducers.json" "$deck")
     echo complete > DONE
     [ -n "$reducer" ] && { python3 "$files/$reducer" . > measured.tmp 2> reduce.log && mv measured.tmp measured.json; }
-    rm -rf diags/chk[0-9]*
+    # The last checkpoint is the whole final state, every particle included. __KEPT__ of them are kept.
+    ls -d diags/chk[0-9]* 2>/dev/null | sort -V | head -n -__KEPT__ | xargs -r rm -rf
   elif [ -f STALLED ]; then echo "failed: no output for __STALL__ seconds" > DONE
   elif [ $code -eq 124 ]; then
     # Out of time. If it left a later checkpoint than the one it started from, another try carries on from there.
@@ -260,9 +261,11 @@ def payload(texts: dict[str, str]) -> str:
     return base64.b64encode(buffer.getvalue()).decode()
 
 
-def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 1800, pause: int = 120, look: int = 60) -> tuple[str, dict]:
+def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 1800, pause: int = 120, look: int = 60,
+             kept: int = 0) -> tuple[str, dict]:
     """The broker job for one node working on campaign `name`, carrying `cases` to add to its queue. Each case
-    runs on `gpus` GPUs; more than one needs the WarpX build with MPI, which is kept beside the one without."""
+    runs on `gpus` GPUs; more than one needs the WarpX build with MPI, which is kept beside the one without.
+    A finished case keeps its `kept` newest checkpoints (0 or 1; a running case always has its two newest)."""
     assert gpus in (1, 2, 4, 8), "a node's 8 GPUs must divide evenly between cases"
     build, launch = (BUILD, "") if gpus == 1 else (BUILD + "-mpi", "mpirun --allow-run-as-root --bind-to none -np $np")
     token = uuid.uuid4().hex[:12]
@@ -271,7 +274,7 @@ def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 18
     steps += H5PY if needs_openpmd else ""
     worker = (WORKER.replace("__BUILD_STEPS__", steps).replace("__OPENPMD_DECKS__", OPENPMD_DECKS).replace("__CAMP__", f"{SHARED}/campaigns/{name}")
               .replace("__JOB__", token).replace("__BUILD__", build).replace("__TIMEOUT__", str(timeout)).replace("__STALL__", str(stall))
-              .replace("__PAUSE__", str(pause)).replace("__LOOK__", str(look))
+              .replace("__PAUSE__", str(pause)).replace("__LOOK__", str(look)).replace("__KEPT__", str(kept))
               .replace("__MPI__", "OFF" if gpus == 1 else "ON").replace("__LAUNCH__", launch).replace("__GPUS__", str(gpus))
               .replace("__PAYLOAD__", payload({"cases.txt": cases})))
     template = json.loads((ROOT / "job-template.json").read_text())
@@ -315,7 +318,7 @@ def submit(args: argparse.Namespace) -> None:
     # has not seen, so a job added later still has work if an earlier one was stopped before its worker started.
     carried = "\n".join(entry["cases"] + new) + "\n"
     for index in range(args.nodes):
-        token, template = job_spec(args.name, carried, args.timeout, args.gpus_per_case)
+        token, template = job_spec(args.name, carried, args.timeout, args.gpus_per_case, kept=int(args.keep_final_state))
         folder = JOBS / f"{args.name}-{token}"
         folder.mkdir(parents=True)
         (folder / "job.yaml").write_text(json.dumps(template, indent=2) + "\n")
@@ -492,6 +495,7 @@ if __name__ == "__main__":
             command.add_argument("--question", help="what the campaign is meant to answer")
             command.add_argument("--nodes", type=int, default=1)
             command.add_argument("--timeout", type=int, default=21600, help="seconds allowed per try of a case")
+            command.add_argument("--keep-final-state", action="store_true", help="finished cases keep their last checkpoint: every particle and field at the end")
             command.add_argument("--gpus-per-case", type=int, default=1, help="1, 2, 4 or 8; the nodes added now run every case they take on this many GPUs")
     arguments = parser.parse_args()
     arguments.function(arguments)
