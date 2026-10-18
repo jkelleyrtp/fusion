@@ -347,7 +347,8 @@ coils and feed as the pair above. All finished. Averages over the last fifth of 
 - **Measured:** ring voltage changes the plasma inside the cage by −1% to +4%. The gain peaks near 200 kV and
   is back to +1% at 400 kV. The total in the vessel keeps rising with voltage only because more electrons
   gather at the rings: at 400 kV there are 15% more electrons than ions in the vessel.
-- **Measured:** the two seeds of the grounded case agree to 0.1%, so differences of a percent are not scatter.
+- **Measured:** every control was run with a second seed (no rings, grounded, floating, rods stopping short)
+  and each pair agrees to 0.1%, so differences of a percent are not scatter.
   Floating rings with and without rods nearby agree to 0.5%, so the rods are not responsible.
 - **Measured:** floating rings were at 170 to 240 kV late in the run and still charging (79, 137, 188, 234 nC
   at 6, 10, 14, 18 ns). At 200 kV set, the electron and ion currents onto the metal nearly cancel. So about
