@@ -391,7 +391,10 @@ def status(args: argparse.Namespace) -> None:
     print(on_cluster(f"""cd {SHARED}/campaigns/{args.name} 2>/dev/null && [ -f queue.txt ] || {{ echo "no worker has started its cases yet (WarpX may be building)"; exit 0; }}
       echo "queued: $(wc -l < queue.txt)"; while read -r name rest; do
       if [ -f $name/DONE ]; then echo "$name: $(cat $name/DONE) ($(cat $name/WALL_S) s)"
-      elif [ -d $name ]; then echo "$name: running, try $(cat $name/TRIES), $(grep 'ends. TIME' $name/run.log | tail -n 1 | cut -c1-40)"
+      elif [ -d $name ]; then
+        # A worker touches CLAIM once a minute while its case runs; a case with an old CLAIM lost its node.
+        state="stopped, waiting for a node"; [ -n "$(find $name/CLAIM -mmin -3 2>/dev/null)" ] && state=running
+        echo "$name: $state, try $(cat $name/TRIES), $(grep 'ends. TIME' $name/run.log | tail -n 1 | cut -c1-40)"
       fi; done < all_cases.txt"""))
 
 
