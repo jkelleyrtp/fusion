@@ -86,7 +86,7 @@ voltages, three at 256 cells, three with metal reaching to 1 mm from the mid-pla
 | The same with the `near` metal, which has an inside corner | 1.3e-10 away from the metal; 2e-5 to 1e-4 within two cells of it, all of it in the two cells diagonal to each inside corner |
 | Particles are all counted: rate lost (two shells plus the metal landings the shells have not seen) against feed less growth, last fifth | agree to 0.6% or better for electrons in all thirteen cases, and to 2% for ions |
 | Where particles land | 0 V: ions on the faces towards the mid-plane (4% of the feed). Negative metal: ions on those faces and the hole's face, and at -300 kV the faces towards the ends as well (86% of the feed). +300 kV: electrons on the faces towards the mid-plane beyond 16 mm radius (35% of the feed). No electron lands on negative metal and no ion on metal at +300 kV |
-| Mesh: 256 cells against 128, at -100, 0 and +100 kV | holding time 2.40, 3.50, 4.13 against 2.48, 3.57, 4.15 ns; ring leak half-height 0.264, 0.284, 0.312 against 0.250, 0.281, 0.308 mm; stream through a coil 1.68, 1.82, 1.90 against 1.66, 1.80, 1.88 mm |
+| Mesh: 256 cells against 128, at -100, 0 and +100 kV | holding time inside the coils 1.86, 2.59, 3.00 against 1.93, 2.66, 3.02 ns; ring leak half-height 0.264, 0.284, 0.312 against 0.250, 0.281, 0.308 mm; stream through a coil 1.68, 1.82, 1.90 against 1.66, 1.80, 1.88 mm |
 | Gauss's law in the cells on the axis | 1.6 to 2.3 times the rms charge density there, at every voltage including 0, as on the CPUs |
 
 ## Not checked
@@ -94,26 +94,30 @@ voltages, three at 256 cells, three with metal reaching to 1 mm from the mid-pla
 - Whether the error on the axis matters to these runs. Without metal, runs with 4 times the particles gave the
   same widths and a holding time 6% longer.
 - Any size but 15.
-- Why grounded casings alone hold longer than no metal (3.57 against 2.84 ns in `iso3`). The metal also shuts
-  the plasma's own magnetic field out of the casings; the two decks have not been compared line by line.
 - The potential on the axis in a coil: its spread over ten snapshots is 50 to 110 kV, so it is not usable.
 
 ## What the runs say (provisional)
 
-| Metal (kV) | Electron holding time (ns) | Electrons landing on metal (share of feed) | Ions landing on metal | Potential at centre (kV) | Same with no plasma |
-|---|---|---|---|---|---|
-| -300 | 0.66 | 0 | 0.86 | 33 ± 14 | -272 |
-| -100 | 2.48 | 0 | 0.36 | 36 ± 16 | -91 |
-| -30 | 3.28 | 0 | 0.14 | 45 ± 11 | -27 |
-| 0 | 3.57 | 0.0001 | 0.04 | 43 ± 8 | 0 |
-| +30 | 3.80 | 0.0002 | 0.005 | 42 ± 11 | 27 |
-| +100 | 4.15 | 0.001 | 0 | 50 ± 9 | 91 |
-| +300 | 4.45 | 0.35 | 0 | 98 ± 14 | 272 |
+| Metal (kV) | Electron holding time inside the coils (ns) | Same, whole vessel | Electrons landing on metal (share of feed) | Ions landing on metal | Potential at centre (kV) | Same with no plasma |
+|---|---|---|---|---|---|---|
+| no metal (`iso3`) | 2.84 | 3.84 | | | | |
+| -300 | 0.52 | 0.66 | 0 | 0.86 | 33 ± 14 | -272 |
+| -100 | 1.93 | 2.48 | 0 | 0.36 | 36 ± 16 | -91 |
+| -30 | 2.48 | 3.28 | 0 | 0.14 | 45 ± 11 | -27 |
+| 0 | 2.66 | 3.57 | 0.0001 | 0.04 | 43 ± 8 | 0 |
+| +30 | 2.81 | 3.80 | 0.0002 | 0.005 | 42 ± 11 | 27 |
+| +100 | 3.02 | 4.15 | 0.001 | 0 | 50 ± 9 | 91 |
+| +300 | 3.21 | 4.45 | 0.35 | 0 | 98 ± 14 | 272 |
 
+Holding time inside the coils is the one quoted so far for the runs with no metal (`iso2`, `iso3`): electrons
+inside the coils over the rate they are lost. The whole-vessel one counts the streams on their way to the walls as held.
+
+- Grounded metal costs 6% against no metal (2.66 against 2.84 ns). 4% of the ions land on it.
 - The plasma sits near +40 kV whatever the metal is at between -300 and +100 kV: it screens the voltage.
-- Positive metal lengthens the holding time by 16% at 100 kV for almost no landing. At 300 kV it gains 25% and
-  a third of the electrons land on the metal, each having gained up to 300 keV from the supply.
+- Positive metal lengthens the holding time by 14% over grounded metal at 100 kV (6% over no metal) for almost
+  no landing. At 300 kV it is 21% over grounded metal (13% over no metal) and a third of the electrons land on
+  the metal, each having gained up to 300 keV from the supply.
 - Negative metal pulls the ions on to itself.
-- Metal 1 mm from the ring leak is worse at every voltage (2.31 ns at 0 V): the plasma lands on it.
+- Metal 1 mm from the ring leak is worse at every voltage (1.83 ns at 0 V): the plasma lands on it.
 
 The CPU checks above were made with scripts kept outside the repository (`/home/ubuntu/warpx/plugcheck`).
