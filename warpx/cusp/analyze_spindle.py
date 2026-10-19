@@ -215,7 +215,10 @@ def on_metal(run: Path, c: dict, since: float, until: float) -> dict:
     is 3.5 cells off it.
     The metal reaches out past the shell that counts what leaves by the gap, so a particle landing beyond that
     shell has been counted by it already, and one landing within it has been counted for the share of the
-    shell's thickness it crossed. `..._not_counted_at_gap_per_s` is the rest, the rate to add to the shells'."""
+    shell's thickness it crossed. `..._not_counted_at_gap_per_s` is the rest, the rate to add to the shells'.
+    `..._power_on_metal_W` is the kinetic energy the landing particles bring; `supply_power_W` is what the supply
+    holding the metal at its voltage gives, which is not the same: an electron reaching metal at +300 kV from a
+    plasma at +70 kV brings 230 keV, and the supply gives 300 keV for it."""
     import h5py
 
     text = (run / "warpx_used_inputs").read_text()
@@ -240,6 +243,10 @@ def on_metal(run: Path, c: dict, since: float, until: float) -> dict:
         out[f"{species}_landing_on_metal_per_s"] = float(f"{count / (until - since):.4g}")
         out[f"{species}_landing_on_metal_not_counted_at_gap_per_s"] = float(f"{uncounted / (until - since):.4g}")
         out[f"{species}_power_on_metal_W"] = float(f"{energy / (until - since):.4g}")
+    # Once a run has settled the charge on the metal is steady, so the supply holding it at `volts` carries away
+    # the net charge that lands, and the power it gives is that current times the voltage.
+    amps = Q_E * (out["electrons_landing_on_metal_per_s"] - out["ions_landing_on_metal_per_s"])
+    out["supply_power_W"] = float(f"{volts * amps:.4g}")
     # One snapshot's field holds waves as large as the potential, so the potential is the mean over the
     # snapshots between the two times, and its spread over them is given with it.
     seen: dict[str, list[float]] = {"at_centre": [], "in_gap_at_coil_radius": [], "on_axis_in_coil": []}

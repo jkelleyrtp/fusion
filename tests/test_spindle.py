@@ -137,7 +137,7 @@ class CasingVoltageTest(unittest.TestCase):
         c = {"rw": 0.02, "shell": 0.001, "mass_amu": 1.0, "nr": 128}
         with tempfile.TemporaryDirectory() as folder:
             run = Path(folder)
-            (run / "warpx_used_inputs").write_text("my_constants.volts = 0. # 0\nmy_constants.scr_keep = 0.1 # 0.5\n")
+            (run / "warpx_used_inputs").write_text("my_constants.volts = 2.e5 # 200000\nmy_constants.scr_keep = 0.1 # 0.5\n")
             (run / "diags/scr/particles_at_eb").mkdir(parents=True)
             with h5py.File(run / "diags/scr/particles_at_eb/openpmd_000001.h5", "w") as file:
                 group = file.create_group("data/1/particles/electrons")
@@ -151,6 +151,8 @@ class CasingVoltageTest(unittest.TestCase):
         self.assertAlmostEqual(out["electrons_landing_on_metal_per_s"], 4 * 3.0 / 0.5)
         self.assertAlmostEqual(out["electrons_landing_on_metal_not_counted_at_gap_per_s"], (1 + 0.75 + 0.25 + 0) * 3.0 / 0.5)
         self.assertEqual(out["ions_landing_on_metal_per_s"], 0.0)
+        # 24 electrons a second on to metal at +200 kV: the supply carries their charge away at that voltage.
+        self.assertAlmostEqual(out["supply_power_W"], 24 * 1.602176634e-19 * 2e5, delta=1e-15)  # kept to four figures
 
     def test_a_run_where_nothing_landed_on_the_metal_reports_no_landing(self) -> None:
         # WarpX writes no diags/scr at all when no particle reached the metal.
@@ -162,6 +164,7 @@ class CasingVoltageTest(unittest.TestCase):
         self.assertEqual(out["metal_kV"], 300.0)
         self.assertEqual(out["electrons_landing_on_metal_per_s"], 0.0)
         self.assertEqual(out["ions_landing_on_metal_not_counted_at_gap_per_s"], 0.0)
+        self.assertEqual(out["supply_power_W"], 0.0)
 
     def test_snapshots_hold_what_the_check_of_gauss_law_reads(self) -> None:
         text = (CUSP / "inputs_rz_spindle_casing").read_text()
