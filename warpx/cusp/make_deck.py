@@ -798,6 +798,33 @@ def casing_deck() -> str:
     return leak_deck() + CASING
 
 
+GUN = """
+# What follows lets electrons alone out of the can's two end walls, on a disc around the axis, toward the centre
+# (docs/rz-electron-gun.md). The plasma born at the centre is neutral, so this is the only way the device gets
+# more electrons than ions. An electron that starts on a conducting wall leaves its opposite charge on the wall,
+# which is where it belongs; started anywhere else it would leave it behind on the mesh
+# (docs/flux-injection-charge.md). flux_paired is on so that each starts on its source plane and not a random part of a step further in.
+my_constants.gun = 0.                 # electrons let out per second, the two ends together
+my_constants.rg = 0.3*a               # radius of the disc on each end wall (m)
+my_constants.tg = 1.e3                # their temperature as they leave (eV)
+my_constants.inset = 1.e-9*a          # WarpX makes nothing on the upper wall itself, so both start this far inside (m)
+electrons.injection_sources = ball up down gun_lo gun_hi
+"""
+
+
+def gun_deck() -> str:
+    text = casing_deck() + GUN
+    for source, place, direction in (("gun_lo", "-zw+inset", "+1"), ("gun_hi", "zw-inset", "-1")):
+        text += (f"electrons.{source}.injection_style = NFluxPerCell\nelectrons.{source}.surface_flux_pos = {place}\n"
+                 f"electrons.{source}.flux_normal_axis = z\nelectrons.{source}.flux_direction = {direction}\n"
+                 f"electrons.{source}.flux_paired = 1\nelectrons.{source}.num_particles_per_cell = ppc_feed\n"
+                 f"electrons.{source}.flux_profile = parse_flux_function\n"
+                 f'electrons.{source}.flux_function(x,y,z,t) = "0.5*gun/(pi*rg*rg)*(x*x+y*y<rg*rg)"\n'
+                 f"electrons.{source}.momentum_distribution_type = gaussianflux\n"
+                 + "".join(f"electrons.{source}.u{axis}_th = sqrt(tg*q_e/(m_e*clight**2))\n" for axis in "xyz"))
+    return text
+
+
 PICKET_COILS = 12   # coils kept on each side of the middle one; the field is then within 0.05% of an endless row's
 
 PICKET = """
@@ -915,6 +942,7 @@ if __name__ == "__main__":
     here.with_name("inputs_rz_spindle_fed").write_text(spindle_deck())
     here.with_name("inputs_rz_spindle_leak").write_text(leak_deck())
     here.with_name("inputs_rz_spindle_casing").write_text(casing_deck())
+    here.with_name("inputs_rz_spindle_casing_gun").write_text(gun_deck())
     here.with_name("inputs_rz_picket_fed").write_text(picket_deck())
     here.with_name("inputs_rz_picket_fed_collisions").write_text(picket_deck() + COLLISIONS)
     here.with_name("inputs_rz_picket_two").write_text(picket_deck() + periods(2))

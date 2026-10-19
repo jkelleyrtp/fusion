@@ -27,7 +27,11 @@ def constants(run: Path) -> dict:
     text = (run / "warpx_used_inputs").read_text()
     names = ("a", "dc", "rc", "rw", "zw", "coil_at", "te", "ti", "mass_amu", "feed", "toff", "nr", "shell", "n0")
     # WarpX echoes each constant followed by a comment holding its evaluated value.
-    return {name: float(re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE).group(1)) for name in names}
+    c = {name: float(re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE).group(1)) for name in names}
+    # Electrons let out of the end walls per second; only the gun deck has them.
+    gun = re.search(r"^my_constants\.gun = .*# (\S+)$", text, re.MULTILINE)
+    c["gun"] = float(gun.group(1)) if gun else 0.0
+    return c
 
 
 def coil_field(r: np.ndarray, z: np.ndarray, c: dict) -> tuple[np.ndarray, np.ndarray]:
@@ -307,6 +311,7 @@ def reduce(run: Path) -> dict:
         "complete": (run / "DONE").exists() and (run / "DONE").read_text().strip() == "complete",
         "coil_kAt": c["coil_at"] / 1e3,
         "feed_per_s": c["feed"],
+        "electrons_from_end_walls_per_s": c["gun"],
         "ion_mass_amu": c["mass_amu"],
         "cells_across_radius": int(c["nr"]),
         "end_ns": round(float(time[-1] * 1e9), 2),

@@ -17,6 +17,7 @@ Read in this order.
 | [park-comparison-audit.md](park-comparison-audit.md) | Item-by-item audit of our picket-fence deck against Park et al. 2019, and the runs that would explain the holding-time gap |
 | [ring-voltage-design.md](ring-voltage-design.md) | Design, with CPU tests, for holding the 3D six-coil rings at chosen voltages without changing WarpX (running on GPU since 18 October: `rv1`, `rv2`; the 1 V map reads 1.0 on all three rings at 512 cells) |
 | [rz-casing-voltage.md](rz-casing-voltage.md) | How the two-coil (r, z) runs hold metal around the coils at a set voltage, what has been checked, and what the runs at sizes 15 to 60 give (`casing1`, `casing2`): a few per cent, shrinking with size |
+| [rz-electron-gun.md](rz-electron-gun.md) | Electrons alone let out of the end walls in the two-coil casing runs, to get more electrons than ions: why it has to be from a wall, and the check of Gauss's law |
 | [electrostatic-plugging-prior-work.md](electrostatic-plugging-prior-work.md) | What is published on charged cages and plugging cusp leaks with electrodes, with what was read in full and what was not |
 
 ## Methods

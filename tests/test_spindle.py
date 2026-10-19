@@ -40,6 +40,19 @@ class SpindleTest(unittest.TestCase):
         self.assertEqual((CUSP / "inputs_rz_spindle_fed").read_text(), make_deck.spindle_deck())
         self.assertEqual((CUSP / "inputs_rz_spindle_leak").read_text(), make_deck.leak_deck())
         self.assertEqual((CUSP / "inputs_rz_spindle_casing").read_text(), make_deck.casing_deck())
+        self.assertEqual((CUSP / "inputs_rz_spindle_casing_gun").read_text(), make_deck.gun_deck())
+
+    def test_the_gun_deck_lets_electrons_alone_out_of_each_end_wall_toward_the_centre(self) -> None:
+        deck = make_deck.gun_deck()
+        self.assertTrue(deck.startswith(make_deck.casing_deck()))
+        for source, place, direction in (("gun_lo", "-zw+inset", "+1"), ("gun_hi", "zw-inset", "-1")):
+            self.assertIn(f"electrons.{source}.surface_flux_pos = {place}\n", deck)
+            self.assertIn(f"electrons.{source}.flux_direction = {direction}\n", deck)
+            # Starting at the wall is what keeps the opposite charge on the wall.
+            self.assertIn(f"electrons.{source}.flux_paired = 1\n", deck)
+            self.assertNotIn(f"ions.{source}.", deck)
+        self.assertIn("my_constants.gun = 0. ", deck)
+        self.assertIn("my_constants.inset = 1.e-9*a ", deck)
 
     def test_the_leak_deck_is_the_two_coil_deck_with_lines_added(self) -> None:
         plain, leak = make_deck.spindle_deck().splitlines(), make_deck.leak_deck().splitlines()
