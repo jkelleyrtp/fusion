@@ -132,14 +132,20 @@ next_case() {
     echo $(( $(cat "$name/TRIES" 2>/dev/null || echo 0) + 1 )) > "$name/TRIES"; echo "$line"'
 }
 
+# The case's checkpoints. WarpX, writing a checkpoint whose step a stopped try had already written, first renames the
+# old one to chkNNN.old.MMM. Those are not listed: a try carries on from the newest that was written to the end, and
+# a name that is not all digits once ended every worker that took the case (2026-10-19, gun1).
+checkpoints() { ls -d diags/chk[0-9]* 2>/dev/null | grep -x 'diags/chk[0-9]*'; }
+
 run_case() {
   local gpu=$1 name=$2 deck=$3; shift 3
   # A case whose first setting is np=K runs as K processes rather than one per GPU it was given, to compare speeds.
   local np=__GPUS__; [[ ${1:-} == np=* ]] && { np=${1#np=}; shift; }
   cd "$camp/$name"; local start=$(date +%s)
+  rm -rf diags/chk*.old.*
   local restart=""
   # Restart from the newest checkpoint that was written to the end, which the log shows by the next step finishing.
-  for chk in $(ls -d diags/chk[0-9]* 2>/dev/null | sort -rV); do
+  for chk in $(checkpoints | sort -rV); do
     grep -q "^STEP $(( 10#${chk##*chk} + 1 )) ends" run.log && { restart="amr.restart=$chk"; break; }
   done
   # The stopped try wrote diagnostics past its last checkpoint; drop those rows so the restart does not repeat them.
@@ -173,7 +179,7 @@ run_case() {
   ( local size="" grew=$start now
     while sleep $(( __STALL__ < 60 ? __STALL__ : 60 )); do
       [ "$(cat CLAIM 2>/dev/null)" = "$me" ] || { touch "$files/lost.$gpu"; kill $run; break; }
-      touch CLAIM; ls -d diags/chk[0-9]* 2>/dev/null | sort -V | head -n -2 | xargs -r rm -rf
+      touch CLAIM; checkpoints | sort -V | head -n -2 | xargs -r rm -rf
       now=$(stat -c %s run.log 2>/dev/null) && [ "$now" != "$size" ] && { size=$now; grew=$(date +%s); }
       [ $(( $(date +%s) - grew )) -gt __STALL__ ] && { touch STALLED; kill $run; }; done ) &
   local beat=$!
@@ -187,12 +193,12 @@ run_case() {
     [ -n "$reducer" ] && { python3 "$files/$reducer" . > measured.tmp 2> reduce.log && mv measured.tmp measured.json; }
     rm -f unit.h5   # as large as a snapshot, and unit_map.py makes it again from the case's settings
     # The last checkpoint is the whole final state, every particle included. __KEPT__ of them are kept.
-    ls -d diags/chk[0-9]* 2>/dev/null | sort -V | head -n -__KEPT__ | xargs -r rm -rf
+    checkpoints | sort -V | head -n -__KEPT__ | xargs -r rm -rf
   elif [ -f STALLED ]; then echo "failed: no output for __STALL__ seconds" > DONE
   elif [ $code -eq 124 ]; then
     # Out of time. If it left a later checkpoint than the one it started from, another try carries on from there.
     local reached=0
-    for chk in $(ls -d diags/chk[0-9]* 2>/dev/null | sort -rV); do
+    for chk in $(checkpoints | sort -rV); do
       grep -q "^STEP $(( 10#${chk##*chk} + 1 )) ends" run.log && { reached=$((10#${chk##*chk})); break; }
     done
     if [ $reached -gt $step ]; then rm -f CLAIM; else echo "failed: time limit" > DONE; fi

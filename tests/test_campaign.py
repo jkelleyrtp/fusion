@@ -125,6 +125,16 @@ class WorkerTest(unittest.TestCase):
         self.work("pruned deck slow_after=5\n", stall=3)
         self.assertEqual(sorted(path.name for path in diags.glob("chk*")), ["chk1000000", "chk1000010"])
 
+    def test_a_checkpoint_warpx_renamed_aside_is_removed_and_not_restarted_from(self) -> None:
+        diags = self.camp / "renamed/diags"
+        for name in ("chk000010", "chk000020", "chk000020.old.7303465"):
+            (diags / name).mkdir(parents=True)
+        (self.camp / "renamed/run.log").write_text("STEP 11 ends\nSTEP 21 ends\n")
+        self.work("renamed deck\n")
+        self.assertEqual((self.camp / "renamed/DONE").read_text().strip(), "complete")
+        self.assertIn("amr.restart=diags/chk000020\n", (self.camp / "renamed/attempts.log").read_text())
+        self.assertEqual(list(diags.glob("*.old.*")), [])
+
     def test_a_job_started_again_takes_back_the_cases_its_earlier_start_had_claimed(self) -> None:
         self.work("stopped deck stop_at=25\n", starts=2)  # the claim is seconds old when the job starts again
         self.assertEqual((self.camp / "stopped/DONE").read_text().strip(), "complete")
