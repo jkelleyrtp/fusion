@@ -6,6 +6,7 @@ Read in this order.
 
 | | |
 |---|---|
+| [artifacts/where-we-are-2026-10-19.html](artifacts/where-we-are-2026-10-19.html) | Write-up of 19 October: what was run from 15 to 19 October, what each result showed, what was wrong and corrected, and what is proposed next. Covers the two-coil runs of 19 October (coil spacing, size 120, feed disc, ion mass), which have no other page |
 | [cusp-paper.md](cusp-paper.md) | Informal paper of 18 October: the question, what the runs show about the leak, size scaling and the 3D cage with and without rings, what failed, and ways to do better. With figures |
 | [cusp-results.md](cusp-results.md) | The current tables: pressure scan, six-coil scalings, and the size scan in progress |
 | [progress-2026-10-18.md](progress-2026-10-18.md) | Overnight results of 18 October: end treatments, size exponents by model, faults |
