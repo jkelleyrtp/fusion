@@ -30,8 +30,11 @@ Three choices make the two parts agree:
 
 - **Which cells are metal.** The solver leaves alone every cell the metal's surface cuts. `unit_map.py` reads
   the deck's own `warpx.eb_implicit_function` and grows the metal to the corners of those cells.
-- **Where the faces are.** Each face is put 0.3 of a cell past a mesh line, so which cells it cuts does not
-  hang on rounding.
+- **Where the faces are.** Each face is put in the middle of a cell. Which cells it cuts then does not hang on
+  rounding. It also keeps Gauss's law at the metal: a particle's charge is spread over 1.5 cells either side
+  of it, and WarpX takes a particle out when it passes the face, so at that moment none of its charge is on a
+  node outside the metal. With the faces 0.3 of a cell past a mesh line, as first tried, each particle left
+  up to 2% of its charge behind on the nearest node for the rest of the run (see the table).
 - **Where the field is sampled.** The potential is on mesh nodes and the field is its difference along each
   mesh edge, which is where WarpX keeps Er and Ez. The file has twice the mesh's resolution, so each edge
   midpoint is a sample and WarpX reads the differences back with no interpolation across the metal.
@@ -49,6 +52,9 @@ be absorbed.
 - the potential at the centre, on the axis in a coil and in the gap at the coil radius, from the last snapshot,
   beside the same three with no plasma;
 - holding times that count what lands on the metal as lost.
+- how far the last snapshot is from Gauss's law (rms of eps0 div E - rho over rms of rho), away from the metal,
+  within two cells of it, and in the cells on the axis. The solver never solves that law, so this is the check
+  that no charge is made or lost wrongly.
 
 Power the supply must give is the electron current to the metal times the voltage (positive metal), which is
 not in the table; the landing rates are.
@@ -59,18 +65,25 @@ On this machine's CPUs, size 15 (29.3 kA-turns), coils at 0.6 radii, 128 cells a
 
 | Check | Result |
 |---|---|
-| WarpX reads the map as written: snapshot of a run with no plasma at 100 kV against the map, every cell | differs by under 1 part in 10,000, at 128 and 256 cells |
-| The solver's metal is the map's metal: cells where the solver's own field is exactly zero in a plasma run against cells whose four corners are metal in the map | all 2,736 of the map's are zero in the run; 2 other cells of 32,768 are zero too, away from the metal |
+| WarpX reads the map as written: snapshot of a run with no plasma at 100 kV against the map, every cell | rms difference 2e-8 V/m in a field of 1.3e7 V/m |
+| Particles feel the map: 400 heavy particles at rest in a run with no plasma at 1 kV, the push each gets over 10 steps against the map's field gathered at where it sits, down to 0.2 of a cell from the metal | rms difference 7.5e-14 of the rms field, largest 7.8e-13 |
+| The solver's metal is the map's metal: cells where the solver's own field is exactly zero in a plasma run against cells whose four corners are metal in the map | the same 2,812 cells, none more and none fewer |
 | The map settles with the mesh: potential at the centre for 1 V | 0.9085, 0.9062, 0.9048 at 128, 256, 1,024 cells |
-| Particles are removed at the metal: where the landed particles are | on the hole's face and the faces towards the mid-plane, in the 102 particles written |
-| Particles are all counted: rate lost (two counting shells plus the metal) against feed less growth, in a 1.2 ns run | electrons 0.452 against 0.446 of the feed; ions 0.468 against 0.446 |
+| Particles are removed at the metal: where the landed particles are | on the hole's face and the faces towards the mid-plane, in the 102 particles written (faces at 0.3 of a cell) |
+| Particles are all counted: rate lost (two counting shells plus the metal) against feed less growth, in a 1.2 ns run | electrons 0.452 against 0.446 of the feed; ions 0.468 against 0.446 (faces at 0.3 of a cell) |
+| Gauss's law off the axis, 100 kV, at 1.6 ns | error 1.3e-10 of the charge density, both away from the metal and within two cells of it. With the faces at 0.3 of a cell it was 0.024 within two cells of the metal at 0.8 ns, and growing |
+| Gauss's law in the cells on the axis | error 3.0 times the rms charge density there at 1.6 ns (2.1 at 0.8 ns). The same deck with no metal gives 2.0 at 0.8 ns, so this is not from the metal. It is the noise on the axis described in [park-vs-warpx.md](park-vs-warpx.md), section 6 |
 
 ## Not checked yet
 
-- Whether the plasma's results change with the mesh. Campaign `plug1` has three cases at 256 cells for this.
-- Gauss's law in the cells next to the metal. An earlier trial, before the metal in the map was grown to match
-  the solver's, had the plasma's field off by 7 to 18% there against a separate Poisson solve.
+- Whether the plasma's results change with the mesh. Campaign `casing1` has three cases at 256 cells for this.
+- Gauss's law late in a full run. Every run's `measured.json` now carries it.
+- Whether the error on the axis matters to these runs. Without metal, runs with 4 times the particles gave the
+  same widths and a holding time 6% longer.
 - The particle count in a settled run. The row above is from a run still filling.
 - Any size but 15.
+- The executable built for GPUs. All the rows above are from the CPU one.
 
 Until the first two pass, numbers from these runs are provisional.
+
+The CPU checks above were made with scripts kept outside the repository (`/home/ubuntu/warpx/plugcheck`).

@@ -336,14 +336,16 @@ my_constants.rs = rb                  # radius at which the part of a block faci
 my_constants.hs = dc-hm               # half the height of the gap between the two blocks, beyond rs (m)
 my_constants.volts = 0.               # voltage of the metal (V)
 my_constants.gap = 0.1*a              # in the voltage's field alone, the metal stops this far short of the can (m)
-# The field solver treats a cell the metal cuts as metal. Each face is put 0.3 of a cell past a mesh line, so that
-# which cells those are does not hang on rounding, at this mesh or at one 2, 4 or 8 times finer.
+# The field solver treats a cell the metal cuts as metal. Each face is put in the middle of a cell, so that which
+# cells those are does not hang on rounding, and so that a particle is taken out only once none of its charge is
+# on a mesh node outside the metal (its charge is spread over 1.5 cells either side of it). Taken out sooner,
+# it would leave that share of its charge behind on the node for the rest of the run.
 my_constants.cell = rw/nr
-my_constants.rb_face = (floor(rb/cell)+0.3)*cell
-my_constants.rs_face = (floor(rs/cell)+0.3)*cell
-my_constants.hs_face = (floor(hs/cell)+0.3)*cell
-my_constants.lo_face = (floor((dc-hm)/cell)+0.3)*cell
-my_constants.hi_face = (floor((dc+hm)/cell)+0.3)*cell
+my_constants.rb_face = (floor(rb/cell)+0.5)*cell
+my_constants.rs_face = (floor(rs/cell)+0.5)*cell
+my_constants.hs_face = (floor(hs/cell)+0.5)*cell
+my_constants.lo_face = (floor((dc-hm)/cell)+0.5)*cell
+my_constants.hi_face = (floor((dc+hm)/cell)+0.5)*cell
 warpx.eb_implicit_function = "max(min(sqrt(x*x+y*y)-rb_face, min(abs(z)-lo_face, hi_face-abs(z))), min(sqrt(x*x+y*y)-rs_face, min(abs(z)-hs_face, hi_face-abs(z))))"
 # The field solver holds the metal at 0 V. The voltage is added as a field on the particles only: the field of the
 # metal at 1 V with no plasma, which unit_map.py writes to unit.h5 in the run's directory, times volts. Snapshots
@@ -351,6 +353,8 @@ warpx.eb_implicit_function = "max(min(sqrt(x*x+y*y)-rb_face, min(abs(z)-lo_face,
 particles.E_ext_particle_init_style = read_from_file
 particles.read_fields_from_path = unit.h5
 particles.read_fields_E_dependency(t) = volts
+# Snapshots also hold the charge density and div E, for the check of Gauss's law that analyze_spindle.py makes.
+diag1.fields_to_plot = Br Bt Bz Er Ez jt rho_electrons rho_ions rho divE
 # Particles that land on the metal are written, to count the current and the power the metal takes. They
 # are written as often as checkpoints are, so that a restarted run neither loses nor repeats any.
 my_constants.scr_every = 6400

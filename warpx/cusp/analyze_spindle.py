@@ -233,6 +233,39 @@ def on_metal(run: Path, c: dict, since: float, until: float) -> dict:
     return out
 
 
+def gauss_law(run: Path) -> dict:
+    """For a deck with metal: how far the last snapshot is from Gauss's law, as the rms of eps0 div E - rho over
+    the rms of rho. The solver never solves that law; it holds only if every charge got where it is by moving
+    there, so this catches charge made or lost wrongly at the metal. Cells with a corner in the metal are left
+    out (the solver holds no field there), as are the two rows at each end wall. The cells on the axis are
+    given apart: they carry an error in runs without metal too (docs/rz-casing-voltage.md). A region that holds
+    no charge is left out, there being nothing to measure the error against."""
+    import unit_map
+    from scipy.ndimage import binary_dilation
+
+    maps = field_maps(run)
+    if maps is None or "divE" not in maps:
+        return {}
+    text = (run / "warpx_used_inputs").read_text()
+    held = unit_map.metal_nodes(text, unit_map.Constants(text, [])).T                      # (z, r), on nodes
+    clear = ~(held[1:, 1:] | held[:-1, 1:] | held[1:, :-1] | held[:-1, :-1])
+    clear[:2] = clear[-2:] = clear[:, -2:] = False
+    near = binary_dilation(~clear, iterations=2) & clear
+    axis = np.zeros_like(clear)
+    axis[:, 0] = True
+    off = maps["divE"] / (MU0 * C * C) - maps["rho"]
+    out = {}
+    for name, where in (
+        ("away_from_metal", clear & ~near & ~axis),
+        ("within_2_cells_of_metal", near & ~axis),
+        ("on_axis", clear & axis),
+    ):
+        size = np.sqrt((maps["rho"][where] ** 2).mean()) if where.any() else 0.0
+        if size > 0:
+            out[f"gauss_law_error_{name}"] = float(f"{np.sqrt((off[where] ** 2).mean()) / size:.2g}")
+    return out
+
+
 def reduce(run: Path) -> dict:
     c = constants(run)
     number, energy = table(run, "number"), table(run, "energy")
@@ -300,6 +333,8 @@ def reduce(run: Path) -> dict:
         out.update(each_leak(run, c, fed_until, toward))
     out.update(field_and_charge(run, 0.8 * fed_until, fed_until))
     out.update(metal)
+    if metal:
+        out.update(gauss_law(run))
     return out
 
 

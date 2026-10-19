@@ -1,5 +1,6 @@
 """The spindle-cusp deck and its reducer: the two must agree on the coil field."""
 import math
+import re
 import sys
 import tempfile
 import typing
@@ -106,16 +107,22 @@ class CasingVoltageTest(unittest.TestCase):
     def test_the_metal_is_every_corner_of_every_cell_its_surface_cuts(self) -> None:
         c, held, _ = self.at(64)
         cell = c["rw"] / 64
-        # In cells, a block's faces are at r = 27.3 and at z = 14.3 and 23.3 from the middle: they cut the cells
+        # In cells, a block's faces are at r = 27.5 and at z = 14.5 and 23.5 from the middle: they cut the cells
         # from 27 to 28 in r and from 14 to 15 and 23 to 24 in z, and the corners of those are the outermost metal.
-        self.assertAlmostEqual(c["rb_face"], 27.3 * cell)
-        self.assertAlmostEqual(c["lo_face"], 14.3 * cell)
-        self.assertAlmostEqual(c["hi_face"], 23.3 * cell)
+        self.assertAlmostEqual(c["rb_face"], 27.5 * cell)
+        self.assertAlmostEqual(c["lo_face"], 14.5 * cell)
+        self.assertAlmostEqual(c["hi_face"], 23.5 * cell)
         middle = 64
         self.assertTrue(held[27:30, middle + 14 : middle + 25].all())
         self.assertFalse(held[26, :].any())
         self.assertFalse(held[:, middle + 13].any() or held[:, middle + 25].any())
         np.testing.assert_array_equal(held, held[:, ::-1])
+
+    def test_snapshots_hold_what_the_check_of_gauss_law_reads(self) -> None:
+        text = (CUSP / "inputs_rz_spindle_casing").read_text()
+        plotted = re.findall(r"^diag1\.fields_to_plot = (.+)$", text, re.MULTILINE)[-1].split()
+        self.assertIn("rho", plotted)
+        self.assertIn("divE", plotted)
 
     def test_the_potential_is_one_on_the_metal_zero_on_the_can_and_settles_as_the_mesh_is_refined(self) -> None:
         (_, held, coarse), (_, _, fine) = self.at(64), self.at(128)
