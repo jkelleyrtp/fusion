@@ -147,6 +147,31 @@ electrons' at the centre with the plates at 0 V.
   shipped after their job's submission at every start.
 - +30 kV at size 15 and 1.8e20: 6.36 ns, twice the 0 V run. With 100 keV electrons at 1.8e20: 1.43 → 3.47 ns.
 
+### The slot between the plates narrowed (size 30)
+
+Beyond 12 mm radius the two plates are brought to 2 mm and to 1 mm from the mid-plane (`hs`, `rs`; 4.55 mm in the
+runs above). The hole through each plate is unchanged. Ion holding time inside the coils, and what lands on the
+plates as a share of the feed. The supply's power is the net charge landing on the plates times their voltage
+(`supply_power_W`), here over the power fed in as particles (20 keV a pair).
+
+| Slot half-height (mm) | Density at the centre, 0 V (per m3) | Holding time 0 V → +100 kV (ns) | Gain | Ions landing at 0 V | Electrons landing at +100 kV | Supply power over feed power at +100 kV |
+|---|---|---|---|---|---|---|
+| 4.55 | 2.9e18 | 4.57 → 9.98 | 2.2 | 0.001 | 0 | 0 |
+| 2 | 2.9e18 | 4.50 → 14.2 | 3.2 | 0.10 | 0.006 | 0.03 |
+| 4.55 | 5.1e19 | 6.98 → 8.43 | 1.21 | 0.001 | 0 | 0 |
+| 2 | 5.1e19 | 6.95 → 9.16 | 1.32 | 0.09 | 0.006 | 0.03 |
+| 1 | 5.1e19 | 6.94 → 7.75 | 1.12 | 0.39 | 0.99 | 4.8 |
+
+- Narrowing the slot to 2 mm raises the gain at both densities, for 3% of the feed power. It does not move the
+  density at which the plates work by the factor of 5 that "the slot must be within ten screening lengths" would
+  give: that would put the 2 mm slot at 5.1e19 near a gain of 1.5 to 2.
+- At 1 mm the electrons land on the plates (0.99 of the feed), the plasma rises to +67 kV and the supply gives 4.8
+  times the power fed in as particles, for a gain of 1.12.
+- With the plates at 0 V the narrower slots change nothing but what lands: 10% of the ions at 2 mm and 38 to 39% at
+  1 mm, at the same holding time.
+- For comparison, +300 kV at size 15 and 1.8e20 pairs a second (above): 6.1 times the holding time for 14.5 times
+  the feed power.
+
 ### Electrons going out and coming back
 
 Electrons crossing the coil planes and the gap at the coil radius, outward and inward, last fifth of the run, in
