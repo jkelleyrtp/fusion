@@ -136,6 +136,8 @@ complete. Electron holding time inside the coils (ns):
 - Nothing lands on the metal at sizes 30 and 60 in the last fifth of the feed, at any of the three voltages,
   but for 0.15% of the ions at 0 V and size 30. At +300 kV and size 60 nothing landed in the whole run, and
   WarpX then writes no `diags/scr`; the reducer reports zero landing for such a run.
+- The potentials at the centre on this page include the cell on the axis, which fails Gauss's law. In the runs of
+  `rz-electron-gun.md` that one cell adds 6 to 16 kV. The reducer has left it out since 2026-10-19.
 - The potential at the centre is 49 to 75 kV in all six, with a spread over the snapshots of 25 to 55 kV. With
   no plasma it would be 272 kV at +300 kV.
 - At size 60 the voltage changes the ring leak's half-height by 4% at most (0.106, 0.107, 0.110 mm) and the

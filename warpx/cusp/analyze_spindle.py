@@ -208,8 +208,11 @@ def each_leak(run: Path, c: dict, fed_until: float, toward: dict[str, dict[str, 
 def on_metal(run: Path, c: dict, since: float, until: float) -> dict:
     """For a deck with metal at a set voltage: what lands on the metal between two times, from the particles
     WarpX wrote as they landed, and the potential, from snapshots whose field is the plasma's plus the
-    voltage's. The potential is the field summed inward from the can along the mid-plane and up the axis,
-    as the mean over the snapshots between those times.
+    voltage's. The potential is the field summed inward from the can's side wall, along the mid-plane and along
+    the plane of a coil, as the mean over the snapshots between those times. The sums stop short of the cells on
+    the axis: those fail Gauss's law (docs/rz-casing-voltage.md), and the one on the mid-plane alone adds about
+    10 kV in the runs of docs/rz-electron-gun.md. So "at_centre" is one cell off the axis and "on_axis_in_coil"
+    is 3.5 cells off it.
     The metal reaches out past the shell that counts what leaves by the gap, so a particle landing beyond that
     shell has been counted by it already, and one landing within it has been counted for the share of the
     shell's thickness it crossed. `..._not_counted_at_gap_per_s` is the rest, the rate to add to the shells'."""
@@ -246,11 +249,11 @@ def on_metal(run: Path, c: dict, since: float, until: float) -> dict:
         if not since <= maps["time"] <= until * (1 + 1e-3):   # the last snapshot is a few steps after the last row of the tables
             continue
         middle = maps["Er"].shape[0] // 2
-        along = np.cumsum((0.5 * (maps["Er"][middle - 1] + maps["Er"][middle]))[::-1])[::-1] * cell
-        on_axis = along[0] - np.cumsum(maps["Ez"][middle:, 0]) * cell
-        seen["at_centre"].append(float(along[0]))
+        inward = np.cumsum(maps["Er"][:, ::-1], axis=1)[:, ::-1] * cell   # at the face of each cell nearer the axis
+        along = 0.5 * (inward[middle - 1] + inward[middle])
+        seen["at_centre"].append(float(along[1]))
         seen["in_gap_at_coil_radius"].append(float(along[int(c["rc"] / cell)]))
-        seen["on_axis_in_coil"].append(float(on_axis[int(c["dc"] / cell)]))
+        seen["on_axis_in_coil"].append(float(inward[middle + int(c["dc"] / cell), 3:5].mean()))
     for where, values in seen.items():
         if values:
             out[f"potential_{where}_kV"] = round(float(np.mean(values)) / 1e3, 1)
