@@ -143,6 +143,25 @@ complete. Electron holding time inside the coils (ns):
 - Gauss's law off the axis: 1.3e-10 in all six, 1.4e-10 at most next to the metal. Loss against feed less
   growth: within 0.5%.
 
+Metal reaching to 1 mm from the mid-plane outside 12 mm radius, with a 4 mm hole through each coil (`near`, as
+in `casing1`), at the same sizes. Six cases, all complete. Electron holding time inside the coils (ns), and the
+share of the ion feed landing on the metal:
+
+| Metal (kV) | Size 15 | Size 30 | Size 60 | Against no metal at 15, 30, 60 | Ions landing at 15, 30, 60 |
+|---|---|---|---|---|---|
+| -100 | 0.54 | 2.22 | 5.62 | -81%, -50%, -14% | 0.89, 0.63, 0.42 |
+| 0 | 1.83 | 3.71 | 6.34 | -36%, -16%, -3% | 0.58, 0.42, 0.23 |
+| +100 | 1.81 | 4.22 | 6.71 | -36%, -5%, +3% | 0.39, 0.06, 0.001 |
+
+- Metal at the ring leak does no better than metal round the coils: +3% at size 60 at +100 kV, and worse
+  than no metal everywhere else. Negative metal, the usual way of stopping electrons at a leak, collects the ions.
+- At +100 kV the electrons land instead: 0.59, 0.40 and 0.03 of the feed at sizes 15, 30 and 60.
+- Gauss's law next to the metal is 1.3e-10 to 1.4e-10 at sizes 30 and 60, where it was 1e-5 to 1e-4 at
+  size 15. Loss against feed less growth: within 1%.
+- The ions here are 57 electron masses at 10 keV. Their orbit in the gap is about 2.4 electron orbits
+  (1.8, 0.9 and 0.45 mm at the three sizes, by arithmetic from the electron orbit), against the 1 mm to the
+  metal. Heavier ions would have wider orbits and land more.
+
 A reading, not tested: the plasma's potential is set by the grounded can its streams end on, and the casings
 are on field lines the plasma does not reach.
 
