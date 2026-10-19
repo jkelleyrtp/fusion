@@ -108,7 +108,9 @@ def leaving(run: Path, name: str, shell: float) -> tuple[np.ndarray, np.ndarray]
 def field_maps(run: Path) -> dict | None:
     """The fields in the last snapshot, as arrays over (z, r), or None if the run wrote no snapshot. A run on
     several GPUs writes its mesh in several boxes, each placed here by the corners it records."""
-    files = sorted((p for p in (run / "diags").glob("diag1[0-9]*") if (p / "Level_0/Cell_H").exists()), key=lambda p: int(p.name[5:]))
+    # A restarted run renames a snapshot it is about to write again to diag1<step>.old.<n>; those are skipped.
+    files = sorted((p for p in (run / "diags").glob("diag1[0-9]*") if p.name[5:].isdigit() and (p / "Level_0/Cell_H").exists()),
+                   key=lambda p: int(p.name[5:]))
     if not files:
         return None
     header = (files[-1] / "Header").read_text().split("\n")
