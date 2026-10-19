@@ -317,7 +317,8 @@ def reduce(run: Path) -> dict:
         "electron_orbit_in_gap_mm": round(float(orbit / max(field_in_gap, 1e-30) * 1e3), 4) if c["coil_at"] else None,
         "cell_mm": round(c["rw"] / c["nr"] * 1e3, 4),
     }
-    metal = on_metal(run, c, 0.8 * fed_until, fed_until) if (run / "diags/scr").exists() else {}
+    # WarpX writes nothing under diags/scr when nothing landed, so the deck says whether there is metal.
+    metal = on_metal(run, c, 0.8 * fed_until, fed_until) if "scr.diag_type" in (run / "warpx_used_inputs").read_text() else {}
     toward = {}
     for index, (species, counts) in enumerate(held.items()):
         letter = species[0]

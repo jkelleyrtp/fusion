@@ -120,4 +120,30 @@ inside the coils over the rate they are lost. The whole-vessel one counts the st
 - Negative metal pulls the ions on to itself.
 - Metal 1 mm from the ring leak is worse at every voltage (1.83 ns at 0 V): the plasma lands on it.
 
+## Size (campaign `casing2`)
+
+The same casings at sizes 30 and 60 (256 and 512 cells, 64 and 80 ns), at 0, +100 and +300 kV. Six cases, all
+complete. Electron holding time inside the coils (ns):
+
+| Metal (kV) | Size 15 | Size 30 | Size 60 | Goes as | Against no metal at 15, 30, 60 |
+|---|---|---|---|---|---|
+| no metal (`iso3`) | 2.84 | 4.42 | 6.52 | size^0.60 | |
+| 0 | 2.66 | 4.32 | 6.50 | size^0.64 | -6%, -2%, 0% |
+| +100 | 3.02 | 4.56 | 6.61 | size^0.57 | +6%, +3%, +1% |
+| +300 | 3.21 | 4.83 | 6.82 | size^0.54 | +13%, +9%, +5% |
+
+- The casings do not change how holding time goes with size, and what the voltage gains shrinks as size goes up.
+- Nothing lands on the metal at sizes 30 and 60 in the last fifth of the feed, at any of the three voltages,
+  but for 0.15% of the ions at 0 V and size 30. At +300 kV and size 60 nothing landed in the whole run, and
+  WarpX then writes no `diags/scr`; the reducer reports zero landing for such a run.
+- The potential at the centre is 49 to 75 kV in all six, with a spread over the snapshots of 25 to 55 kV. With
+  no plasma it would be 272 kV at +300 kV.
+- At size 60 the voltage changes the ring leak's half-height by 4% at most (0.106, 0.107, 0.110 mm) and the
+  stream through a coil by 2% (1.57, 1.58, 1.60 mm).
+- Gauss's law off the axis: 1.3e-10 in all six, 1.4e-10 at most next to the metal. Loss against feed less
+  growth: within 0.5%.
+
+A reading, not tested: the plasma's potential is set by the grounded can its streams end on, and the casings
+are on field lines the plasma does not reach.
+
 The CPU checks above were made with scripts kept outside the repository (`/home/ubuntu/warpx/plugcheck`).

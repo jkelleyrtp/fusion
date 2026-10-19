@@ -139,6 +139,17 @@ class CasingVoltageTest(unittest.TestCase):
         self.assertAlmostEqual(out["electrons_landing_on_metal_not_counted_at_gap_per_s"], (1 + 0.75 + 0.25 + 0) * 3.0 / 0.5)
         self.assertEqual(out["ions_landing_on_metal_per_s"], 0.0)
 
+    def test_a_run_where_nothing_landed_on_the_metal_reports_no_landing(self) -> None:
+        # WarpX writes no diags/scr at all when no particle reached the metal.
+        c = {"rw": 0.02, "shell": 0.001, "mass_amu": 1.0, "nr": 128}
+        with tempfile.TemporaryDirectory() as folder:
+            run = Path(folder)
+            (run / "warpx_used_inputs").write_text("my_constants.volts = 3.e5 # 300000\nmy_constants.scr_keep = 0.1 # 0.1\n")
+            out = analyze_spindle.on_metal(run, c, 0.0, 1.0)
+        self.assertEqual(out["metal_kV"], 300.0)
+        self.assertEqual(out["electrons_landing_on_metal_per_s"], 0.0)
+        self.assertEqual(out["ions_landing_on_metal_not_counted_at_gap_per_s"], 0.0)
+
     def test_snapshots_hold_what_the_check_of_gauss_law_reads(self) -> None:
         text = (CUSP / "inputs_rz_spindle_casing").read_text()
         plotted = re.findall(r"^diag1\.fields_to_plot = (.+)$", text, re.MULTILINE)[-1].split()
