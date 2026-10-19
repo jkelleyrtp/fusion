@@ -106,5 +106,7 @@ units of the pair feed, no gun:
 | 100 | 0.01 | 19.4 | 18.6 | 96% |
 
 In the shell 1 to 2 mm inside the side wall at +100 kV and 0.01 feed, 8.5 go out and 8.1 come back: they turn
-round in the last millimetre before the wall. No electron in any snapshot is on a field line that closes round a
-coil inside the can (`plugcheck/lines.py`); all of this is turning back at the wall's potential.
+round in the last millimetre before the wall. Field lines that close round a coil inside the can without touching anything fill 41% of the can, but the plasma is
+not on them: in the six cases whose snapshots were fetched, the share of electrons there is 0 with 10 keV electrons
+and 1e-5 with 100 keV, and of ions 1e-4 to 2e-3 (`plugcheck/lines.py`). So all of this is turning back at the wall's
+potential.
