@@ -748,6 +748,52 @@ def leak_deck() -> str:
     return spindle_deck(LEAK_HISTOGRAMS) + LEAK
 
 
+CASING = """
+# What follows puts metal at a set voltage around each coil winding (docs/rz-casing-voltage.md). The metal is a
+# ring of square section around the winding that carries on outward to the can as a flange, so in (r, z) it is
+# one block per coil; the plasma leaves between the two blocks (the gap) and through the hole in each (the bore).
+# rb, and hs with rs, can be set to bring the metal up to the plasma in each leak. The can stays at 0 V.
+my_constants.hm = 0.145*a             # half the thickness of each block along the axis (m)
+my_constants.rb = rc-hm               # radius of the hole through each block (m)
+my_constants.rs = rb                  # radius at which the part of a block facing the other coil starts (m)
+my_constants.hs = dc-hm               # half the height of the gap between the two blocks, beyond rs (m)
+my_constants.volts = 0.               # voltage of the metal (V)
+my_constants.gap = 0.1*a              # in the voltage's field alone, the metal stops this far short of the can (m)
+# The field solver treats a cell the metal cuts as metal. Each face is put 0.3 of a cell past a mesh line, so that
+# which cells those are does not hang on rounding, at this mesh or at one 2, 4 or 8 times finer.
+my_constants.cell = rw/nr
+my_constants.rb_face = (floor(rb/cell)+0.3)*cell
+my_constants.rs_face = (floor(rs/cell)+0.3)*cell
+my_constants.hs_face = (floor(hs/cell)+0.3)*cell
+my_constants.lo_face = (floor((dc-hm)/cell)+0.3)*cell
+my_constants.hi_face = (floor((dc+hm)/cell)+0.3)*cell
+warpx.eb_implicit_function = "max(min(sqrt(x*x+y*y)-rb_face, min(abs(z)-lo_face, hi_face-abs(z))), min(sqrt(x*x+y*y)-rs_face, min(abs(z)-hs_face, hi_face-abs(z))))"
+# The field solver holds the metal at 0 V. The voltage is added as a field on the particles only: the field of the
+# metal at 1 V with no plasma, which unit_map.py writes to unit.h5 in the run's directory, times volts. Snapshots
+# hold the sum of the two.
+particles.E_ext_particle_init_style = read_from_file
+particles.read_fields_from_path = unit.h5
+particles.read_fields_E_dependency(t) = volts
+# Particles that land on the metal are written, to count the current and the power the metal takes. They
+# are written as often as checkpoints are, so that a restarted run neither loses nor repeats any.
+my_constants.scr_every = 6400
+my_constants.scr_keep = 0.1           # share of them written, drawn at random
+electrons.save_particles_at_eb = 1
+ions.save_particles_at_eb = 1
+diagnostics.diags_names = diag1 chk scr
+scr.diag_type = BoundaryScraping
+scr.format = openpmd
+scr.openpmd_backend = h5
+scr.intervals = scr_every
+scr.electrons.random_fraction = scr_keep
+scr.ions.random_fraction = scr_keep
+"""
+
+
+def casing_deck() -> str:
+    return leak_deck() + CASING
+
+
 PICKET_COILS = 12   # coils kept on each side of the middle one; the field is then within 0.05% of an endless row's
 
 PICKET = """
@@ -864,6 +910,7 @@ if __name__ == "__main__":
     here.with_name("inputs_3d_cusp_ringv_unit").write_text(ringv_deck() + UNIT)
     here.with_name("inputs_rz_spindle_fed").write_text(spindle_deck())
     here.with_name("inputs_rz_spindle_leak").write_text(leak_deck())
+    here.with_name("inputs_rz_spindle_casing").write_text(casing_deck())
     here.with_name("inputs_rz_picket_fed").write_text(picket_deck())
     here.with_name("inputs_rz_picket_fed_collisions").write_text(picket_deck() + COLLISIONS)
     here.with_name("inputs_rz_picket_two").write_text(picket_deck() + periods(2))

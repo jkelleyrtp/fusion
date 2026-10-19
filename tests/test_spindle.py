@@ -1,16 +1,19 @@
 """The spindle-cusp deck and its reducer: the two must agree on the coil field."""
 import math
 import sys
+import tempfile
 import typing
 import unittest
 from pathlib import Path
 
+import h5py
 import numpy as np
 
 CUSP = Path(__file__).resolve().parents[1] / "warpx/cusp"
 sys.path.insert(0, str(CUSP))
 import analyze_spindle
 import make_deck
+import unit_map
 
 
 def elliptic(k: float) -> tuple[float, float]:
@@ -35,6 +38,7 @@ class SpindleTest(unittest.TestCase):
     def test_the_deck_on_disk_is_the_one_the_generator_writes(self) -> None:
         self.assertEqual((CUSP / "inputs_rz_spindle_fed").read_text(), make_deck.spindle_deck())
         self.assertEqual((CUSP / "inputs_rz_spindle_leak").read_text(), make_deck.leak_deck())
+        self.assertEqual((CUSP / "inputs_rz_spindle_casing").read_text(), make_deck.casing_deck())
 
     def test_the_leak_deck_is_the_two_coil_deck_with_lines_added(self) -> None:
         plain, leak = make_deck.spindle_deck().splitlines(), make_deck.leak_deck().splitlines()
@@ -87,6 +91,51 @@ class SpindleTest(unittest.TestCase):
         self.assertAlmostEqual(stream["density_on_axis_over_nearby_in_coil"], 4.0, delta=0.2)
         self.assertGreater(stream["stream_radius_holding_half_in_coil_mm"], 2.0)
         self.assertLess(stream["stream_radius_holding_half_in_coil_mm"], 3.0)
+
+
+class CasingVoltageTest(unittest.TestCase):
+    """The field of the metal at 1 V that unit_map.py gives runs of inputs_rz_spindle_casing."""
+
+    def at(self, cells: int) -> tuple[unit_map.Constants, np.ndarray, np.ndarray]:
+        text = (CUSP / "inputs_rz_spindle_casing").read_text()
+        c = unit_map.Constants(text, [f"my_constants.nr={cells}", "my_constants.dc=0.006"])
+        held = unit_map.metal_nodes(text, c)
+        held[np.arange(cells + 1) * c["rw"] / cells > c["rw"] - c["gap"]] = False
+        return c, held, unit_map.potential(held, c["rw"] / cells)
+
+    def test_the_metal_is_every_corner_of_every_cell_its_surface_cuts(self) -> None:
+        c, held, _ = self.at(64)
+        cell = c["rw"] / 64
+        # In cells, a block's faces are at r = 27.3 and at z = 14.3 and 23.3 from the middle: they cut the cells
+        # from 27 to 28 in r and from 14 to 15 and 23 to 24 in z, and the corners of those are the outermost metal.
+        self.assertAlmostEqual(c["rb_face"], 27.3 * cell)
+        self.assertAlmostEqual(c["lo_face"], 14.3 * cell)
+        self.assertAlmostEqual(c["hi_face"], 23.3 * cell)
+        middle = 64
+        self.assertTrue(held[27:30, middle + 14 : middle + 25].all())
+        self.assertFalse(held[26, :].any())
+        self.assertFalse(held[:, middle + 13].any() or held[:, middle + 25].any())
+        np.testing.assert_array_equal(held, held[:, ::-1])
+
+    def test_the_potential_is_one_on_the_metal_zero_on_the_can_and_settles_as_the_mesh_is_refined(self) -> None:
+        (_, held, coarse), (_, _, fine) = self.at(64), self.at(128)
+        self.assertTrue((coarse[held] == 1).all())
+        self.assertTrue((coarse[-1] == 0).all() and (coarse[:, 0] == 0).all() and (coarse[:, -1] == 0).all())
+        self.assertTrue((coarse >= 0).all() and (coarse <= 1).all())
+        self.assertAlmostEqual(coarse[0, 64], fine[0, 128], delta=0.01)
+        self.assertAlmostEqual(fine[0, 128], 0.9085, delta=0.001)
+
+    def test_the_file_holds_the_potential_differences_at_the_middle_of_each_mesh_edge(self) -> None:
+        c, _, phi = self.at(32)
+        cell = c["rw"] / 32
+        with tempfile.TemporaryDirectory() as folder:
+            unit_map.write(f"{folder}/unit.h5", phi, cell, c["zw"])
+            with h5py.File(f"{folder}/unit.h5", "r") as file:
+                field = file["data/0/fields/E"]
+                radial, axial = field["r"][0], field["z"][0]
+                self.assertEqual(field.attrs["gridSpacing"].tolist(), [cell / 2, cell / 2])
+        np.testing.assert_allclose(radial[1::2, ::2], -(phi[1:] - phi[:-1]) / cell)
+        np.testing.assert_allclose(axial[::2, 1::2], -(phi[:, 1:] - phi[:, :-1]) / cell)
 
 
 if __name__ == "__main__":

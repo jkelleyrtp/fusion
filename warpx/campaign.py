@@ -36,23 +36,28 @@ REGISTRY = ROOT / "campaigns/registry.json"
 RESULTS = Path("/home/ubuntu/warpx/results")
 JOBS = Path("/home/ubuntu/warpx/jobs")
 # WarpX 26.10 built here for CPUs with the same patches, for `local`.
-LOCAL = {"inputs_rz_": Path("/home/ubuntu/warpx/warpx/build-rz/bin/warpx.rz"), "inputs_3d_": Path("/home/ubuntu/warpx/warpx/build/bin/warpx.3d")}
+LOCAL = {"inputs_rz_spindle_casing": Path("/home/ubuntu/warpx/warpx/build-rz-eb/bin/warpx.rz"),
+         "inputs_rz_": Path("/home/ubuntu/warpx/warpx/build-rz/bin/warpx.rz"), "inputs_3d_": Path("/home/ubuntu/warpx/warpx/build/bin/warpx.3d")}
 MAX_NODES = 6  # most nodes this script will hold at once, across all campaigns
 LAUNCHER_CPU = 0.5  # cores the broker's launcher pod for a job asks for
 PATCHES = sorted((ROOT / "patches").glob("*.patch"))
 # The build directory is named after the patches applied to WarpX 26.10, so a changed patch gets a fresh build.
 BUILD = f"{SHARED}/warpx-26.10-cuda-" + hashlib.sha256(b"".join(patch.read_bytes() for patch in PATCHES)).hexdigest()[:8]
 # Which script reduces a finished case, by the deck it ran.
-REDUCERS = {**{f"inputs_3d_cusp_ringv{kind}": "analyze_ringv.py" for kind in ("", "_stalks", "_stubs", "_unit")}, "inputs_rz_spindle_fed": "analyze_spindle.py", "inputs_rz_spindle_leak": "analyze_spindle.py", "inputs_rz_picket_fed": "analyze_picket.py", "inputs_rz_picket_fed_collisions": "analyze_picket.py", "inputs_rz_picket_two": "analyze_picket.py", "inputs_rz_picket_four": "analyze_picket.py", "inputs_rz_picket_eight": "analyze_picket.py", "inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_jets": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
+REDUCERS = {**{f"inputs_3d_cusp_ringv{kind}": "analyze_ringv.py" for kind in ("", "_stalks", "_stubs", "_unit")}, "inputs_rz_spindle_fed": "analyze_spindle.py", "inputs_rz_spindle_leak": "analyze_spindle.py", "inputs_rz_spindle_casing": "analyze_spindle.py", "inputs_rz_picket_fed": "analyze_picket.py", "inputs_rz_picket_fed_collisions": "analyze_picket.py", "inputs_rz_picket_two": "analyze_picket.py", "inputs_rz_picket_four": "analyze_picket.py", "inputs_rz_picket_eight": "analyze_picket.py", "inputs_3d_cusp_beta": "analyze_beta.py", "inputs_3d_cusp_fed": "analyze_beta.py", "inputs_3d_cusp_jets": "analyze_beta.py", "inputs_3d_cusp_cage": "analyze_cage.py",
             "inputs_3d_cusp_cage_gas": "analyze_cage.py"}
 
 # Two executables are built from one source tree: the 3D one with conducting boundaries inside the box, and the
-# cylindrical (r, z) one, which WarpX's electromagnetic solver does not support them in.
+# cylindrical (r, z) one without them.
 # The decks named here read a field from a file and write the particles that land on metal, which WarpX does
 # through openPMD; they run a third executable, built with it and with an HDF5 library built beside it.
 OPENPMD_DECKS = "inputs_3d_cusp_ringv"
+# These have metal at a set voltage in (r, z) (docs/rz-casing-voltage.md): a fourth executable, cylindrical with
+# conducting boundaries inside the box and openPMD. Before such a case starts, unit_map.py writes the field of
+# its metal at 1 V into its directory.
+CASING_DECKS = "inputs_rz_spindle_casing"
 HDF5 = "hdf5_1.14.6"
-BUILD_STEPS = r"""kinds=("3 ON build $warpx OFF" "RZ OFF build-rz $warpx_rz OFF"__OPENPMD__)
+BUILD_STEPS = r"""kinds=("3 ON build $warpx OFF" "RZ OFF build-rz $warpx_rz OFF"__OPENPMD____CASING__)
 missing=0; for kind in "${kinds[@]}"; do read -r dims eb dir exe openpmd <<< "$kind"; [ -x "$exe" ] || missing=1; done
 if [ $missing = 1 ]; then
   # One build at a time: a job on another node may have found the same executables missing.
@@ -81,9 +86,12 @@ if [ $missing = 1 ]; then
         && cmake --build $dir -j 32 > $dir.log 2>&1 || { tail -30 configure-$dir.log $dir.log; echo build-failed; exit 1; }
     done ) 9> __BUILD__/build.lock || exit 0
 fi"""
-# The reducers of those decks read the HDF5 files with h5py, which the image does not have.
+# The reducers of those decks read the HDF5 files with h5py, and unit_map.py solves for the potential with scipy.
+# The image may have neither.
 H5PY = r"""
-python3 -c "import h5py" 2> /dev/null || python3 -m pip install -q --no-deps --target __BUILD__/tools h5py
+for module in h5py scipy; do
+  python3 -c "import $module" 2> /dev/null || python3 -m pip install -q --no-deps --target __BUILD__/tools $module
+done
 export PYTHONPATH=__BUILD__/tools${PYTHONPATH:+:$PYTHONPATH}"""
 
 WORKER = r"""
@@ -91,6 +99,7 @@ set -uo pipefail
 export camp=__CAMP__ job=__JOB__; files=$camp/files-$job; warpx=${WARPX:-__BUILD__/build/bin/warpx.3d}
 warpx_rz=${WARPX:-__BUILD__/build-rz/bin/warpx.rz}
 warpx_openpmd=${WARPX:-__BUILD__/build-openpmd/bin/warpx.3d}
+warpx_casing=${WARPX:-__BUILD__/build-rz-eb/bin/warpx.rz}
 # The broker starts a job again after taking its node away. Each start is a new run of this script, told apart
 # by `me`, which every claim it makes carries.
 export me="$job $(hostname) $$ $(date +%s)"
@@ -147,6 +156,10 @@ run_case() {
   echo "$job gpu $gpu ${restart:-fresh}" >> attempts.log
   local exe=$warpx; [[ $deck == inputs_rz_* ]] && exe=$warpx_rz
   [[ $deck == __OPENPMD_DECKS__* ]] && exe=$warpx_openpmd
+  if [[ $deck == __CASING_DECKS__* ]]; then
+    exe=$warpx_casing
+    [ -f unit.h5 ] || python3 "$files/unit_map.py" "$files/$deck" "$@" > unit_map.log 2>&1
+  fi
   CUDA_VISIBLE_DEVICES=$gpu timeout __TIMEOUT__ __LAUNCH__ "$exe" "$files/$deck" "$@" $restart >> run.log 2>&1 &
   local run=$!
   # While the case runs, keep its claim fresh, keep only the two newest checkpoints (by step number: WarpX
@@ -172,6 +185,7 @@ run_case() {
     local reducer; reducer=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' "$files/reducers.json" "$deck")
     echo complete > DONE
     [ -n "$reducer" ] && { python3 "$files/$reducer" . > measured.tmp 2> reduce.log && mv measured.tmp measured.json; }
+    rm -f unit.h5   # as large as a snapshot, and unit_map.py makes it again from the case's settings
     # The last checkpoint is the whole final state, every particle included. __KEPT__ of them are kept.
     ls -d diags/chk[0-9]* 2>/dev/null | sort -V | head -n -__KEPT__ | xargs -r rm -rf
   elif [ -f STALLED ]; then echo "failed: no output for __STALL__ seconds" > DONE
@@ -256,7 +270,7 @@ def payload(texts: dict[str, str]) -> str:
             info.size = len(content.encode())
             archive.addfile(info, io.BytesIO(content.encode()))
         for file in sorted([*(ROOT / "pops").glob("inputs_*"), *(ROOT / "cusp").glob("inputs_*"),
-                            *(ROOT / "cusp").glob("*.dat"), *(ROOT / "cusp").glob("analyze_*.py"), *PATCHES]):
+                            *(ROOT / "cusp").glob("*.dat"), *(ROOT / "cusp").glob("analyze_*.py"), ROOT / "cusp/unit_map.py", *PATCHES]):
             archive.add(file, file.name)
     return base64.b64encode(buffer.getvalue()).decode()
 
@@ -269,10 +283,14 @@ def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 18
     assert gpus in (1, 2, 4, 8), "a node's 8 GPUs must divide evenly between cases"
     build, launch = (BUILD, "") if gpus == 1 else (BUILD + "-mpi", "mpirun --allow-run-as-root --bind-to none -np $np")
     token = uuid.uuid4().hex[:12]
-    needs_openpmd = any(line.split()[1].startswith(OPENPMD_DECKS) for line in cases.splitlines() if line.strip())
-    steps = BUILD_STEPS.replace("__OPENPMD__", ' "3 ON build-openpmd $warpx_openpmd ON"' if needs_openpmd else "").replace("__HDF5__", HDF5)
-    steps += H5PY if needs_openpmd else ""
-    worker = (WORKER.replace("__BUILD_STEPS__", steps).replace("__OPENPMD_DECKS__", OPENPMD_DECKS).replace("__CAMP__", f"{SHARED}/campaigns/{name}")
+    decks = [line.split()[1] for line in cases.splitlines() if line.strip()]
+    needs_openpmd = any(deck.startswith(OPENPMD_DECKS) for deck in decks)
+    needs_casing = any(deck.startswith(CASING_DECKS) for deck in decks)
+    steps = (BUILD_STEPS.replace("__OPENPMD__", ' "3 ON build-openpmd $warpx_openpmd ON"' if needs_openpmd else "")
+             .replace("__CASING__", ' "RZ ON build-rz-eb $warpx_casing ON"' if needs_casing else "").replace("__HDF5__", HDF5))
+    steps += H5PY if needs_openpmd or needs_casing else ""
+    worker = (WORKER.replace("__BUILD_STEPS__", steps).replace("__OPENPMD_DECKS__", OPENPMD_DECKS).replace("__CASING_DECKS__", CASING_DECKS)
+              .replace("__CAMP__", f"{SHARED}/campaigns/{name}")
               .replace("__JOB__", token).replace("__BUILD__", build).replace("__TIMEOUT__", str(timeout)).replace("__STALL__", str(stall))
               .replace("__PAUSE__", str(pause)).replace("__LOOK__", str(look)).replace("__KEPT__", str(kept))
               .replace("__MPI__", "OFF" if gpus == 1 else "ON").replace("__LAUNCH__", launch).replace("__GPUS__", str(gpus))
@@ -463,6 +481,8 @@ def local(args: argparse.Namespace) -> None:
         (folder / "attempts.log").write_text(f"local cpu {args.threads} threads fresh\n")
         exe = next(path for prefix, path in LOCAL.items() if deck.startswith(prefix))
         start = datetime.datetime.now(datetime.UTC)
+        if deck.startswith(CASING_DECKS):
+            subprocess.run([sys.executable, ROOT / "cusp/unit_map.py", ROOT / "cusp" / deck, *settings], cwd=folder, check=True)
         with (folder / "run.log").open("w") as log:
             code = subprocess.run([exe, ROOT / "cusp" / deck, *settings], cwd=folder, stdout=log, stderr=subprocess.STDOUT,
                                   env={**os.environ, "OMP_NUM_THREADS": str(args.threads)}, check=False).returncode

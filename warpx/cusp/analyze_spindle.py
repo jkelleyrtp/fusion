@@ -164,8 +164,8 @@ def each_leak(run: Path, c: dict, fed_until: float, toward: dict[str, dict[str, 
     """For runs of inputs_rz_spindle_leak: which leaks are open, the plasma held inside the coils (a closed leak
     parks plasma between itself and its wall, which the vessel total counts), the rate lost, the holding time
     that gives, the net rate crossing each leak at the leak, and whether the run has settled. `toward` is the
-    rate heading for each wall near it; only a wall that absorbs loses those particles, so the rate lost is the
-    sum over the open leaks. It is given a second time as the feed less the growth of the number in the vessel."""
+    rate heading for each wall near it, and the rate landing on metal if the deck has any; only a wall that
+    absorbs loses those particles, so the rate lost is the sum over the open leaks and the metal. It is given a second time as the feed less the growth of the number in the vessel."""
     text = (run / "warpx_used_inputs").read_text()
     low, high = (re.search(rf"^boundary\.particle_{side} = (\S+) (\S+)", text, re.MULTILINE).groups() for side in ("lo", "hi"))
     out = {"open_leaks": {("absorbing", "absorbing"): "both", ("reflecting", "absorbing"): "coils", ("absorbing", "reflecting"): "gap"}[(high[0], high[1])]}
@@ -179,7 +179,7 @@ def each_leak(run: Path, c: dict, fed_until: float, toward: dict[str, dict[str, 
         out[f"{species}_held_inside_coils"] = float(f"{inside[late].mean():.4g}")
         out[f"{species}_inside_coils_over_fifth_before"] = round(float(inside[late].mean() / inside[before].mean()), 3)
         out[f"{species}_mean_energy_inside_coils_eV"] = round(float((data[late, 2:] * energy).sum() / inside[late].sum()), 1)
-        lost = sum(rate for route, rate in toward[species].items() if out["open_leaks"] in ("both", route))
+        lost = sum(rate for route, rate in toward[species].items() if out["open_leaks"] in ("both", route) or route == "metal")
         number = table(run, "number")
         recent = (number[:, 1] >= 0.8 * fed_until) & (number[:, 1] <= fed_until)
         growth = float(np.polyfit(number[recent, 1], number[recent, 6 if letter == "e" else 7], 1)[0])
@@ -190,6 +190,46 @@ def each_leak(run: Path, c: dict, fed_until: float, toward: dict[str, dict[str, 
         for route in ("coils", "gap"):
             when, rate = leaving(run, f"{letter}_at_{route}", c["shell"])
             out[f"{species}_net_out_at_{route}_per_s"] = float(f"{rate[(when >= 0.8 * fed_until) & (when <= fed_until)].mean():.4g}")
+    return out
+
+
+def on_metal(run: Path, c: dict, since: float, until: float) -> dict:
+    """For a deck with metal at a set voltage: what lands on the metal between two times, from the particles
+    WarpX wrote as they landed, and the potential in the last snapshot, whose field is the plasma's plus the
+    voltage's. The potential is the field summed inward from the can along the mid-plane and up the axis."""
+    import h5py
+
+    text = (run / "warpx_used_inputs").read_text()
+    volts, share = (float(re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE).group(1)) for name in ("volts", "scr_keep"))
+    out = {"metal_kV": volts / 1e3}
+    for species, mass in (("electrons", M_E), ("ions", c["mass_amu"] * M_U)):
+        count = energy = 0.0
+        for path in sorted((run / "diags/scr/particles_at_eb").glob("*.h5")):
+            with h5py.File(path, "r") as file:
+                for iteration in file["data"].values():
+                    group = iteration["particles"].get(species)
+                    if group is None or "timeScraped" not in group or not hasattr(group["timeScraped"], "shape"):
+                        continue
+                    when = group["timeScraped"][:]
+                    late = (when >= since) & (when <= until)
+                    weight = group["weighting"][:][late] / share
+                    squared = sum(group["momentum"][axis][:][late] ** 2 for axis in "xyz")
+                    count += float(weight.sum())
+                    energy += float((weight * (np.sqrt(1 + squared / (mass * C) ** 2) - 1) * mass * C * C).sum())
+        out[f"{species}_landing_on_metal_per_s"] = float(f"{count / (until - since):.4g}")
+        out[f"{species}_power_on_metal_W"] = float(f"{energy / (until - since):.4g}")
+    maps = field_maps(run)
+    if maps is not None:
+        cell = c["rw"] / c["nr"]
+        middle = maps["Er"].shape[0] // 2
+        along = np.cumsum((0.5 * (maps["Er"][middle - 1] + maps["Er"][middle]))[::-1])[::-1] * cell
+        out["potential_at_centre_kV"] = round(float(along[0]) / 1e3, 1)
+        out["potential_in_gap_at_coil_radius_kV"] = round(float(along[int(c["rc"] / cell)]) / 1e3, 1)
+        on_axis = along[0] - np.cumsum(maps["Ez"][middle:, 0]) * cell
+        out["potential_on_axis_in_coil_kV"] = round(float(on_axis[int(c["dc"] / cell)]) / 1e3, 1)
+    if (run / "unit_potential.json").exists():
+        for where, value in json.loads((run / "unit_potential.json").read_text()).items():
+            out[f"potential_with_no_plasma_{where}_kV"] = round(value * volts / 1e3, 1)
     return out
 
 
@@ -219,6 +259,7 @@ def reduce(run: Path) -> dict:
         "electron_orbit_in_gap_mm": round(float(orbit / max(field_in_gap, 1e-30) * 1e3), 4) if c["coil_at"] else None,
         "cell_mm": round(c["rw"] / c["nr"] * 1e3, 4),
     }
+    metal = on_metal(run, c, 0.8 * fed_until, fed_until) if (run / "diags/scr").exists() else {}
     toward = {}
     for index, (species, counts) in enumerate(held.items()):
         letter = species[0]
@@ -227,7 +268,9 @@ def reduce(run: Path) -> dict:
         for route in ("coils", "gap"):
             when, rate = leaving(run, f"{letter}_through_{route}", c["shell"])
             rates[route] = float(rate[(when >= 0.8 * fed_until) & (when <= fed_until)].mean())
-        total = rates["coils"] + rates["gap"]
+        if metal:   # what lands on the metal never reaches a counting shell
+            rates["metal"] = metal[f"{species}_landing_on_metal_per_s"]
+        total = sum(rates.values())
         out[f"{species}_leaving_per_s"] = float(f"{total:.4g}")
         out[f"{species}_share_leaving_through_coils"] = round(rates["coils"] / total, 3) if total > 0 else None
         out[f"{species}_holding_time_ns"] = round(float(counts[late].mean() / total * 1e9), 2) if total > 0 else None
@@ -256,6 +299,7 @@ def reduce(run: Path) -> dict:
     if (run / "diags/reducedfiles/e_core.txt").exists():
         out.update(each_leak(run, c, fed_until, toward))
     out.update(field_and_charge(run, 0.8 * fed_until, fed_until))
+    out.update(metal)
     return out
 
 
