@@ -135,6 +135,21 @@ class WorkerTest(unittest.TestCase):
         self.assertIn("amr.restart=diags/chk000020\n", (self.camp / "renamed/attempts.log").read_text())
         self.assertEqual(list(diags.glob("*.old.*")), [])
 
+    def reducers_after_a_start(self, shipped_seconds_after_submission: int) -> str:
+        self.camp.mkdir(parents=True)
+        (self.camp / "reducers.json").write_text("shipped")
+        subprocess.run(["tar", "-czf", "added.tgz", "reducers.json"], cwd=self.camp, check=True)
+        os.utime(self.camp / "added.tgz", (time.time() + shipped_seconds_after_submission,) * 2)
+        self.work("a deck\n")
+        (files,) = self.camp.glob("files-*")
+        return (files / "reducers.json").read_text()
+
+    def test_files_given_to_the_campaign_after_a_job_was_submitted_replace_the_jobs_own_at_its_start(self) -> None:
+        self.assertEqual(self.reducers_after_a_start(3600), "shipped")
+
+    def test_files_given_to_the_campaign_before_a_job_was_submitted_do_not_replace_the_jobs_own(self) -> None:
+        self.assertEqual(json.loads(self.reducers_after_a_start(-3600)), campaign.REDUCERS)
+
     def test_a_job_started_again_takes_back_the_cases_its_earlier_start_had_claimed(self) -> None:
         self.work("stopped deck stop_at=25\n", starts=2)  # the claim is seconds old when the job starts again
         self.assertEqual((self.camp / "stopped/DONE").read_text().strip(), "complete")

@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import time
 import uuid
 from pathlib import Path
 
@@ -106,6 +107,9 @@ export me="$job $(hostname) $$ $(date +%s)"
 mkdir -p "$files" "$camp/logs"; cd "$camp"; rm -f "$files"/busy.*
 exec >> "$camp/logs/$job.log" 2>&1
 echo "__PAYLOAD__" | base64 -d | tar -xzf - -C "$files"
+# Decks and reducers given to the campaign after this job was submitted (`ship`) replace the job's own at every
+# start. Without this a job started again brought back the reducers it was submitted with (2026-10-19, gun1).
+[ -f "$camp/added.tgz" ] && [ "$(stat -c %Y "$camp/added.tgz")" -gt __SUBMITTED__ ] && tar -xzf "$camp/added.tgz" -C "$files"
 nvidia-smi -L
 __BUILD_STEPS__
 # Add this job's cases to the campaign's queue, skipping names the campaign already has.
@@ -297,7 +301,7 @@ def job_spec(name: str, cases: str, timeout: int, gpus: int = 1, stall: int = 18
     steps += H5PY if needs_openpmd or needs_casing else ""
     worker = (WORKER.replace("__BUILD_STEPS__", steps).replace("__OPENPMD_DECKS__", OPENPMD_DECKS).replace("__CASING_DECKS__", CASING_DECKS)
               .replace("__CAMP__", f"{SHARED}/campaigns/{name}")
-              .replace("__JOB__", token).replace("__BUILD__", build).replace("__TIMEOUT__", str(timeout)).replace("__STALL__", str(stall))
+              .replace("__JOB__", token).replace("__SUBMITTED__", str(int(time.time()))).replace("__BUILD__", build).replace("__TIMEOUT__", str(timeout)).replace("__STALL__", str(stall))
               .replace("__PAUSE__", str(pause)).replace("__LOOK__", str(look)).replace("__KEPT__", str(kept))
               .replace("__MPI__", "OFF" if gpus == 1 else "ON").replace("__LAUNCH__", launch).replace("__GPUS__", str(gpus))
               .replace("__PAYLOAD__", payload({"cases.txt": cases})))

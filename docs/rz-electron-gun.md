@@ -137,6 +137,14 @@ electrons' at the centre with the plates at 0 V.
 - The 144 ns runs: the +100 kV case has its ions inside the coils rising 5% over the last fifth and loss at 0.986
   of feed, so 13.9 ns is close to settled. Its potentials are lower than at 48 ns (centre 4.3 kV against 10.8, the
   mid-plane at the coil radius 16.2 against 29.6) and 57% of the ions leave through the coils against 78%.
+- +300 kV for 144 ns at size 15 and 1.8e20: ion holding time 22.1 ns, 6.1 times the 0 V run, loss 0.998 of feed.
+  Centre 73.0 kV, mid-plane at the coil radius 94.2 kV, 0.55 mm off the axis in a coil 70.5 kV: a hill of 21 kV in the
+  ring leak and none along the axis. 64% of the ions leave through the coils. Electrons land on the plates at 0.97 of
+  the feed rate.
+- A job started again by the broker unpacked the reducers it was submitted with over the ones shipped since, so the
+  cases that finished after the restarts of 21:40 UTC on 2026-10-19 were first reduced with the axis cell in (the
+  +300 kV run above read 83.4 kV in the coil). They were reduced again at 22:57 UTC; workers now unpack what was
+  shipped after their job's submission at every start.
 - +30 kV at size 15 and 1.8e20: 6.36 ns, twice the 0 V run. With 100 keV electrons at 1.8e20: 1.43 → 3.47 ns.
 
 ### Electrons going out and coming back
