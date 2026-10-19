@@ -377,7 +377,8 @@ def reduce(args: argparse.Namespace) -> None:
     ship(args.name)
     decks = {line.split()[0]: line.split()[1] for line in registry()[args.name]["cases"]}
     wanted = " ".join(f"{case}:{REDUCERS[deck]}" for case, deck in decks.items() if case.startswith(args.only) and deck in REDUCERS)
-    print(on_cluster(f"cd {SHARED}/campaigns/{args.name} && files=$(ls -d files-*/ | head -n 1) && for pair in {wanted}; do "
+    # Some reducers need the modules the worker installed beside the build (H5PY above).
+    print(on_cluster(f"export PYTHONPATH={BUILD}/tools; cd {SHARED}/campaigns/{args.name} && files=$(ls -d files-*/ | head -n 1) && for pair in {wanted}; do "
                      "case=${pair%%:*}; [ \"$(cat $case/DONE 2>/dev/null)\" = complete ] || continue; "
                      "( cd $case && python3 ../$files/${pair##*:} . > measured.tmp 2> reduce.log && mv measured.tmp measured.json "
                      "&& echo \"$case reduced\" || echo \"$case: $(tail -n 1 reduce.log)\" ); done"), end="")

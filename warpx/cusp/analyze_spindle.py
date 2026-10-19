@@ -105,25 +105,33 @@ def leaving(run: Path, name: str, shell: float) -> tuple[np.ndarray, np.ndarray]
     return data[:, 1], (data[:, 2:] * bin_centres(run, name)).sum(axis=1) * C / shell
 
 
-def field_maps(run: Path) -> dict | None:
-    """The fields in the last snapshot, as arrays over (z, r), or None if the run wrote no snapshot. A run on
-    several GPUs writes its mesh in several boxes, each placed here by the corners it records."""
+def snapshots(run: Path) -> list[Path]:
+    """The field snapshots a run wrote, in the order it wrote them."""
     # A restarted run renames a snapshot it is about to write again to diag1<step>.old.<n>; those are skipped.
-    files = sorted((p for p in (run / "diags").glob("diag1[0-9]*") if p.name[5:].isdigit() and (p / "Level_0/Cell_H").exists()),
-                   key=lambda p: int(p.name[5:]))
-    if not files:
-        return None
-    header = (files[-1] / "Header").read_text().split("\n")
+    return sorted((p for p in (run / "diags").glob("diag1[0-9]*") if p.name[5:].isdigit() and (p / "Level_0/Cell_H").exists()),
+                  key=lambda p: int(p.name[5:]))
+
+
+def field_maps(run: Path, snapshot: Path | None = None) -> dict | None:
+    """The fields in a snapshot (the last, if none is named), as arrays over (z, r) with its time as "time", or
+    None if the run wrote no snapshot. A run on several GPUs writes its mesh in several boxes, each placed here
+    by the corners it records."""
+    if snapshot is None:
+        files = snapshots(run)
+        if not files:
+            return None
+        snapshot = files[-1]
+    header = (snapshot / "Header").read_text().split("\n")
     names = header[2 : 2 + int(header[1])]
     nr, nz = (int(value) + 1 for value in header[len(names) + 8].split(") (")[1].split(")")[0].split(","))
     cube = np.empty((len(names), nz, nr))
-    for name, offset in re.findall(r"FabOnDisk: (\S+) (\d+)", (files[-1] / "Level_0/Cell_H").read_text()):
-        with open(files[-1] / "Level_0" / name, "rb") as data:
+    for name, offset in re.findall(r"FabOnDisk: (\S+) (\d+)", (snapshot / "Level_0/Cell_H").read_text()):
+        with open(snapshot / "Level_0" / name, "rb") as data:
             data.seek(int(offset))
             r0, z0, r1, z1 = (int(edge) for edge in re.search(r"\(\((\d+),(\d+)\) \((\d+),(\d+)\)", data.readline().decode()).groups())
             shape = (len(names), z1 - z0 + 1, r1 - r0 + 1)
             cube[:, z0 : z1 + 1, r0 : r1 + 1] = np.frombuffer(data.read(8 * int(np.prod(shape))), dtype="<f8").reshape(shape)
-    return dict(zip(names, cube))
+    return {**dict(zip(names, cube)), "time": float(header[len(names) + 3])}
 
 
 def pushed_out(run: Path, c: dict) -> dict:
@@ -195,15 +203,19 @@ def each_leak(run: Path, c: dict, fed_until: float, toward: dict[str, dict[str, 
 
 def on_metal(run: Path, c: dict, since: float, until: float) -> dict:
     """For a deck with metal at a set voltage: what lands on the metal between two times, from the particles
-    WarpX wrote as they landed, and the potential in the last snapshot, whose field is the plasma's plus the
-    voltage's. The potential is the field summed inward from the can along the mid-plane and up the axis."""
+    WarpX wrote as they landed, and the potential, from snapshots whose field is the plasma's plus the
+    voltage's. The potential is the field summed inward from the can along the mid-plane and up the axis,
+    as the mean over the snapshots between those times.
+    The metal reaches out past the shell that counts what leaves by the gap, so a particle landing beyond that
+    shell has been counted by it already, and one landing within it has been counted for the share of the
+    shell's thickness it crossed. `..._not_counted_at_gap_per_s` is the rest, the rate to add to the shells'."""
     import h5py
 
     text = (run / "warpx_used_inputs").read_text()
     volts, share = (float(re.search(rf"^my_constants\.{name} = .*# (\S+)$", text, re.MULTILINE).group(1)) for name in ("volts", "scr_keep"))
     out = {"metal_kV": volts / 1e3}
     for species, mass in (("electrons", M_E), ("ions", c["mass_amu"] * M_U)):
-        count = energy = 0.0
+        count = energy = uncounted = 0.0
         for path in sorted((run / "diags/scr/particles_at_eb").glob("*.h5")):
             with h5py.File(path, "r") as file:
                 for iteration in file["data"].values():
@@ -214,19 +226,32 @@ def on_metal(run: Path, c: dict, since: float, until: float) -> dict:
                     late = (when >= since) & (when <= until)
                     weight = group["weighting"][:][late] / share
                     squared = sum(group["momentum"][axis][:][late] ** 2 for axis in "xyz")
+                    radius = np.hypot(group["position/x"][:][late], group["position/y"][:][late])
                     count += float(weight.sum())
+                    uncounted += float((weight * np.clip((c["rw"] - c["shell"] - radius) / c["shell"], 0, 1)).sum())
                     energy += float((weight * (np.sqrt(1 + squared / (mass * C) ** 2) - 1) * mass * C * C).sum())
         out[f"{species}_landing_on_metal_per_s"] = float(f"{count / (until - since):.4g}")
+        out[f"{species}_landing_on_metal_not_counted_at_gap_per_s"] = float(f"{uncounted / (until - since):.4g}")
         out[f"{species}_power_on_metal_W"] = float(f"{energy / (until - since):.4g}")
-    maps = field_maps(run)
-    if maps is not None:
-        cell = c["rw"] / c["nr"]
+    # One snapshot's field holds waves as large as the potential, so the potential is the mean over the
+    # snapshots between the two times, and its spread over them is given with it.
+    seen: dict[str, list[float]] = {"at_centre": [], "in_gap_at_coil_radius": [], "on_axis_in_coil": []}
+    cell = c["rw"] / c["nr"]
+    for snapshot in snapshots(run):
+        maps = field_maps(run, snapshot)
+        if not since <= maps["time"] <= until * (1 + 1e-3):   # the last snapshot is a few steps after the last row of the tables
+            continue
         middle = maps["Er"].shape[0] // 2
         along = np.cumsum((0.5 * (maps["Er"][middle - 1] + maps["Er"][middle]))[::-1])[::-1] * cell
-        out["potential_at_centre_kV"] = round(float(along[0]) / 1e3, 1)
-        out["potential_in_gap_at_coil_radius_kV"] = round(float(along[int(c["rc"] / cell)]) / 1e3, 1)
         on_axis = along[0] - np.cumsum(maps["Ez"][middle:, 0]) * cell
-        out["potential_on_axis_in_coil_kV"] = round(float(on_axis[int(c["dc"] / cell)]) / 1e3, 1)
+        seen["at_centre"].append(float(along[0]))
+        seen["in_gap_at_coil_radius"].append(float(along[int(c["rc"] / cell)]))
+        seen["on_axis_in_coil"].append(float(on_axis[int(c["dc"] / cell)]))
+    for where, values in seen.items():
+        if values:
+            out[f"potential_{where}_kV"] = round(float(np.mean(values)) / 1e3, 1)
+            out[f"potential_{where}_spread_kV"] = round(float(np.std(values)) / 1e3, 1)
+    out["snapshots_in_potential"] = len(seen["at_centre"])
     if (run / "unit_potential.json").exists():
         for where, value in json.loads((run / "unit_potential.json").read_text()).items():
             out[f"potential_with_no_plasma_{where}_kV"] = round(value * volts / 1e3, 1)
@@ -302,7 +327,7 @@ def reduce(run: Path) -> dict:
             when, rate = leaving(run, f"{letter}_through_{route}", c["shell"])
             rates[route] = float(rate[(when >= 0.8 * fed_until) & (when <= fed_until)].mean())
         if metal:   # what lands on the metal never reaches a counting shell
-            rates["metal"] = metal[f"{species}_landing_on_metal_per_s"]
+            rates["metal"] = metal[f"{species}_landing_on_metal_not_counted_at_gap_per_s"]
         total = sum(rates.values())
         out[f"{species}_leaving_per_s"] = float(f"{total:.4g}")
         out[f"{species}_share_leaving_through_coils"] = round(rates["coils"] / total, 3) if total > 0 else None

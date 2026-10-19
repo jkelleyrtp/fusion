@@ -49,9 +49,12 @@ be absorbed.
 
 - electrons and ions landing on the metal per second and the power they carry, from the particles WarpX
   writes as they land (one in ten is written, `scr_keep`);
-- the potential at the centre, on the axis in a coil and in the gap at the coil radius, from the last snapshot,
-  beside the same three with no plasma;
-- holding times that count what lands on the metal as lost.
+- the potential at the centre, on the axis in a coil and in the gap at the coil radius, as the mean over the
+  snapshots in the last fifth of the feed with its spread over them, beside the same three with no plasma. One
+  snapshot is not enough: the field holds waves as large as the potential;
+- holding times that count what lands on the metal as lost. The metal reaches out past the shell that counts
+  what leaves by the gap, so a particle landing beyond that shell is already counted there; only the landings
+  the shell has not seen are added (`..._landing_on_metal_not_counted_at_gap_per_s`).
 - how far the last snapshot is from Gauss's law (rms of eps0 div E - rho over rms of rho), away from the metal,
   within two cells of it, and in the cells on the axis. The solver never solves that law, so this is the check
   that no charge is made or lost wrongly.
@@ -69,21 +72,48 @@ On this machine's CPUs, size 15 (29.3 kA-turns), coils at 0.6 radii, 128 cells a
 | Particles feel the map: 400 heavy particles at rest in a run with no plasma at 1 kV, the push each gets over 10 steps against the map's field gathered at where it sits, down to 0.2 of a cell from the metal | rms difference 7.5e-14 of the rms field, largest 7.8e-13 |
 | The solver's metal is the map's metal: cells where the solver's own field is exactly zero in a plasma run against cells whose four corners are metal in the map | the same 2,812 cells, none more and none fewer |
 | The map settles with the mesh: potential at the centre for 1 V | 0.9085, 0.9062, 0.9048 at 128, 256, 1,024 cells |
-| Particles are removed at the metal: where the landed particles are | on the hole's face and the faces towards the mid-plane, in the 102 particles written (faces at 0.3 of a cell) |
-| Particles are all counted: rate lost (two counting shells plus the metal) against feed less growth, in a 1.2 ns run | electrons 0.452 against 0.446 of the feed; ions 0.468 against 0.446 (faces at 0.3 of a cell) |
 | Gauss's law off the axis, 100 kV, at 1.6 ns | error 1.3e-10 of the charge density, both away from the metal and within two cells of it. With the faces at 0.3 of a cell it was 0.024 within two cells of the metal at 0.8 ns, and growing |
 | Gauss's law in the cells on the axis | error 3.0 times the rms charge density there at 1.6 ns (2.1 at 0.8 ns). The same deck with no metal gives 2.0 at 0.8 ns, so this is not from the metal. It is the noise on the axis described in [park-vs-warpx.md](park-vs-warpx.md), section 6 |
 
-## Not checked yet
+## Checked on the GPU executable, in full runs
 
-- Whether the plasma's results change with the mesh. Campaign `casing1` has three cases at 256 cells for this.
-- Gauss's law late in a full run. Every run's `measured.json` now carries it.
+Campaign `casing1`: 48 ns, size 15, coils at 0.6 radii, 1× feed, faces at mid-cell. Thirteen cases: seven
+voltages, three at 256 cells, three with metal reaching to 1 mm from the mid-plane outside 12 mm radius (`near`).
+
+| Check | Result |
+|---|---|
+| Gauss's law off the axis at 48 ns, all seven voltages | error 1.3e-10 of the charge density, away from the metal and within two cells of it |
+| The same with the `near` metal, which has an inside corner | 1.3e-10 away from the metal; 2e-5 to 1e-4 within two cells of it, all of it in the two cells diagonal to each inside corner |
+| Particles are all counted: rate lost (two shells plus the metal landings the shells have not seen) against feed less growth, last fifth | agree to 0.6% or better for electrons in all thirteen cases, and to 2% for ions |
+| Where particles land | 0 V: ions on the faces towards the mid-plane (4% of the feed). Negative metal: ions on those faces and the hole's face, and at -300 kV the faces towards the ends as well (86% of the feed). +300 kV: electrons on the faces towards the mid-plane beyond 17 mm radius (35% of the feed). No electron lands on negative metal and no ion on metal at +300 kV |
+| Mesh: 256 cells against 128, at -100, 0 and +100 kV | holding time 2.40, 3.50, 4.13 against 2.48, 3.57, 4.15 ns; ring leak half-height 0.264, 0.284, 0.312 against 0.250, 0.281, 0.308 mm; stream through a coil 1.68, 1.82, 1.90 against 1.66, 1.80, 1.88 mm |
+| Gauss's law in the cells on the axis | 1.6 to 2.3 times the rms charge density there, at every voltage including 0, as on the CPUs |
+
+## Not checked
+
 - Whether the error on the axis matters to these runs. Without metal, runs with 4 times the particles gave the
   same widths and a holding time 6% longer.
-- The particle count in a settled run. The row above is from a run still filling.
 - Any size but 15.
-- The executable built for GPUs. All the rows above are from the CPU one.
+- Why grounded casings alone hold longer than no metal (3.57 against 2.84 ns in `iso3`). The metal also shuts
+  the plasma's own magnetic field out of the casings; the two decks have not been compared line by line.
+- The potential on the axis in a coil: its spread over ten snapshots is 50 to 110 kV, so it is not usable.
 
-Until the first two pass, numbers from these runs are provisional.
+## What the runs say (provisional)
+
+| Metal (kV) | Electron holding time (ns) | Electrons landing on metal (share of feed) | Ions landing on metal | Potential at centre (kV) | Same with no plasma |
+|---|---|---|---|---|---|
+| -300 | 0.66 | 0 | 0.86 | 33 ± 14 | -272 |
+| -100 | 2.48 | 0 | 0.36 | 36 ± 16 | -91 |
+| -30 | 3.28 | 0 | 0.14 | 45 ± 11 | -27 |
+| 0 | 3.57 | 0.0001 | 0.04 | 43 ± 8 | 0 |
+| +30 | 3.80 | 0.0002 | 0.005 | 42 ± 11 | 27 |
+| +100 | 4.15 | 0.001 | 0 | 50 ± 9 | 91 |
+| +300 | 4.45 | 0.35 | 0 | 98 ± 14 | 272 |
+
+- The plasma sits near +40 kV whatever the metal is at between -300 and +100 kV: it screens the voltage.
+- Positive metal lengthens the holding time by 16% at 100 kV for almost no landing. At 300 kV it gains 25% and
+  a third of the electrons land on the metal, each having gained up to 300 keV from the supply.
+- Negative metal pulls the ions on to itself.
+- Metal 1 mm from the ring leak is worse at every voltage (2.31 ns at 0 V): the plasma lands on it.
 
 The CPU checks above were made with scripts kept outside the repository (`/home/ubuntu/warpx/plugcheck`).

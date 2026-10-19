@@ -118,6 +118,27 @@ class CasingVoltageTest(unittest.TestCase):
         self.assertFalse(held[:, middle + 13].any() or held[:, middle + 25].any())
         np.testing.assert_array_equal(held, held[:, ::-1])
 
+    def test_a_particle_landing_on_metal_past_the_gap_counting_shell_is_not_counted_twice(self) -> None:
+        # The shell that counts what leaves by the gap spans r = 18 to 19 mm. Four electrons land in one second:
+        # before the shell, a quarter of the way through it, three quarters through it, and past it.
+        c = {"rw": 0.02, "shell": 0.001, "mass_amu": 1.0, "nr": 128}
+        with tempfile.TemporaryDirectory() as folder:
+            run = Path(folder)
+            (run / "warpx_used_inputs").write_text("my_constants.volts = 0. # 0\nmy_constants.scr_keep = 0.1 # 0.5\n")
+            (run / "diags/scr/particles_at_eb").mkdir(parents=True)
+            with h5py.File(run / "diags/scr/particles_at_eb/openpmd_000001.h5", "w") as file:
+                group = file.create_group("data/1/particles/electrons")
+                group["timeScraped"] = np.full(4, 0.5)
+                group["weighting"] = np.full(4, 3.0)
+                group["position/x"] = np.array([0.012, 0.01825, 0.0, 0.0195])
+                group["position/y"] = np.array([0.0, 0.0, 0.01875, 0.0])
+                for axis in "xyz":
+                    group[f"momentum/{axis}"] = np.zeros(4)
+            out = analyze_spindle.on_metal(run, c, 0.0, 1.0)
+        self.assertAlmostEqual(out["electrons_landing_on_metal_per_s"], 4 * 3.0 / 0.5)
+        self.assertAlmostEqual(out["electrons_landing_on_metal_not_counted_at_gap_per_s"], (1 + 0.75 + 0.25 + 0) * 3.0 / 0.5)
+        self.assertEqual(out["ions_landing_on_metal_per_s"], 0.0)
+
     def test_snapshots_hold_what_the_check_of_gauss_law_reads(self) -> None:
         text = (CUSP / "inputs_rz_spindle_casing").read_text()
         plotted = re.findall(r"^diag1\.fields_to_plot = (.+)$", text, re.MULTILINE)[-1].split()
