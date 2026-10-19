@@ -162,9 +162,10 @@ plates as a share of the feed. The supply's power is the net charge landing on t
 | 2 | 5.1e19 | 6.95 → 9.16 | 1.32 | 0.09 | 0.006 | 0.03 |
 | 1 | 5.1e19 | 6.94 → 7.75 | 1.12 | 0.39 | 0.99 | 4.8 |
 
-- Narrowing the slot to 2 mm raises the gain at both densities, for 3% of the feed power. It does not move the
-  density at which the plates work by the factor of 5 that "the slot must be within ten screening lengths" would
-  give: that would put the 2 mm slot at 5.1e19 near a gain of 1.5 to 2.
+- Narrowing the slot to 2 mm raises the gain at both densities, for 3% of the feed power. The rule "the gain is set
+  by the slot's half-height in screening lengths", read off the table above, would give about 4 at 2.9e18 (4.6
+  lengths) and 1.5 at 5.1e19 (19 lengths). The runs give 3.2 and 1.32: the right direction, less than the rule. The
+  slot is narrowed only beyond 12 mm radius, which may be why.
 - At 1 mm the electrons land on the plates (0.99 of the feed), the plasma rises to +67 kV and the supply gives 4.8
   times the power fed in as particles, for a gain of 1.12.
 - With the plates at 0 V the narrower slots change nothing but what lands: 10% of the ions at 2 mm and 38 to 39% at
