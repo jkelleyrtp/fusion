@@ -86,8 +86,8 @@ stopped one cell short of the axis (`plugcheck/barrier.py`). Their spread betwee
 and 0.1 feed with no gun, and 2 to 6 kV at 1 feed. Summed to the same point from the end wall instead, they agree to
 1 to 3 kV.
 
-**The cell on the axis is left out, and `table.jsonl` for these runs has it in.** The reducer on the nodes summed the
-mid-plane field right to the axis. The one cell on the axis adds 6 to 16 kV to the centre in the 10 keV runs (10.3 kV
+**The cell on the axis is left out.** Until 2026-10-19 the reducer on the nodes summed the
+mid-plane field right to the axis (`table.jsonl` was made again without it at 20:42 UTC that day). The one cell on the axis adds 6 to 16 kV to the centre in the 10 keV runs (10.3 kV
 becomes 19.4 at +100 kV and 0.01 feed), always upward. That cell is one of those that fail Gauss's law, and a
 potential 10 kV higher across 0.16 mm would need 30 times the plasma's density in net charge there. The reducer now
 stops one cell short (`on_metal` in `analyze_spindle.py`). The centre potentials in `rz-casing-voltage.md` are from
@@ -111,6 +111,33 @@ large, so read those as within about 20 kV.
 - The 0.01-feed cases at +100 and +300 kV had not settled: ions inside the coils still rising 6 to 19% over the
   last fifth, loss 85 to 95% of feed.
 - At +300 kV and 0.1 feed, electrons land on the casings at 0.96 of the feed rate.
+
+### How the gain from +100 kV goes with density and with size
+
+No gun, 10 keV electrons, plates at 0 V against +100 kV. Ion holding time inside the coils; the density is the
+electrons' at the centre with the plates at 0 V.
+
+| Size | Pairs fed per second | Density at the centre, 0 V (per m3) | Holding time 0 V → +100 kV (ns) | Gain | Ion stream half-height in the ring leak, 0 V (mm) |
+|---|---|---|---|---|---|
+| 15 | 1.8e20, 48 ns run | 7.1e17 | 3.15 → 13.2 | 4.2 | 0.94 |
+| 15 | 1.8e20, 144 ns run | 8.4e17 | 3.64 → 13.9 | 3.8 | 0.80 |
+| 15 | 5.4e20 | 2.6e18 | 3.59 → 7.64 | 2.1 | 0.63 |
+| 30 | 4.5e20 | 2.9e18 | 4.57 → 9.98 | 2.2 | 0.34 |
+| 15 | 1.8e21 | 1.2e19 | 4.50 → 6.60 | 1.5 | 0.39 |
+| 30 | 4.5e21 | 5.1e19 | 6.98 → 8.43 | 1.2 | 0.17 |
+| 15 | 1.8e22 | 2.0e20 | 7.42 → 7.82 | 1.05 | 0.29 |
+
+- The gain follows the density and not the size. Size 30 at 2.9e18 gains 2.2 times where size 15 at 2.6e18 gains
+  2.1, with a ring leak half as thick. Size 30 at 5.1e19 gains 1.2, between size 15's 1.5 at 1.2e19 and 1.05 at
+  2.0e20. So a thinner leak in a stronger field does not let the plates work at a higher density, which is what
+  the sentence "the plasma screens the casings unless the leak is about as thin as its screening length" would
+  have had. Two sizes only.
+- A gain of two needs a density near 3e18 per m3, where the plasma's pressure is 0.6% of the field's at a coil
+  centre at size 15 and 0.16% at size 30.
+- The 144 ns runs: the +100 kV case has its ions inside the coils rising 5% over the last fifth and loss at 0.986
+  of feed, so 13.9 ns is close to settled. Its potentials are lower than at 48 ns (centre 4.3 kV against 10.8, the
+  mid-plane at the coil radius 16.2 against 29.6) and 57% of the ions leave through the coils against 78%.
+- +30 kV at size 15 and 1.8e20: 6.36 ns, twice the 0 V run. With 100 keV electrons at 1.8e20: 1.43 → 3.47 ns.
 
 ### Electrons going out and coming back
 
