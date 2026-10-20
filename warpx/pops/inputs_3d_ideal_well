@@ -1,0 +1,74 @@
+# POPS stage A: ions in a prescribed harmonic well inside a grounded sphere.
+# The well stands in for a uniform electron cloud; the ions' own space charge is solved self-consistently.
+# Override any my_constants value on the command line, e.g. my_constants.fill=0.01.
+
+my_constants.a = 0.01                 # sphere radius (m)
+my_constants.phi0 = 1.0e4             # well depth (V)
+my_constants.mass_amu = 2.014         # ion mass (u)
+my_constants.fill = 1.0e-4            # ions per electron of the cloud the well stands for
+my_constants.comp = 10.               # target radius compression if space charge were absent
+my_constants.s0 = 0.3*a               # initial rms radius per axis (m)
+my_constants.rf = 0.                  # fractional RF modulation of the well
+my_constants.rf_scale = 1.            # RF frequency in units of the breathing frequency
+my_constants.periods = 6.             # ion periods to run
+my_constants.steps_per_period = 2000
+my_constants.ncell = 64
+my_constants.ppc = 8
+
+my_constants.mi = mass_amu*m_u
+my_constants.omega = sqrt(2*q_e*phi0/(mi*a**2))        # ion angular frequency in the well
+my_constants.nions = fill*8*pi*epsilon0*phi0*a/q_e      # real ions in the sphere
+my_constants.n0 = nions/((2*pi)**1.5*s0**3)
+my_constants.uth = omega*s0/comp/clight                 # thermal spread that sets the focus size
+my_constants.kwell = 2*phi0/a**2
+
+max_step = periods*steps_per_period
+warpx.const_dt = 2*pi/omega/steps_per_period
+amr.n_cell = ncell ncell ncell
+amr.max_level = 0
+amr.blocking_factor = 8
+amr.max_grid_size = 64
+geometry.dims = 3
+geometry.prob_lo = -1.125*a -1.125*a -1.125*a
+geometry.prob_hi =  1.125*a  1.125*a  1.125*a
+boundary.field_lo = pec pec pec
+boundary.field_hi = pec pec pec
+boundary.particle_lo = absorbing absorbing absorbing
+boundary.particle_hi = absorbing absorbing absorbing
+
+warpx.do_electrostatic = labframe
+warpx.eb_implicit_function = "(x**2+y**2+z**2-a**2)"
+warpx.eb_potential(x,y,z,t) = "0."
+warpx.self_fields_required_precision = 1.e-6
+algo.field_gathering = momentum-conserving
+algo.particle_shape = 1
+warpx.serialize_initial_conditions = 1
+
+particles.species_names = ions
+ions.charge = q_e
+ions.mass = mi
+ions.injection_style = NRandomPerCell
+ions.num_particles_per_cell = ppc
+ions.profile = parse_density_function
+ions.density_function(x,y,z) = "n0*exp(-(x**2+y**2+z**2)/(2*s0**2))*((x**2+y**2+z**2)<(0.95*a)**2)"
+ions.momentum_distribution_type = gaussian
+ions.ux_th = uth
+ions.uy_th = uth
+ions.uz_th = uth
+
+particles.E_ext_particle_init_style = parse_E_ext_particle_function
+particles.Ex_external_particle_function(x,y,z,t) = "-kwell*x*(1+rf*cos(2*rf_scale*omega*t))"
+particles.Ey_external_particle_function(x,y,z,t) = "-kwell*y*(1+rf*cos(2*rf_scale*omega*t))"
+particles.Ez_external_particle_function(x,y,z,t) = "-kwell*z*(1+rf*cos(2*rf_scale*omega*t))"
+
+warpx.reduced_diags_names = beam number
+beam.type = BeamRelevant
+beam.species = ions
+beam.intervals = 1
+number.type = ParticleNumber
+number.intervals = 10
+
+diagnostics.diags_names = diag1
+diag1.intervals = 0
+diag1.diag_type = Full
+diag1.fields_to_plot = phi rho

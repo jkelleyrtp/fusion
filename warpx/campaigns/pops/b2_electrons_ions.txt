@@ -1,0 +1,8 @@
+i_f1e-3 inputs_3d_electron_well my_constants.current=40 my_constants.fill=1e-3 my_constants.tmax=1.6e-7 my_constants.ppc_e=0.25
+i_f1e-2 inputs_3d_electron_well my_constants.current=40 my_constants.fill=1e-2 my_constants.tmax=1.6e-7 my_constants.ppc_e=0.25
+i_f3e-2 inputs_3d_electron_well my_constants.current=40 my_constants.fill=3e-2 my_constants.tmax=1.6e-7 my_constants.ppc_e=0.25
+i_f1e-1 inputs_3d_electron_well my_constants.current=40 my_constants.fill=1e-1 my_constants.tmax=1.6e-7 my_constants.ppc_e=0.25
+i_f1e-2_s10 inputs_3d_electron_well my_constants.current=40 my_constants.fill=1e-2 my_constants.spread=0.1 my_constants.tmax=1.6e-7 my_constants.ppc_e=0.25
+i_f1e-2_s30 inputs_3d_electron_well my_constants.current=40 my_constants.fill=1e-2 my_constants.spread=0.3 my_constants.tmax=1.6e-7 my_constants.ppc_e=0.25
+i_f1e-2_20A inputs_3d_electron_well my_constants.current=20 my_constants.fill=1e-2 my_constants.tmax=1.6e-7 my_constants.ppc_e=0.25
+i_f1e-2_ppc1 inputs_3d_electron_well my_constants.current=40 my_constants.fill=1e-2 my_constants.tmax=1.6e-7 my_constants.ppc_e=1

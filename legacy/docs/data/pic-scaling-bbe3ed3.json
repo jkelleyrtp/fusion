@@ -1,0 +1,38 @@
+{
+  "gpu": "NVIDIA B200",
+  "torch": "2.11.0+cu129",
+  "mesh": [
+    33,
+    33,
+    33
+  ],
+  "dt_s": 4e-12,
+  "energy_ev": 100,
+  "scope": "inside-born numerical load; throughput only, not physics",
+  "rows": [
+    {
+      "particles": 65536,
+      "reference_seconds_per_step": 0.00391797861084342,
+      "cuda_seconds_per_step": 0.0012815496511757373,
+      "speedup": 3.05721952110785
+    },
+    {
+      "particles": 1048576,
+      "reference_seconds_per_step": 0.0049580973689444365,
+      "cuda_seconds_per_step": 0.0012867960892617703,
+      "speedup": 3.85305598168928
+    },
+    {
+      "particles": 4194304,
+      "reference_seconds_per_step": 0.014684340259991586,
+      "cuda_seconds_per_step": 0.002499821779783815,
+      "speedup": 5.874154861256345
+    },
+    {
+      "particles": 16777216,
+      "reference_seconds_per_step": 0.054887529278639706,
+      "cuda_seconds_per_step": 0.008330124618951232,
+      "speedup": 6.589040595355473
+    }
+  ]
+}

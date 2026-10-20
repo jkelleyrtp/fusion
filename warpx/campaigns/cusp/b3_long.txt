@@ -1,0 +1,16 @@
+L57_32k_n192 inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=1.25e-8 my_constants.coil_at=32000. my_constants.ncell=192 my_constants.dt=3.125e-13
+L57_64k_n192 inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=1.25e-8 my_constants.coil_at=64000. my_constants.ncell=192 my_constants.dt=3.125e-13
+L57_32k_es inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. warpx.do_electrostatic=labframe warpx.self_fields_required_precision=1.e-6 warpx.eb_potential(x,y,z,t)=0.
+L57_half_16k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=1.25e-8 my_constants.coil_at=16000. my_constants.a=0.005 my_constants.dt=2.5e-13
+L229_16k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.1259 my_constants.tmax=2.5e-8 my_constants.coil_at=16000.
+L229_32k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.1259 my_constants.tmax=2.5e-8 my_constants.coil_at=32000.
+L229_64k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.1259 my_constants.tmax=2.5e-8 my_constants.coil_at=64000.
+L57_8k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=8000.
+L57_16k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=16000.
+L57_32k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000.
+L57_64k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=64000.
+L57_32k_n1e19 inputs_3d_cusp_beta my_constants.n0=1.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000.
+L57_32k_n1e20 inputs_3d_cusp_beta my_constants.n0=1.e20 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000.
+L57_32k_hot inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=2.5e-8 my_constants.coil_at=32000. my_constants.ti=1.e4
+L57_half_32k inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=1.25e-8 my_constants.coil_at=32000. my_constants.a=0.005 my_constants.dt=2.5e-13
+L57_b0 inputs_3d_cusp_beta my_constants.n0=3.e19 my_constants.mass_amu=0.03147 my_constants.tmax=1.0e-8 my_constants.coil_at=0.

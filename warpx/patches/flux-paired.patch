@@ -1,0 +1,142 @@
+diff --git a/Docs/source/usage/parameters.rst b/Docs/source/usage/parameters.rst
+--- a/Docs/source/usage/parameters.rst
++++ b/Docs/source/usage/parameters.rst
+@@ -1609,6 +1609,13 @@
+ 
+       * ``<species_name>.flux_direction`` (only used when injecting from a plane, ``-1`` or ``+1``, direction of flux relative to the plane)
+ 
++      * ``<species_name>.flux_paired`` (only used when injecting from a plane, ``0`` or ``1``, default ``0``)
++        If ``1``, the particles start on the plane itself, at places fixed by the cell and the time step instead of
++        drawn from the random stream. Two species injected with the same plane, flux profile and
++        ``num_particles_per_cell`` then start their particles at the same places. Use this to inject a neutral
++        plasma with an electromagnetic solver: a new particle deposits no current for its appearance, so
++        Gauss's law holds afterwards only if the charge created at each place is zero.
++
+       * ``<species_name>.num_particles_per_cell`` (``double``)
+ 
+       * ``<species_name>.flux_tmin`` (``double``, Optional time at which the flux will be turned on. Ignored when negative.)
+diff --git a/Source/Initialization/PlasmaInjector.H b/Source/Initialization/PlasmaInjector.H
+index b4d24f2..3481e75 100644
+--- a/Source/Initialization/PlasmaInjector.H
++++ b/Source/Initialization/PlasmaInjector.H
+@@ -132,6 +132,9 @@ public:
+     // When compiled in cylindrical geometry, 0 = radial, 1 = azimuthal, 2 = z
+     int flux_normal_axis;
+     int flux_direction; // -1 for left, +1 for right
++    // Whether particles start on the plane at places fixed by the cell and the step, so that another
++    // species injected with the same plane, flux profile and number per cell starts at the same places
++    bool m_flux_paired = false;
+ 
+     // With radial geometry, the number of particles per cell will be proportional to r**radial_numpercell_power
+     amrex::Real radial_numpercell_power;
+diff --git a/Source/Initialization/PlasmaInjector.cpp b/Source/Initialization/PlasmaInjector.cpp
+index 690f355..2dc4699 100644
+--- a/Source/Initialization/PlasmaInjector.cpp
++++ b/Source/Initialization/PlasmaInjector.cpp
+@@ -401,6 +401,7 @@ void PlasmaInjector::setupNFluxPerCell (amrex::ParmParse const& pp_species)
+         utils::parser::getWithParser(pp_species, source_name, "flux_direction", flux_direction);
+         WARPX_ALWAYS_ASSERT_WITH_MESSAGE(flux_direction == +1 || flux_direction == -1,
+             "Error: flux_direction must be -1 or +1.");
++        utils::parser::queryWithParser(pp_species, source_name, "flux_paired", m_flux_paired);
+     }
+ 
+     // Construct InjectorPosition with InjectorPositionRandom.
+diff --git a/Source/Particles/ParticleCreation/AddParticles.cpp b/Source/Particles/ParticleCreation/AddParticles.cpp
+index 3e93f9e..b2512f6 100644
+--- a/Source/Particles/ParticleCreation/AddParticles.cpp
++++ b/Source/Particles/ParticleCreation/AddParticles.cpp
+@@ -80,6 +80,7 @@
+ #include <algorithm>
+ #include <array>
+ #include <cmath>
++#include <cstdint>
+ #include <cstdlib>
+ #include <limits>
+ #include <map>
+@@ -95,6 +96,38 @@ namespace
+ {
+     using ParticleType = WarpXParticleContainer::ParticleType;
+ 
++    // A number in [0,1) fixed by a cell of the domain, the step, the direction of the flux, the place of a
++    // particle in the cell's list and `which`. Flux sources with `flux_paired` draw where their particles
++    // start from this instead of from the random stream, so that two species make them at the same places.
++    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
++    std::uint64_t pairedMix (std::uint64_t h, std::uint64_t const v) noexcept
++    {
++        h ^= v;
++        h = (h ^ (h >> 30)) * 0xBF58476D1CE4E5B9ULL;
++        h = (h ^ (h >> 27)) * 0x94D049BB133111EBULL;
++        return h ^ (h >> 31);
++    }
++
++    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
++    amrex::Real pairedUniform (amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& corner,
++                               amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& dx,
++                               amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> const& problo,
++                               amrex::IntVect const& iv, int const step, int const direction,
++                               int const i_part, int const which) noexcept
++    {
++        std::uint64_t h = 0x9E3779B97F4A7C15ULL;
++        for (int d = 0; d < AMREX_SPACEDIM; ++d) {
++            // index of the cell in the whole domain, whichever box or tile it is reached from
++            h = pairedMix(h, static_cast<std::uint64_t>(static_cast<std::int64_t>(
++                std::floor((corner[d] + iv[d]*dx[d] - problo[d])/dx[d] + 0.5_rt))));
++        }
++        h = pairedMix(h, static_cast<std::uint64_t>(step));
++        h = pairedMix(h, static_cast<std::uint64_t>(direction + 1));
++        h = pairedMix(h, static_cast<std::uint64_t>(i_part));
++        h = pairedMix(h, static_cast<std::uint64_t>(which));
++        return static_cast<amrex::Real>(h >> 11) * static_cast<amrex::Real>(1.0/9007199254740992.0);
++    }
++
+     // Since the user provides the density distribution
+     // at t_lab=0 and in the lab-frame coordinates,
+     // we need to find the lab-frame position of this
+@@ -1274,6 +1307,9 @@ PhysicalParticleContainer::AddPlasmaFlux (PlasmaInjector const& plasma_injector,
+     InjectorMomentum* inj_mom = plasma_injector.getInjectorMomentumDevice();
+     constexpr int level_zero = 0;
+     const amrex::Real t = WarpX::GetInstance().gett_new(level_zero);
++    const bool flux_paired = plasma_injector.m_flux_paired;
++    const int paired_step = WarpX::GetInstance().getistep(level_zero);
++    const int paired_direction = plasma_injector.flux_direction;
+ 
+ #if defined(WARPX_DIM_RZ) || defined(WARPX_DIM_RCYLINDER) || defined(WARPX_DIM_RSPHERE)
+     const amrex::Real radial_numpercell_power = plasma_injector.radial_numpercell_power;
+@@ -1378,7 +1414,10 @@ PhysicalParticleContainer::AddPlasmaFlux (PlasmaInjector const& plasma_injector,
+             if (fine_overlap_box.ok() && fine_overlap_box.contains(iv)) {
+                 r = compute_area_weights(rrfac, flux_normal_axis);
+             }
+-            const int num_ppc_int = static_cast<int>(num_ppc_real_in_this_cell*r + amrex::Random(engine));
++            const amrex::Real round_up = flux_paired ?
++                pairedUniform(overlap_corner, dx, problo, iv, paired_step, paired_direction, 0, 3) :
++                amrex::Random(engine);
++            const int num_ppc_int = static_cast<int>(num_ppc_real_in_this_cell*r + round_up);
+             pcounts[index] = num_ppc_int;
+ 
+             amrex::ignore_unused(j,k);
+@@ -1505,6 +1544,12 @@ PhysicalParticleContainer::AddPlasmaFlux (PlasmaInjector const& plasma_injector,
+                         flux_pos->getPositionUnitBox(i_part, rrfac, engine) :
+                         // Otherwise: use 1 as the refinement ratio
+                         flux_pos->getPositionUnitBox(i_part, amrex::IntVect::TheUnitVector(), engine);
++                    if (flux_paired) {
++                        // Keep the plane's own zero along its normal; fix the other components by the cell
++                        if (r.x != 0._rt) { r.x = pairedUniform(overlap_corner, dx, problo, iv, paired_step, paired_direction, i_part, 0); }
++                        if (r.y != 0._rt) { r.y = pairedUniform(overlap_corner, dx, problo, iv, paired_step, paired_direction, i_part, 1); }
++                        if (r.z != 0._rt) { r.z = pairedUniform(overlap_corner, dx, problo, iv, paired_step, paired_direction, i_part, 2); }
++                    }
+                     pos = getCellCoords(overlap_corner, dx, r, iv);
+                 }
+ 
+@@ -1690,8 +1735,10 @@ PhysicalParticleContainer::AddPlasmaFlux (PlasmaInjector const& plasma_injector,
+                 pa[PIdx::uz][ip] = pu.z;
+ 
+                 // Update particle position by a random `t_fract`
+-                // so as to produce a continuous-looking flow of particles
+-                const amrex::Real t_fract = amrex::Random(engine)*dt;
++                // so as to produce a continuous-looking flow of particles.
++                // Paired sources leave the particle on the plane: this move deposits no current, so it
++                // would separate a pair's charges without the fields knowing.
++                const amrex::Real t_fract = flux_paired ? 0._rt : amrex::Random(engine)*dt;
+                 amrex::ParticleReal pposx = pos.x;
+                 amrex::ParticleReal pposy = pos.y;
+                 amrex::ParticleReal pposz = pos.z;

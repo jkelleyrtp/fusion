@@ -1,0 +1,273 @@
+<div id="root"></div>
+<script type="text/jsx">
+// Physical constants (SI)
+const QE = 1.602176634e-19, EPS0 = 8.8541878128e-12, AMU = 1.66053907e-27;
+
+// Bosch-Hale thermal reactivities, T in keV, result in m^3/s (valid to about 100 keV)
+function boschHale(T, BG, mc2, C) {
+  const th = T / (1 - (T * (C[1] + T * (C[3] + T * C[5]))) / (1 + T * (C[2] + T * (C[4] + T * C[6]))));
+  const xi = Math.cbrt((BG * BG) / (4 * th));
+  return C[0] * th * Math.sqrt(xi / (mc2 * T * T * T)) * Math.exp(-3 * xi) * 1e-6;
+}
+const fuels = {
+  DT: { label: "D-T", mass: 2.5, pair: 0.25, mev: 17.6,
+        sv: (T) => boschHale(T, 34.3827, 1124656, [1.17302e-9, 1.51361e-2, 7.51886e-2, 4.60643e-3, 1.35e-2, -1.0675e-4, 1.366e-5]) },
+  DD: { label: "D-D", mass: 2.014, pair: 0.5, mev: 3.65,
+        sv: (T) => boschHale(T, 31.397, 937814, [5.65718e-12, 3.41267e-3, 1.99167e-3, 0, 1.0506e-5, 0, 0])
+                 + boschHale(T, 31.397, 937814, [5.4336e-12, 5.85778e-3, 7.68222e-3, 0, -2.964e-6, 0, 0]) },
+};
+
+// Back-of-envelope model of one sphere. Uniform-sphere approximations throughout.
+function model(kv, mm, f, C, fuelKey) {
+  const fuel = fuels[fuelKey], phi = kv * 1e3, a = mm * 1e-3;
+  const ne = (6 * EPS0 * phi) / (QE * a * a);                    // electron density that makes the well
+  const ions = (f * 8 * Math.PI * EPS0 * phi * a) / QE;           // f x electrons in the sphere
+  const omega = Math.sqrt((2 * QE * phi) / (fuel.mass * AMU * a * a));
+  const tKev = Math.min(kv / 4, 100);                             // peak ion temperature, about a quarter of the well
+  const vMin = (4 / 3) * Math.PI * Math.pow(a / C, 3);
+  const duty = Math.min(1, 2 / (Math.PI * C));                    // fraction of the cycle spent compressed
+  const rate = (fuel.pair * ions * ions * fuel.sv(tKev) * duty) / vMin;
+  const watts = rate * fuel.mev * 1e6 * QE;
+  return {
+    ne, ions, breatheMHz: omega / Math.PI / 1e6, edgeMVm: (2 * phi) / a / 1e6, tKev,
+    peakIon: (f * ne * C * C * C), hill: 2 * f * C, watts, wall: watts / (4 * Math.PI * a * a) / 1e6,
+  };
+}
+function sci(x, d = 1) {
+  if (!isFinite(x) || x === 0) return "0";
+  const e = Math.floor(Math.log10(Math.abs(x)));
+  if (e >= -2 && e < 4) return x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toPrecision(2);
+  return (x / Math.pow(10, e)).toFixed(d) + "e" + e;
+}
+const opts = (values, unit) => values.map((v) => ({ value: String(v), label: v + unit }));
+
+const rider = [
+  { objection: "Ions held far from thermal equilibrium scatter off each other faster than they fuse, so keeping them that way costs more power than fusion returns.",
+    beams: "Applies. The ions are beams by design.",
+    pops: "Sidestepped. The cloud is thermal at every instant, so scattering changes nothing and there is nothing to pay for." },
+  { objection: "Scattering gives ions sideways motion, so a sharp focus at the centre smears out (Nevins).",
+    beams: "Applies.",
+    pops: "Sidestepped in an ideal well: the focus size is set by the cloud's temperature, which is already thermal." },
+  { objection: "Hot electrons radiate (bremsstrahlung), which is fatal for advanced fuels.",
+    beams: "Applies.",
+    pops: "Still applies. Small for D-T; I have not analysed it for other fuels." },
+  { objection: "Holding the electrons that make the well costs power.",
+    beams: "Applies. For Polywell this is the cusp-leak question.",
+    pops: "Still applies, and is an open cost. The well needs a uniform electron cloud held steady." },
+];
+
+const history = [
+  { year: "1998", what: "Barnes and Nebel show the oscillating thermal cloud is an exact solution, and sketch a reactor of tens of thousands of centimetre-sized spheres. Total power scales as 1/radius, so small is better.", src: "Phys. Plasmas 5, 2498; Fusion Technol. (1998)" },
+  { year: "2000-01", what: "Nebel and Finn study whether the electron cloud that forms the well is stable.", src: "Phys. Plasmas 7, 839; 8, 1505" },
+  { year: "2005", what: "Experiment at Los Alamos sees the resonance. The measured frequency matches theory across well depths and for three ion species.", src: "Park et al., Phys. Rev. Lett. 95, 015003" },
+  { year: "2005", what: "Particle simulations show large compressions, but the ions' own charge at the focus is flagged as the major issue.", src: "Park et al., Phys. Plasmas 12, 056315" },
+  { year: "2007", what: "A 1D study finds limits on how far a sphere can compress while electrons exactly cancel the ions' charge. Approximate cancelling is still possible, and a cylinder-shaped compression avoids the limit. D-D gain needs about 1000:1 in radius.", src: "Evstatiev et al., Phys. Plasmas 14, 042701" },
+  { year: "After 2007", what: "I found little. One 2015 conference abstract describes a related 0.7 cm Penning trap as a small fusion source.", src: "APS DPP 2015 abstract" },
+];
+
+const problems = [
+  { name: "Ion charge at the focus", why: "Squeezed ions repel each other and stall the collapse unless electrons follow them in and cancel their charge almost perfectly.", bar: "Cancel to about 1 part in 2 x (fill x compression). For useful power that is about 1 part in 2000.", known: "Partly studied in 1D and 2D. Exact cancelling has geometric limits in a sphere." },
+  { name: "Roundness", why: "Every ion must pass within the focus radius. Any lumpiness in the well (injection ports, grid wires, electron noise) or sideways ion motion widens the focus.", bar: "Well shape and symmetry good to roughly 1 part in the compression ratio. Laser fusion capsules manage a radius compression of about 30.", known: "Not studied in 3D that I could find. This is where a 3D simulation is new." },
+  { name: "A steady, uniform electron cloud", why: "The bowl shape needs uniform electron density. Instabilities or uneven injection distort it.", bar: "Stable over many ion cycles while ions are present. Published work says stability favours few ions, while power wants many.", known: "Stability studied in theory; the trade-off with ion fill is the open tension." },
+  { name: "Engineering", why: "The electric field at the electrodes is twice the well depth divided by the radius, and the device is thousands of tiny spheres driven at radio frequency.", bar: "Vacuum gaps break down somewhere around 10 to 100 MV/m.", known: "Outside what simulation can settle." },
+];
+
+const experiments = [
+  { id: "A", name: "Reproduce the 2005 resonance", detail: "Form the well with injected electrons, add ions, sweep the drive frequency. Check the resonance against the formula for several well depths and ion masses.", cost: "about 10", tells: "The code is right in this regime. Published data to compare against." },
+  { id: "B", name: "Measure compression in 3D", detail: "Drive the cloud at resonance in a realistic geometry and record the smallest focus and the fill x compression reached.", cost: "10 to 100", tells: "The headline number. I found no 3D result published." },
+  { id: "C", name: "Search electron injection programmes", detail: "Vary the injected electrons' energy and angle spread over the cycle to keep the ions' charge cancelled. The 2007 paper did this on paper for 1D.", cost: "10 to 100 each, thousands of runs", tells: "Whether clever injection lifts the compression limit. A natural automated search." },
+  { id: "D", name: "Cylinder instead of sphere", detail: "Two-dimensional compression, which the 2007 paper says removes the charge-cancelling limit.", cost: "about 10", tells: "Whether the easier geometry gives up too much power." },
+  { id: "E", name: "Stability against ion fill", detail: "Raise the ion fraction until the electron cloud goes unstable.", cost: "10 to 100", tells: "The upper limit on fill, which sets how much compression is needed." },
+];
+
+function Report() {
+  const [kv, setKv] = useState("100");
+  const [mm, setMm] = useState("5");
+  const [f, setF] = useState("0.1");
+  const [c, setC] = useState("10");
+  const [fuel, setFuel] = useState("DT");
+  const m = model(Number(kv), Number(mm), Number(f), Number(c), fuel);
+  const target = 4 * Math.PI * Math.pow(Number(mm) * 1e-3, 2) * 1e6; // watts per sphere at 1 MW per square metre of wall
+  const stall = 1 / (2 * Number(f));
+
+  const cycle = useMemo(() => {
+    const C = Number(c), out = [];
+    for (let i = 0; i <= 240; i++) {
+      const th = (i / 240) * 2 * Math.PI;
+      out.push({ t: +(i / 120).toFixed(3), radius: Math.sqrt(Math.cos(th) ** 2 + (Math.sin(th) ** 2) / (C * C)) });
+    }
+    return out;
+  }, [c]);
+
+  const sweep = useMemo(() => {
+    const out = [];
+    for (let i = 0; i <= 40; i++) {
+      const C = Math.pow(10, i / 10);
+      out.push({ logC: i / 10, power: Math.log10(model(Number(kv), Number(mm), Number(f), C, fuel).watts) });
+    }
+    return out;
+  }, [kv, mm, f, fuel]);
+
+  return (
+    <PageLayout title="POPS: the oscillating ion cloud" subtitle="How the periodically oscillating plasma sphere works, why it sidesteps Rider's argument, what stopped it, and what we could simulate.">
+      <BannerCard variant="info" title="In one paragraph">
+        Fill a centimetre-sized sphere with electrons and it becomes a bowl-shaped electric well for ions. In a bowl of exactly that shape every ion takes the same time to reach the centre,
+        so a cloud of ions collapses to a point together, rebounds, and repeats millions of times a second. At each collapse the cloud is briefly very dense and very hot, and fuses.
+        The cloud stays in thermal equilibrium throughout, which is why Rider's objection to electrostatic fusion does not apply. The catch is how small the collapse can get:
+        useful power needs the cloud to shrink about a thousand-fold in radius, and the ions' own charge fights that.
+      </BannerCard>
+
+      <div className="flex flex-col gap-2">
+        <Text size={15} weight="semibold">How it works</Text>
+        <ol className="list-decimal pl-5 text-[13px] flex flex-col gap-1">
+          <li><b>Make the bowl.</b> A uniform ball of electrons gives a potential that rises as the square of the distance from the centre. Its depth is set by electron density times radius squared.</li>
+          <li><b>Add a few ions.</b> In that bowl an ion is a mass on a perfect spring: its swing time does not depend on how far out it starts. So all ions arrive at the centre at the same moment.</li>
+          <li><b>Let the cloud breathe.</b> The cloud collapses and re-expands twice per ion swing. Density rises as 1/radius cubed and temperature as 1/radius squared, so both peak together.</li>
+          <li><b>Drive it gently.</b> A small radio-frequency voltage at the breathing frequency locks the ions in step and pumps the oscillation up.</li>
+        </ol>
+        <ChartContainer config={{ radius: { label: "Cloud radius / sphere radius", color: chartColors[0] } }} style={{ height: 220, width: "100%" }}>
+          <LineChart data={cycle} margin={{ left: 8, right: 16, top: 8, bottom: 16 }}>
+            <ChartGrid />
+            <ChartXAxis dataKey="t" type="number" domain={[0, 2]} tickCount={5} label={{ value: "time (breathing periods)", position: "insideBottom", offset: -8 }} />
+            <ChartYAxis domain={[0, 1]} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartLine dataKey="radius" dot={false} isAnimationActive={false} />
+          </LineChart>
+        </ChartContainer>
+        <Text size={12} className="text-text-secondary">Cloud radius over two breathing periods at the compression ratio chosen below ({c}:1). The time spent compressed shrinks as the compression grows.</Text>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Text size={15} weight="semibold">Why Rider's argument does not bite</Text>
+        <Table wrapText>
+          <TableHeader><TableRow><TableHead>Objection</TableHead><TableHead>Beam-style devices (fusor, Polywell)</TableHead><TableHead>POPS</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {rider.map((x) => (
+              <TableRow key={x.objection}>
+                <TableCell><span className="text-[13px]">{x.objection}</span></TableCell>
+                <TableCell><span className="text-[13px]">{x.beams}</span></TableCell>
+                <TableCell><span className="text-[13px]">{x.pops}</span></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Text size={15} weight="semibold">What has been shown</Text>
+        <Table wrapText>
+          <TableHeader><TableRow><TableHead>When</TableHead><TableHead>Result</TableHead><TableHead>Source</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {history.map((h) => (
+              <TableRow key={h.year + h.src}>
+                <TableCell>{h.year}</TableCell>
+                <TableCell><span className="text-[13px]">{h.what}</span></TableCell>
+                <TableCell><span className="text-[12px] text-text-secondary">{h.src}</span></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <Text size={15} weight="semibold">The crux, as a calculator</Text>
+        <Text size={13} className="text-text-secondary">
+          A back-of-envelope model of one sphere, mine, good to a factor of several. "Fill" is ions per electron averaged over the sphere; it has to stay well below 1 or the ions cancel the bowl.
+          "Compression" is how many times the cloud's radius shrinks.
+        </Text>
+        <div className="flex flex-wrap items-center gap-3">
+          <Text size={12} className="text-text-secondary">Well depth</Text>
+          <SimpleSelect options={opts([10, 30, 100, 200], " kV")} value={kv} onValueChange={setKv} />
+          <Text size={12} className="text-text-secondary">Radius</Text>
+          <SimpleSelect options={opts([1, 2, 5, 10, 20], " mm")} value={mm} onValueChange={setMm} />
+          <Text size={12} className="text-text-secondary">Fill</Text>
+          <SimpleSelect options={opts([0.001, 0.01, 0.03, 0.1, 0.3], "")} value={f} onValueChange={setF} />
+          <Text size={12} className="text-text-secondary">Compression</Text>
+          <SimpleSelect options={opts([3, 10, 30, 100, 300, 1000, 3000, 10000], ":1")} value={c} onValueChange={setC} />
+          <Text size={12} className="text-text-secondary">Fuel</Text>
+          <SimpleSelect options={[{ value: "DT", label: "D-T" }, { value: "DD", label: "D-D" }]} value={fuel} onValueChange={setFuel} />
+        </div>
+        <StatsRow columns={4}>
+          <StatCard label="Fusion power per sphere"><StatCardValue>{sci(m.watts)} W</StatCardValue><StatCardCaption>{sci(m.wall)} MW per m² of wall; the reactor sketch wants about 1</StatCardCaption></StatCard>
+          <StatCard label="Ion charge hill at the focus"><StatCardValue>{sci(m.hill)} x well</StatCardValue><StatCardCaption>{m.hill > 1 ? "Collapse stalls unless electrons cancel all but 1 part in " + sci(m.hill) : "Below the well depth: reachable without extra cancelling"}</StatCardCaption></StatCard>
+          <StatCard label="Peak ion density"><StatCardValue>{sci(m.peakIon)} /m³</StatCardValue><StatCardCaption>Electron cloud is {sci(m.ne)} /m³; solid matter is about 5e28</StatCardCaption></StatCard>
+          <StatCard label="Peak ion temperature"><StatCardValue>{sci(m.tKev)} keV</StatCardValue><StatCardCaption>Taken as a quarter of the well depth</StatCardCaption></StatCard>
+          <StatCard label="Breathing frequency"><StatCardValue>{sci(m.breatheMHz)} MHz</StatCardValue><StatCardCaption>Radio-frequency drive needed</StatCardCaption></StatCard>
+          <StatCard label="Field at the electrode"><StatCardValue>{sci(m.edgeMVm)} MV/m</StatCardValue><StatCardCaption>Vacuum gaps break down around 10 to 100</StatCardCaption></StatCard>
+          <StatCard label="Ions in the sphere"><StatCardValue>{sci(m.ions)}</StatCardValue><StatCardCaption>Few enough to simulate nearly one-for-one</StatCardCaption></StatCard>
+          <StatCard label="Stalls without cancelling at"><StatCardValue>{sci(stall)}:1</StatCardValue><StatCardCaption>Compression where the hill equals the well</StatCardCaption></StatCard>
+        </StatsRow>
+        <ChartContainer config={{ power: { label: "log10 of fusion power per sphere (W)", color: chartColors[0] } }} style={{ height: 260, width: "100%" }}>
+          <LineChart data={sweep} margin={{ left: 8, right: 16, top: 8, bottom: 16 }}>
+            <ChartGrid />
+            <ChartXAxis dataKey="logC" type="number" domain={[0, 4]} ticks={[0, 1, 2, 3, 4]} tickFormatter={(v) => "1e" + v} label={{ value: "compression in radius", position: "insideBottom", offset: -8 }} />
+            <ChartYAxis tickFormatter={(v) => "1e" + v} />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Recharts.ReferenceLine y={Math.log10(target)} stroke="rgb(var(--text-green))" strokeDasharray="4 4" label={{ value: "1 MW/m² wall load", position: "insideTopLeft", fontSize: 11 }} />
+            <Recharts.ReferenceLine x={Math.min(4, Math.log10(stall))} stroke="rgb(var(--text-red))" strokeDasharray="4 4" label={{ value: "stalls without cancelling", position: "insideTopRight", fontSize: 11 }} />
+            <ChartLine dataKey="power" dot={false} isAnimationActive={false} />
+          </LineChart>
+        </ChartContainer>
+        <Text size={13}>
+          Power per sphere goes as (well depth x fill x compression)² / radius. Without electrons cancelling the ions' charge, fill x compression is stuck near 0.5, which gives microwatts.
+          Reaching a 1 MW/m² wall load takes fill x compression near 1000. Both figures land in the same ballpark as the published ones (about 1000:1 compression, about 1 MW/m²), which is reassuring but not a validation.
+        </Text>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Text size={15} weight="semibold">The open problems</Text>
+        <Table wrapText>
+          <TableHeader><TableRow><TableHead>Problem</TableHead><TableHead>Why it matters</TableHead><TableHead>The bar</TableHead><TableHead>What is known</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {problems.map((p) => (
+              <TableRow key={p.name}>
+                <TableCell>{p.name}</TableCell>
+                <TableCell><span className="text-[13px]">{p.why}</span></TableCell>
+                <TableCell><span className="text-[13px]">{p.bar}</span></TableCell>
+                <TableCell><span className="text-[13px]">{p.known}</span></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Text size={15} weight="semibold">What we could simulate</Text>
+        <Text size={13} className="text-text-secondary">
+          The device is small and electron-rich, so one GPU holds all of the physics at full resolution. That is the opposite of the Polywell case, and it makes a search over thousands of designs affordable.
+        </Text>
+        <Table wrapText>
+          <TableHeader><TableRow><TableHead></TableHead><TableHead>Experiment</TableHead><TableHead>GPU-hours</TableHead><TableHead>What it tells us</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {experiments.map((e) => (
+              <TableRow key={e.id}>
+                <TableCell>{e.id}</TableCell>
+                <TableCell><div>{e.name}</div><div className="text-[12px] text-text-secondary">{e.detail}</div></TableCell>
+                <TableCell>{e.cost}</TableCell>
+                <TableCell><span className="text-[13px]">{e.tells}</span></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <Text size={13}>
+          Changes our code needs first: the energy-conserving gun fix, ions and electrons advanced on the same time step, a radio-frequency voltage on an electrode, a spherical boundary, and finer resolution at the centre
+          (a 256³ mesh resolves compression to about 30:1; beyond that needs local refinement or a radial solver). GPU-hours are my estimates from step counts, not measurements.
+        </Text>
+      </div>
+
+      <BannerCard variant="warning" title="My read">
+        As a power source this is a long shot: it needs a thousand-fold collapse that stays round and charge-cancelled, and the best laser-fusion capsules manage about thirty. But the deciding number,
+        fill x compression in a real 3D geometry, is cheap to measure and I found no published 3D value. If it stalls near 1, the idea is dead for power and we will know within weeks.
+        If clever electron injection pushes it past 10 with a stable electron cloud, that is a new result, and a compact neutron source becomes plausible well before a reactor does.
+      </BannerCard>
+
+      <Footnote>
+        Sources: Barnes and Nebel, Phys. Plasmas 5, 2498 (1998); Park et al., Phys. Rev. Lett. 95, 015003 (2005) and Phys. Plasmas 12, 056315 (2005); Evstatiev et al., Phys. Plasmas 14, 042701 (2007);
+        Nebel and Finn, Phys. Plasmas 7, 839 (2000) and 8, 1505 (2001). I read abstracts and the 2007 introduction, not the full papers. The calculator is my own estimate: uniform spheres, peak temperature a quarter of the well depth,
+        Bosch-Hale reactivities capped at 100 keV, and a compressed fraction of the cycle of 2/(pi x compression). The laser-fusion compression figure is from memory.
+      </Footnote>
+    </PageLayout>
+  );
+}
+render(<Report />);
+</script>
